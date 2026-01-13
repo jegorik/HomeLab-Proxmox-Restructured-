@@ -33,8 +33,6 @@
 # =============================================================================
 
 terraform {
-  required_version = ">=1.8.0"
-terraform {
   # Required OpenTofu/Terraform version
   # OpenTofu 1.8+ required for state encryption features (encryption.tf)
   # Terraform 1.7+ supported but encryption blocks will not work

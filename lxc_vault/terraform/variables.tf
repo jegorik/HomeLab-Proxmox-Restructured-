@@ -153,9 +153,9 @@ variable "lxc_mount_point_volume" {
 }
 
 variable "lxc_mount_point_path" {
-    description = "Mount point path inside the container"
-    type        = string
-    default     = "/var/lib/vault/data/"
+  description = "Mount point path inside the container"
+  type        = string
+  default     = "/var/lib/vault/data/"
 }
 
 variable "lxc_startup_order" {
