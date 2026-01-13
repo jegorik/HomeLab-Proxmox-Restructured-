@@ -5,6 +5,7 @@ This directory contains the Infrastructure as Code (IaC) configuration for deplo
 ## 📋 Table of Contents
 
 - [Overview](#overview)
+- [Authentication Requirements](#authentication-requirements)
 - [Prerequisites](#prerequisites)
 - [Configuration Files](#configuration-files)
 - [Initial Setup](#initial-setup)
@@ -36,6 +37,116 @@ This Terraform configuration provisions:
 | `hashicorp/random` | ~> 3.6 | Password generation |
 
 **Note**: This configuration uses **OpenTofu 1.8+** features (state encryption). For Terraform compatibility, use version 1.7+, but encryption blocks will not work.
+
+## 🔐 Authentication Requirements
+
+### Why root@pam with Password (Not API Token)?
+
+This configuration uses **root@pam** authentication with a password file instead of API tokens. This is **required** because of bind mount operations.
+
+#### Technical Explanation
+
+**API tokens do NOT work for bind mounts**, even with full administrative permissions. Here's why:
+
+1. **Bind Mounts Require Privileged Access**: Bind mounts need direct filesystem operations on the Proxmox host to modify `/etc/pve/lxc/*.conf` files
+2. **Security Restrictions**: API tokens have deliberate security restrictions preventing certain privileged operations
+3. **Provider Limitation**: The `bpg/proxmox` Terraform provider requires username/password authentication for mount point operations
+
+#### Official References
+
+- **Proxmox Documentation**: [Linux Container - Mount Points](https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points)
+- **Proxmox Config Reference**: [pct.conf manual](https://pve.proxmox.com/pve-docs/pct.conf.5.html)
+- **Provider Issue #836**: [Bind mounts require root@pam](https://github.com/bpg/terraform-provider-proxmox/issues/836)
+- **Provider Issue #450**: [Mount points authentication](https://github.com/bpg/terraform-provider-proxmox/issues/450)
+
+### Privileged vs Unprivileged Containers with Bind Mounts
+
+This project uses a **privileged container** (`lxc_unprivileged = false`) because:
+
+#### Why Privileged Containers?
+
+- **Simpler Permissions**: UID/GID inside container match the host (no mapping needed)
+- **Direct Access**: Root inside container = root on host, allowing seamless access to bind-mounted directories
+- **Less Configuration**: No need to configure `/etc/subuid` and `/etc/subgid` on the Proxmox host
+
+#### Unprivileged Containers (More Secure, More Complex)
+
+For better security, you can use unprivileged containers with bind mounts, but you must:
+
+1. **Configure UID/GID Mapping** on Proxmox host:
+   ```bash
+   # Add to /etc/pve/lxc/<VMID>.conf
+   lxc.idmap: u 0 100000 65536
+   lxc.idmap: g 0 100000 65536
+   ```
+
+2. **Set Proper Permissions** on host directories:
+   ```bash
+   # If container UID 0 maps to host UID 100000
+   chown -R 100000:100000 /rpool/data/vault
+   ```
+
+3. **Reference**: [Unprivileged LXC Containers](https://pve.proxmox.com/wiki/Unprivileged_LXC_containers)
+
+#### Alternative: Network Storage Instead of Bind Mounts
+
+If you want to use API tokens and avoid bind mounts:
+
+- **NFS/CIFS Mounts**: Mount network storage inside the container (works with API tokens)
+- **Network Storage Backends**: Use iSCSI, Ceph, or NFS for container storage
+- **Cloud-Init Volumes**: Inject small amounts of data without bind mounts
+
+### Security Best Practices for root@pam Authentication
+
+Since we're using root@pam with password, follow these security practices:
+
+#### 1. Secure Password Storage
+
+```bash
+# Create password file with restricted permissions
+echo "your-secure-password" > ~/.ssh/pve_root_password
+chmod 600 ~/.ssh/pve_root_password
+
+# Or use environment variable
+export TF_VAR_pve_root_password="your-secure-password"
+```
+
+#### 2. Dedicated Automation Password
+
+- Use a **separate password** for automation (not your interactive root password)
+- Store in a password manager (1Password, Bitwarden, etc.)
+- Rotate periodically (every 90 days recommended)
+
+#### 3. Limit Attack Surface
+
+- Disable root SSH password authentication (use keys only):
+  ```bash
+  # In /etc/ssh/sshd_config on Proxmox host
+  PermitRootLogin prohibit-password
+  ```
+- Use firewall rules to restrict API access
+- Enable two-factor authentication for web UI
+- Monitor `/var/log/pveproxy/access.log` for suspicious activity
+
+#### 4. Environment Configuration
+
+This project is configured in `providers.tf`:
+
+```hcl
+provider "proxmox" {
+  endpoint = var.proxmox_endpoint
+  username = var.pve_root_user      # "root@pam"
+  password = trimspace(file(pathexpand(var.pve_root_password)))  # From file
+  insecure = var.connection_insecure
+}
+```
+
+Variables in `terraform.tfvars`:
+
+```hcl
+pve_root_user     = "root@pam"
+pve_root_password = "~/.ssh/pve_root_password"  # Path to password file
+```
 
 ## 📦 Prerequisites
 

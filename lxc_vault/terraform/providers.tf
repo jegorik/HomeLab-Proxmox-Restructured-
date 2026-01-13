@@ -20,8 +20,36 @@
 #   - PVE 9.1+ supports OCI images for LXC (not used in this config)
 #
 # Authentication Methods (in order of preference):
-#   1. API Token (recommended) - Set via proxmox_api_token variable
-#   2. Username/Password - Not recommended for automation
+#   1. API Token (recommended for most operations) - Set via proxmox_api_token variable
+#   2. Username/Password (REQUIRED for bind mounts) - Set via pve_root_user/pve_root_password
+#
+# IMPORTANT: Why root@pam with Password is Required for Bind Mounts
+# ------------------------------------------------------------------
+# When using bind mounts (mount_point blocks), you MUST authenticate with root@pam
+# credentials (username + password). API tokens will NOT work, even with full permissions.
+#
+# Technical Reasons:
+# 1. Bind mounts require direct filesystem operations on the Proxmox host
+# 2. The Proxmox API needs elevated privileges to modify /etc/pve/lxc/*.conf
+# 3. API tokens have security restrictions that prevent certain privileged operations
+# 4. The bpg/proxmox provider specifically requires password auth for mount operations
+#
+# This is a known limitation documented in:
+# - Provider GitHub: https://github.com/bpg/terraform-provider-proxmox/issues/836
+# - Provider GitHub: https://github.com/bpg/terraform-provider-proxmox/issues/450
+# - Proxmox Docs: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
+#
+# Security Implications:
+# - Store password in a secure file with restricted permissions (chmod 600)
+# - Consider using environment variables: export TF_VAR_pve_root_password="..."
+# - Use a dedicated automation password, not your interactive root password
+# - Rotate the password periodically
+# - Restrict SSH access and use key-based auth for shell access
+#
+# Alternative for Better Security:
+# - Use NFS/CIFS mounts instead of bind mounts (works with API tokens)
+# - Use cloud-init volumes for data injection
+# - Use network storage backends (iSCSI, Ceph, NFS)
 #
 # Required Proxmox Permissions for API Token (LXC):
 #   Path: /
@@ -63,7 +91,7 @@ provider "proxmox" {
 
   # API token in format: user@realm!token_id=secret
   username = var.pve_root_user
-  password = trimspace(file(pathexpand(var.pve_root_password)))
+  password = var.pve_root_password
 
   # Skip TLS verification (set to false in production with valid certs)
   insecure = var.connection_insecure

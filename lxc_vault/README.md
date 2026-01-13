@@ -12,6 +12,7 @@ Automated deployment of HashiCorp Vault secrets management server in a Proxmox L
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Features](#features)
+- [Authentication Requirements](#authentication-requirements)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
@@ -143,6 +144,95 @@ sequenceDiagram
 - 🔒 **Systemd Security Hardening** (ProtectSystem, PrivateTmp, NoNewPrivileges)
 - 🔒 **Vault Keys Stored Securely** (/root/vault-keys.txt with 0600 permissions)
 - 🔒 **Comprehensive .gitignore** to prevent credential leaks
+
+## 🔐 Authentication Requirements
+
+### Why This Project Uses root@pam with Password
+
+This project uses **root@pam** authentication with a password instead of Proxmox API tokens. This is a **technical requirement**, not a choice, due to how Proxmox handles bind mounts.
+
+#### The Technical Reality
+
+**Bind mounts do NOT work with API tokens**, even with full administrative permissions. This is because:
+
+1. **Filesystem Operations**: Bind mounts require direct filesystem modifications on the Proxmox host
+2. **Privileged Access**: The operation modifies `/etc/pve/lxc/*.conf` files with elevated privileges
+3. **API Token Limitations**: Proxmox API tokens have security restrictions preventing certain privileged operations
+4. **Provider Requirement**: The Terraform provider (`bpg/proxmox`) requires username/password for mount operations
+
+#### Official Documentation
+
+- **Proxmox Wiki**: [Linux Container - Mount Points](https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points)
+- **Configuration Reference**: [pct.conf(5)](https://pve.proxmox.com/pve-docs/pct.conf.5.html)
+- **Provider Issues**: [#836](https://github.com/bpg/terraform-provider-proxmox/issues/836), [#450](https://github.com/bpg/terraform-provider-proxmox/issues/450)
+
+### Privileged vs Unprivileged Containers
+
+This project defaults to a **privileged container** (`lxc_unprivileged = false`) for bind mounts because:
+
+| Aspect | Privileged Container | Unprivileged Container |
+|--------|---------------------|------------------------|
+| **UID Mapping** | Direct (root = root) | Mapped (root = 100000+) |
+| **Bind Mount Permissions** | ✅ Simple | ⚠️ Complex |
+| **Security** | ⚠️ Lower | ✅ Higher |
+| **Configuration** | ✅ Easy | ⚠️ Requires host config |
+
+#### Using Unprivileged Containers (More Secure)
+
+If you want better security with unprivileged containers:
+
+1. **Set** `lxc_unprivileged = true` in `terraform.tfvars`
+2. **Configure UID/GID mapping** on Proxmox host in `/etc/pve/lxc/<VMID>.conf`:
+   ```
+   lxc.idmap: u 0 100000 65536
+   lxc.idmap: g 0 100000 65536
+   ```
+3. **Adjust host directory permissions**:
+   ```bash
+   chown -R 100000:100000 /rpool/data/vault
+   ```
+
+**Reference**: [Proxmox - Unprivileged LXC Containers](https://pve.proxmox.com/wiki/Unprivileged_LXC_containers)
+
+### Security Best Practices
+
+Since root@pam authentication is required:
+
+#### ✅ Recommended Practices
+
+1. **Secure Password File**:
+   ```bash
+   echo "your-strong-password" > ~/.ssh/pve_root_password
+   chmod 600 ~/.ssh/pve_root_password
+   ```
+
+2. **Dedicated Automation Password**: Use a separate password for automation (not your interactive password)
+
+3. **Disable SSH Password Auth**: In `/etc/ssh/sshd_config` on Proxmox:
+   ```
+   PermitRootLogin prohibit-password
+   ```
+
+4. **Password Rotation**: Change automation password every 90 days
+
+5. **Monitoring**: Watch `/var/log/pveproxy/access.log` for unusual activity
+
+#### 🚫 What NOT to Do
+
+- ❌ Don't commit password to version control
+- ❌ Don't use your interactive root password
+- ❌ Don't share the automation password
+- ❌ Don't use the same password across environments
+
+#### Alternative: Avoid Bind Mounts
+
+If you can't use password authentication:
+
+- **Use NFS/CIFS mounts** inside the container (works with API tokens)
+- **Use network storage backends** (iSCSI, Ceph, NFS)
+- **Store data inside the container** (simpler but less flexible)
+
+See [terraform/README.md](terraform/README.md) for detailed configuration.
 
 ## 📦 Prerequisites
 

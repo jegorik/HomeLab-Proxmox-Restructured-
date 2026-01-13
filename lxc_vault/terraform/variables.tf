@@ -30,9 +30,27 @@ variable "pve_root_user" {
 }
 
 variable "pve_root_password" {
-  description = "Path to file containing Proxmox root password (if not using API token)"
+  description = <<-EOT
+    Path to file containing Proxmox root@pam password.
+
+    IMPORTANT: This is REQUIRED for bind mount operations.
+    API tokens do NOT work for mount_point blocks, even with full permissions.
+
+    Security recommendations:
+    - Create secure file: echo "password" > ~/.ssh/pve_root_password
+    - Set permissions: chmod 600 ~/.ssh/pve_root_password
+    - Use a dedicated automation password (not your interactive password)
+    - Add to .gitignore to prevent committing
+    - Rotate periodically (every 90 days)
+
+    Technical details:
+    - Bind mounts require direct host filesystem access
+    - API tokens have security restrictions preventing privileged operations
+    - See: https://github.com/bpg/terraform-provider-proxmox/issues/836
+    - See: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
+  EOT
   type        = string
-  default     = "~/.ssh/pve_root_password"
+  sensitive   = true
 }
 
 variable "proxmox_node" {
@@ -239,7 +257,27 @@ variable "lxc_dns_servers" {
 # -----------------------------------------------------------------------------
 
 variable "lxc_unprivileged" {
-  description = "Run as unprivileged container (recommended for security)"
+  description = <<-EOT
+    Run as unprivileged container (recommended for security).
+
+    Unprivileged containers use UID/GID mapping for better isolation:
+    - root (UID 0) inside container maps to UID 100000+ on host
+    - Provides additional security layer
+
+    IMPORTANT for bind mounts:
+    - Privileged (false): Simple permissions, root=root
+    - Unprivileged (true): Requires UID/GID mapping configuration on host
+
+    To use unprivileged with bind mounts:
+    1. Set this to true
+    2. Add to /etc/pve/lxc/<VMID>.conf on Proxmox host:
+       lxc.idmap: u 0 100000 65536
+       lxc.idmap: g 0 100000 65536
+    3. Set host directory permissions:
+       chown -R 100000:100000 /your/mount/path
+
+    See: https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
+  EOT
   type        = bool
   default     = true
 }

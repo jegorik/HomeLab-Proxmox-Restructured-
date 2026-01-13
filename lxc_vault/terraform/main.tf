@@ -115,7 +115,35 @@ resource "proxmox_virtual_environment_container" "vault" {
     swap      = var.lxc_swap
   }
 
-  # bind mount, *requires* root@pam authentication
+  # Bind Mount Configuration
+  # ------------------------
+  # Bind mounts allow the container to access directories from the Proxmox host filesystem.
+  # This is useful for sharing data, storing Vault data on ZFS, or using external storage.
+  #
+  # IMPORTANT: Bind mounts REQUIRE root@pam authentication with password
+  # API tokens do NOT work for bind mount operations, even with full permissions.
+  #
+  # Why root@pam is required:
+  # 1. Bind mounts require direct filesystem access on the Proxmox host
+  # 2. The Proxmox API uses elevated privileges to modify host mount points
+  # 3. API tokens cannot execute certain privileged operations (security limitation)
+  # 4. The bpg/proxmox provider needs username/password for mount point operations
+  #
+  # Proxmox Documentation:
+  # - Bind Mounts: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
+  # - Container Configuration: https://pve.proxmox.com/pve-docs/pct.conf.5.html
+  #
+  # Provider Documentation:
+  # - https://github.com/bpg/terraform-provider-proxmox/issues/836
+  #
+  # Privileged vs Unprivileged Containers:
+  # - Bind mounts work best with PRIVILEGED containers (lxc_unprivileged = false)
+  # - Unprivileged containers use UID/GID mapping which can cause permission issues
+  # - With unprivileged containers, you must configure /etc/subuid and /etc/subgid on host
+  # - Privileged containers: root in container = root on host (simpler, less secure)
+  # - For production: Use unprivileged + proper UID mapping, or mount via NFS/CIFS
+  #
+  # See: https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
   mount_point {
     volume = var.lxc_mount_point_volume
     path   = var.lxc_mount_point_path

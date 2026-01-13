@@ -19,6 +19,10 @@ proxmox_endpoint = "https://YOUR_PROXMOX_IP:8006"
 # API token: Create in Proxmox GUI -> Datacenter -> Permissions -> API Tokens
 # Format: user@realm!token_id=secret_value
 # Example: "terraform@pve!terraform-token=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# Recommended: Set as environment variable for security:
+# export TF_VAR_proxmox_api_token="user@pam!token=secret"
+# export TF_VAR_pve_root_password="secure-password"
+
 proxmox_api_token = "YOUR_USER@pve!YOUR_TOKEN_ID=YOUR_TOKEN_SECRET"
 
 # Alternatively, use username/password (not recommended for automation)
