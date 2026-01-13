@@ -18,7 +18,7 @@ This role automates the installation of HashiCorp Vault from the official HashiC
 - **OS**: Debian 12+, Ubuntu 22.04+
 - **Privileges**: Root or sudo access required
 - **Network**: Internet connectivity for package downloads
-- **Dependencies**: 
+- **Dependencies**:
   - `python3`
   - `gpg`
   - `wget`
@@ -31,7 +31,7 @@ This role automates the installation of HashiCorp Vault from the official HashiC
 Variables used by this role (defined in parent playbook):
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| -------- | ------- | ----------- |
 | `vault_keyring_dir` | `/usr/share/keyrings` | Directory for GPG keyrings |
 | `vault_data_dir` | `/var/lib/vault/data` | Vault data storage directory |
 | `vault_config_dir` | `/etc/vault.d` | Vault configuration directory |
@@ -86,6 +86,7 @@ api_addr = "http://0.0.0.0:8200"
 ### 1. Install Dependencies
 
 Installs required system packages:
+
 - `python3`, `python3-pip`, `python3-venv`, `python3-dev`
 - `wget`, `gpg`, `curl`, `unzip`
 - `lsb-release`, `ca-certificates`, `sudo`
@@ -103,6 +104,7 @@ Installs Vault package from HashiCorp repository.
 ### 4. Create System User
 
 Creates `vault` system user with:
+
 - Home directory: `/etc/vault.d`
 - Shell: `/bin/false` (no login)
 - System account (no UID in user range)
@@ -110,12 +112,14 @@ Creates `vault` system user with:
 ### 5. Create Directories
 
 Creates required directories with proper ownership:
+
 - `/var/lib/vault/data` (755, vault:vault)
 - `/etc/vault.d` (750, vault:vault)
 
 ### 6. Deploy Configuration
 
 Deploys Vault configuration from template with:
+
 - Owner: vault:vault
 - Permissions: 0640
 
@@ -184,6 +188,7 @@ Restarts the Vault systemd service when configuration changes.
 ```
 
 Execute specific parts:
+
 ```bash
 # Install only dependencies
 ansible-playbook site.yml --tags dependencies
@@ -197,9 +202,9 @@ ansible-playbook site.yml --tags configuration
 
 ## Directory Structure
 
-```
+```text
 roles/vault/
-├── README.md              # This file
+├── README.md             # This file
 ├── meta/
 │   └── main.yml          # Role metadata
 ├── tasks/
@@ -214,8 +219,8 @@ roles/vault/
 
 After role execution:
 
-```
-/etc/vault.d/               # 750 vault:vault
+```text
+/etc/vault.d/              # 750 vault:vault
 └── vault.hcl              # 640 vault:vault
 
 /var/lib/vault/            # 755 vault:vault
@@ -311,7 +316,7 @@ ansible-playbook site.yml --tags vault
 ## Version Information
 
 - **Vault Version**: Installed from official repository (latest stable)
-- **Tested On**: 
+- **Tested On**:
   - Debian 12 (Bookworm)
   - Debian 13 (Trixie)
   - Ubuntu 22.04 LTS
@@ -337,4 +342,3 @@ Last Updated: January 2026
 - [Vault Installation Guide](https://developer.hashicorp.com/vault/docs/install)
 - [Vault Configuration Reference](https://developer.hashicorp.com/vault/docs/configuration)
 - [Vault File Storage Backend](https://developer.hashicorp.com/vault/docs/configuration/storage/filesystem)
-

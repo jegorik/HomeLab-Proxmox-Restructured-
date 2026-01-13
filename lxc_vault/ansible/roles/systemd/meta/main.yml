@@ -44,11 +44,7 @@ galaxy_info:
     - debian
     - ubuntu
     - automation
-
-  # Categories this role belongs to
-  categories:
     - system
-    - security
 
 # =============================================================================
 # Role Dependencies

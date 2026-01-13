@@ -37,6 +37,7 @@ This project automates the complete deployment lifecycle of HashiCorp Vault in a
 ### Why LXC?
 
 LXC containers provide a lightweight alternative to full VMs while maintaining isolation:
+
 - **Performance**: Near-native performance with minimal overhead
 - **Resource Efficiency**: Uses ~100MB RAM vs 1GB+ for VMs
 - **Fast Deployment**: Container creation takes seconds
@@ -171,7 +172,7 @@ This project uses **root@pam** authentication with a password instead of Proxmox
 This project defaults to a **privileged container** (`lxc_unprivileged = false`) for bind mounts because:
 
 | Aspect | Privileged Container | Unprivileged Container |
-|--------|---------------------|------------------------|
+| ------ | -------------------- | ---------------------- |
 | **UID Mapping** | Direct (root = root) | Mapped (root = 100000+) |
 | **Bind Mount Permissions** | ✅ Simple | ⚠️ Complex |
 | **Security** | ⚠️ Lower | ✅ Higher |
@@ -183,11 +184,14 @@ If you want better security with unprivileged containers:
 
 1. **Set** `lxc_unprivileged = true` in `terraform.tfvars`
 2. **Configure UID/GID mapping** on Proxmox host in `/etc/pve/lxc/<VMID>.conf`:
-   ```
+
+   ```text
    lxc.idmap: u 0 100000 65536
    lxc.idmap: g 0 100000 65536
    ```
+
 3. **Adjust host directory permissions**:
+
    ```bash
    chown -R 100000:100000 /rpool/data/vault
    ```
@@ -201,6 +205,7 @@ Since root@pam authentication is required:
 #### ✅ Recommended Practices
 
 1. **Secure Password File**:
+
    ```bash
    echo "your-strong-password" > ~/.ssh/pve_root_password
    chmod 600 ~/.ssh/pve_root_password
@@ -209,7 +214,8 @@ Since root@pam authentication is required:
 2. **Dedicated Automation Password**: Use a separate password for automation (not your interactive password)
 
 3. **Disable SSH Password Auth**: In `/etc/ssh/sshd_config` on Proxmox:
-   ```
+
+   ```text
    PermitRootLogin prohibit-password
    ```
 
@@ -239,7 +245,7 @@ See [terraform/README.md](terraform/README.md) for detailed configuration.
 ### Required Software
 
 | Tool | Version | Purpose |
-|------|---------|---------|
+| ---- | ------- | ------- |
 | **Proxmox VE** | 8.x+ | Hypervisor platform |
 | **OpenTofu** | 1.8+ | Infrastructure provisioning (or Terraform 1.7+) |
 | **Ansible** | 2.15+ | Configuration management |
@@ -249,6 +255,7 @@ See [terraform/README.md](terraform/README.md) for detailed configuration.
 ### Proxmox Configuration
 
 1. **LXC Template Downloaded**
+
    ```bash
    # On Proxmox host
    pveam update
@@ -274,6 +281,7 @@ For remote state storage:
    - Block public access
 
 2. **AWS Credentials Configured**
+
    ```bash
    aws configure --profile tofu-aws-profile
    # OR use IAM role with appropriate permissions
@@ -381,12 +389,12 @@ ssh ansible@<container-ip> sudo rm /root/vault-keys.txt
 
 ## 📁 Project Structure
 
-```
+```text
 lxc_vault/
-├── README.md                          # This file
-├── .gitignore                         # Git ignore patterns
+├── README.md                         # This file
+├── .gitignore                        # Git ignore patterns
 │
-├── terraform/                         # Infrastructure provisioning
+├── terraform/                        # Infrastructure provisioning
 │   ├── README.md                     # Terraform documentation
 │   ├── main.tf                       # LXC container resource
 │   ├── variables.tf                  # Variable definitions
@@ -405,18 +413,18 @@ lxc_vault/
     │
     └── roles/                        # Ansible roles
         ├── vault/                    # Vault installation role
-        │   ├── README.md            # Role documentation
-        │   ├── tasks/main.yml       # Installation tasks
-        │   ├── templates/           # Configuration templates
-        │   │   └── vault.hcl.j2    # Vault configuration
-        │   └── handlers/main.yml    # Service handlers
+        │   ├── README.md             # Role documentation
+        │   ├── tasks/main.yml        # Installation tasks
+        │   ├── templates/            # Configuration templates
+        │   │   └── vault.hcl.j2      # Vault configuration
+        │   └── handlers/main.yml     # Service handlers
         │
         └── systemd/                  # Systemd service role
-            ├── README.md            # Role documentation
-            ├── tasks/main.yml       # Service configuration
-            ├── templates/           # Service templates
-            │   └── vault.service.j2 # Systemd unit file
-            └── handlers/main.yml    # Service handlers
+            ├── README.md             # Role documentation
+            ├── tasks/main.yml        # Service configuration
+            ├── templates/            # Service templates
+            │   └── vault.service.j2  # Systemd unit file
+            └── handlers/main.yml     # Service handlers
 ```
 
 ## 🔧 Configuration
@@ -550,6 +558,7 @@ api_addr = "http://0.0.0.0:8200"
 **Symptom**: Terraform errors during container creation
 
 **Solutions**:
+
 ```bash
 # Check Proxmox API connectivity
 curl -k https://your-proxmox-ip:8006/api2/json/version
@@ -569,6 +578,7 @@ pvesm status
 **Symptom**: `UNREACHABLE` or connection timeout
 
 **Solutions**:
+
 ```bash
 # Test direct SSH connection
 ssh -i ~/.ssh/ansible ansible@container-ip
@@ -589,6 +599,7 @@ ssh root@proxmox-host pct exec VMID -- ip addr
 **Symptom**: Systemd service fails to start
 
 **Solutions**:
+
 ```bash
 # SSH to container
 ssh ansible@container-ip
@@ -612,6 +623,7 @@ sudo ls -la /etc/vault.d
 **Symptom**: `Error: Failed to decrypt state`
 
 **Solutions**:
+
 ```bash
 # Verify passphrase file exists
 ls -la ~/.ssh/state_passphrase
@@ -631,6 +643,7 @@ tofu init -reconfigure
 **Symptom**: `Error: Failed to get existing workspaces`
 
 **Solutions**:
+
 ```bash
 # Verify AWS credentials
 aws s3 ls --profile tofu-aws-profile
@@ -668,6 +681,7 @@ ansible-playbook site.yml -vvv
    - System: `sudo journalctl -xe`
 
 2. **Validate Configuration**:
+
    ```bash
    # Terraform
    tofu validate
@@ -783,6 +797,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For issues and questions:
+
 - Open an issue in the repository
 - Check existing documentation
 - Review troubleshooting section above
@@ -792,4 +807,3 @@ For issues and questions:
 **⚠️ Production Warning**: This configuration is designed for homelab/development use. For production deployments, implement additional security measures including TLS encryption, network segregation, proper access controls, and regular security audits.
 
 **Last Updated**: January 2026
-

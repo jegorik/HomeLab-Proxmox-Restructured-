@@ -47,10 +47,6 @@ galaxy_info:
     - ubuntu
     - lxc
     - container
-
-  # Categories this role belongs to
-  categories:
-    - security
     - system
 
 # =============================================================================

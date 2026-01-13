@@ -31,7 +31,7 @@ This Terraform configuration provisions:
 ### Provider Versions
 
 | Provider | Version | Purpose |
-|----------|---------|---------|
+| -------- | ------- | ------- |
 | `bpg/proxmox` | 0.89.1 | Proxmox VE management |
 | `hashicorp/aws` | 6.26.0 | S3 backend |
 | `hashicorp/random` | ~> 3.6 | Password generation |
@@ -74,6 +74,7 @@ This project uses a **privileged container** (`lxc_unprivileged = false`) becaus
 For better security, you can use unprivileged containers with bind mounts, but you must:
 
 1. **Configure UID/GID Mapping** on Proxmox host:
+
    ```bash
    # Add to /etc/pve/lxc/<VMID>.conf
    lxc.idmap: u 0 100000 65536
@@ -81,6 +82,7 @@ For better security, you can use unprivileged containers with bind mounts, but y
    ```
 
 2. **Set Proper Permissions** on host directories:
+
    ```bash
    # If container UID 0 maps to host UID 100000
    chown -R 100000:100000 /rpool/data/vault
@@ -120,10 +122,12 @@ export TF_VAR_pve_root_password="your-secure-password"
 #### 3. Limit Attack Surface
 
 - Disable root SSH password authentication (use keys only):
+
   ```bash
   # In /etc/ssh/sshd_config on Proxmox host
   PermitRootLogin prohibit-password
   ```
+
 - Use firewall rules to restrict API access
 - Enable two-factor authentication for web UI
 - Monitor `/var/log/pveproxy/access.log` for suspicious activity
@@ -172,7 +176,8 @@ pve_root_password = "~/.ssh/pve_root_password"  # Path to password file
    - Privilege Separation: ✅ Enabled
 
 4. Required Permissions for token (Path: `/`):
-   ```
+
+   ```text
    Datastore.AllocateSpace    # Allocate disk space
    Datastore.AllocateTemplate # Use CT templates
    Datastore.Audit           # View storage info
@@ -278,7 +283,7 @@ chmod 644 ~/.ssh/pve_ssh.pub ~/.ssh/ansible.pub
 ### File Descriptions
 
 | File | Purpose |
-|------|---------|
+| ---- | ------- |
 | `main.tf` | LXC container resource definition |
 | `variables.tf` | Input variable declarations |
 | `outputs.tf` | Output value definitions |
@@ -290,7 +295,7 @@ chmod 644 ~/.ssh/pve_ssh.pub ~/.ssh/ansible.pub
 
 ### Configuration Relationships
 
-```
+```text
 terraform.tfvars ──→ variables.tf ──→ main.tf ──→ outputs.tf
                                         ↓
                                    Container Created
@@ -373,7 +378,7 @@ tofu output -raw ansible_inventory_entry
 
 ### Typical Deployment Output
 
-```
+```text
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 Outputs:
@@ -418,7 +423,7 @@ tofu refresh
 #### Proxmox Connection
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| ---------- | ------ | ---------- | --------- | ------------- |
 | `proxmox_endpoint` | string | ✅ | - | Proxmox API endpoint (e.g., `https://192.168.1.100:8006`) |
 | `proxmox_api_token` | string | ✅ | - | API token: `user@realm!token_id=secret` |
 | `proxmox_node` | string | ❌ | `"pve"` | Proxmox node name |
@@ -427,7 +432,7 @@ tofu refresh
 #### Container Identity
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `lxc_id` | number | ❌ | `200` | Container VMID (100-999999999) |
 | `lxc_hostname` | string | ❌ | `"vault"` | Container hostname |
 | `lxc_description` | string | ❌ | `"HashiCorp Vault..."` | Description in Proxmox GUI |
@@ -436,7 +441,7 @@ tofu refresh
 #### Resources
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `lxc_cpu_cores` | number | ❌ | `1` | CPU cores (1-128) |
 | `lxc_memory` | number | ❌ | `1024` | Memory in MB (min: 512) |
 | `lxc_swap` | number | ❌ | `512` | Swap in MB (0 to disable) |
@@ -446,7 +451,7 @@ tofu refresh
 #### Network
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `lxc_ip_address` | string | ❌ | `"dhcp"` | IP with CIDR (e.g., `10.0.100.50/24`) or `dhcp` |
 | `lxc_gateway` | string | ❌ | `""` | Gateway IP (required for static IP) |
 | `lxc_dns_servers` | string | ❌ | `"8.8.8.8 8.8.4.4"` | Space-separated DNS servers |
@@ -455,7 +460,7 @@ tofu refresh
 #### Security
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `lxc_unprivileged` | bool | ❌ | `true` | Run as unprivileged container |
 | `lxc_protection` | bool | ❌ | `false` | Protect from accidental deletion |
 | `ssh_public_key_path` | string | ❌ | `"~/.ssh/id_rsa.pub"` | SSH public key for root |
@@ -464,7 +469,7 @@ tofu refresh
 #### Ansible User
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `ansible_user_enabled` | bool | ❌ | `false` | Enable Ansible user creation |
 | `ansible_user_name` | string | ❌ | `"ansible"` | Ansible username |
 | `ansible_ssh_public_key_path` | string | ❌ | `"~/.ssh/ansible_rsa.pub"` | SSH public key for Ansible |
@@ -474,7 +479,7 @@ tofu refresh
 #### State Encryption
 
 | Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
+| -------- | ---- | -------- | ------- | ----------- |
 | `passphrase` | string | ❌ | `"~/.ssh/state_passphrase"` | Path to passphrase file |
 | `key_length` | number | ❌ | `32` | Encryption key length (bytes) |
 | `key_iterations` | number | ❌ | `600000` | PBKDF2 iterations |
@@ -501,7 +506,7 @@ Variables include built-in validation to prevent common errors:
 ### Available Outputs
 
 | Output | Sensitive | Description |
-|--------|-----------|-------------|
+| ------ | --------- | ----------- |
 | `lxc_id` | ❌ | Container VMID |
 | `lxc_hostname` | ❌ | Container hostname |
 | `lxc_node` | ❌ | Proxmox node name |
@@ -540,7 +545,7 @@ tofu output -raw ansible_inventory_entry > ../ansible/inventory.yml
 - **Local**: `.terraform/terraform.tfstate` (if no backend configured)
 - **Remote**: S3 bucket specified in `s3.backend.config`
 
-### State Encryption
+### State Encryption Configuration
 
 This configuration uses OpenTofu's native state encryption with:
 
@@ -594,6 +599,7 @@ aws s3api list-object-versions \
 **Error**: `Error: Failed to get existing workspaces`
 
 **Solutions**:
+
 ```bash
 # Verify S3 bucket exists
 aws s3 ls s3://your-bucket-name --profile tofu-aws-profile
@@ -613,6 +619,7 @@ tofu init -reconfigure -backend-config=s3.backend.config
 **Error**: `Error: Failed to decrypt state`
 
 **Solutions**:
+
 ```bash
 # Verify passphrase file exists
 ls -la ~/.ssh/state_passphrase
@@ -632,6 +639,7 @@ chmod 600 ~/.ssh/state_passphrase
 **Error**: `Error: authentication failed`
 
 **Solutions**:
+
 ```bash
 # Test API token manually
 curl -k -H "Authorization: PVEAPIToken=user@pam!token=secret" \
@@ -649,6 +657,7 @@ curl -k -H "Authorization: PVEAPIToken=user@pam!token=secret" \
 **Error**: `Error: template file not found`
 
 **Solutions**:
+
 ```bash
 # SSH to Proxmox host
 ssh root@proxmox-host
@@ -669,6 +678,7 @@ vim terraform.tfvars
 **Error**: Container creation starts but never completes
 
 **Solutions**:
+
 ```bash
 # Check Proxmox logs
 ssh root@proxmox-host tail -f /var/log/pve/tasks/active/*
@@ -691,6 +701,7 @@ tofu apply
 **Error**: `Error: timeout waiting for SSH`
 
 **Solutions**:
+
 ```bash
 # Verify container IP is reachable
 ping <container-ip>
@@ -715,6 +726,7 @@ ssh root@proxmox-host pct exec <vmid> -- ip addr
 **Note**: The variable `lxc_mount_point_path` is defined but currently not used in main.tf (line 119 uses hardcoded path). This is a known issue.
 
 **Workaround**:
+
 ```bash
 # Manually configure mount point after creation
 ssh root@proxmox-host pct set <vmid> -mp0 /host/path,mp=/container/path
@@ -761,9 +773,10 @@ tofu show tfplan
    - ❌ `.terraform/terraform.tfstate`
 
 2. **Use environment variables** (alternative to tfvars):
+
    ```bash
    export TF_VAR_proxmox_api_token="user@pam!token=secret"
-   export TF_VAR_lxc_root_password="secure-password"
+   export TF_VAR_pve_root_password="secure-password"
    ```
 
 3. **Rotate credentials regularly**:
@@ -812,4 +825,3 @@ tofu show tfplan
 **Note**: This configuration is designed for homelab and development environments. For production use, implement additional security hardening, monitoring, and disaster recovery procedures.
 
 **Last Updated**: January 2026
-

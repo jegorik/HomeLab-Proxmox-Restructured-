@@ -28,7 +28,7 @@ This Ansible configuration automates:
 
 ### Deployment Flow
 
-```
+```text
 ┌─────────────────┐
 │  site.yml       │  Main playbook entry point
 └────────┬────────┘
@@ -47,7 +47,7 @@ This Ansible configuration automates:
 ### Software Requirements
 
 | Tool | Version | Installation |
-|------|---------|--------------|
+| ---- | ------- | ------------ |
 | **Ansible** | 2.15+ | `pip install ansible` or `apt install ansible` |
 | **Python** | 3.9+ | Pre-installed on most systems |
 | **SSH Client** | Any | Pre-installed on most systems |
@@ -79,6 +79,7 @@ vim inventory.yml
 ```
 
 **Example inventory.yml:**
+
 ```yaml
 all:
   children:
@@ -142,7 +143,7 @@ ssh ansible@<container-ip> sudo cat /root/vault-keys.txt
 
 ### File Organization
 
-```
+```text
 ansible/
 ├── README.md                    # This file
 ├── ansible.cfg                  # Ansible configuration
@@ -152,26 +153,26 @@ ansible/
 │
 └── roles/                       # Ansible roles
     ├── vault/                   # Vault installation
-    │   ├── README.md           # Role documentation
+    │   ├── README.md            # Role documentation
     │   ├── tasks/
-    │   │   └── main.yml        # Installation tasks
+    │   │   └── main.yml         # Installation tasks
     │   ├── templates/
-    │   │   └── vault.hcl.j2    # Vault configuration template
+    │   │   └── vault.hcl.j2     # Vault configuration template
     │   ├── handlers/
-    │   │   └── main.yml        # Service restart handlers
+    │   │   └── main.yml         # Service restart handlers
     │   └── meta/
-    │       └── main.yml        # Role metadata
+    │       └── main.yml         # Role metadata
     │
     └── systemd/                 # Service management
-        ├── README.md           # Role documentation
+        ├── README.md            # Role documentation
         ├── tasks/
-        │   └── main.yml        # Service tasks
+        │   └── main.yml         # Service tasks
         ├── templates/
         │   └── vault.service.j2 # Systemd unit template
         ├── handlers/
-        │   └── main.yml        # Systemd handlers
+        │   └── main.yml         # Systemd handlers
         └── meta/
-            └── main.yml        # Role metadata
+            └── main.yml         # Role metadata
 ```
 
 ### Main Playbook (site.yml)
@@ -206,6 +207,7 @@ ansible/
 **Purpose**: Installs and configures HashiCorp Vault
 
 **Tasks**:
+
 - Installs system dependencies (curl, gpg, wget)
 - Adds HashiCorp GPG key and APT repository
 - Installs Vault package
@@ -214,9 +216,11 @@ ansible/
 - Deploys Vault configuration file (`/etc/vault.d/vault.hcl`)
 
 **Templates**:
+
 - `vault.hcl.j2`: Vault server configuration
 
 **Key Configuration**:
+
 ```hcl
 ui = true                    # Enable Web UI
 disable_mlock = true         # Required for LXC
@@ -236,6 +240,7 @@ See [roles/vault/README.md](roles/vault/README.md) for details.
 **Purpose**: Manages Vault systemd service and initialization
 
 **Tasks**:
+
 - Creates systemd service unit file
 - Enables and starts Vault service
 - Waits for Vault to be ready (port 8200)
@@ -245,9 +250,11 @@ See [roles/vault/README.md](roles/vault/README.md) for details.
 - Sets proper file permissions (0600)
 
 **Templates**:
+
 - `vault.service.j2`: Systemd unit file with security hardening
 
 **Security Hardening**:
+
 ```ini
 ProtectSystem=full           # Read-only /usr, /boot, /efi
 ProtectHome=read-only        # Read-only /home
@@ -263,7 +270,7 @@ See [roles/systemd/README.md](roles/systemd/README.md) for details.
 ### Playbook Variables (site.yml)
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| -------- | ------- | ----------- |
 | `vault_version` | `v1.21.2` | Vault version (for documentation) |
 | `vault_ui_port` | `8200` | Web UI port |
 | `vault_keyring_dir` | `/usr/share/keyrings` | GPG keyring directory |
@@ -417,7 +424,8 @@ ansible vault -m fetch \
 ```
 
 **Save Output**:
-```
+
+```text
 Unseal Key 1: <key1>
 Unseal Key 2: <key2>
 Unseal Key 3: <key3>
@@ -427,10 +435,12 @@ Unseal Key 5: <key5>
 Initial Root Token: <token>
 ```
 
-**IMPORTANT**: 
+**IMPORTANT**:
+
 1. Save these keys in a secure password manager (1Password, Bitwarden, etc.)
 2. Store keys and token separately for security
 3. Delete `/root/vault-keys.txt` after saving:
+
    ```bash
    ssh ansible@<container-ip> sudo rm /root/vault-keys.txt
    ```
@@ -699,11 +709,13 @@ sudo journalctl -u vault -f
 ### Container Security
 
 1. **Update Regularly**:
+
    ```bash
    ansible vault -m apt -a "upgrade=safe update_cache=yes" -b
    ```
 
 2. **Configure Firewall**:
+
    ```bash
    # Example: Allow only specific IPs to Vault port
    ansible vault -m apt -a "name=ufw state=present" -b
@@ -711,6 +723,7 @@ sudo journalctl -u vault -f
    ```
 
 3. **Enable Audit Logging**:
+
    ```bash
    # After Vault is running
    vault audit enable file file_path=/var/log/vault/audit.log
@@ -739,4 +752,3 @@ sudo journalctl -u vault -f
 ---
 
 **Last Updated**: January 2026
-

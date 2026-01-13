@@ -17,7 +17,7 @@ This role handles the systemd service lifecycle for HashiCorp Vault:
 
 - **OS**: Debian 12+, Ubuntu 22.04+ (systemd-based systems)
 - **Privileges**: Root or sudo access required
-- **Prerequisites**: 
+- **Prerequisites**:
   - Vault must be installed (run `vault` role first)
   - Vault configuration file at `/etc/vault.d/vault.hcl`
   - Vault user and directories must exist
@@ -29,7 +29,7 @@ This role handles the systemd service lifecycle for HashiCorp Vault:
 Variables used by this role (defined in parent playbook):
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| -------- | ------- | ----------- |
 | `vault_service_file` | `vault.service.j2` | Systemd unit template filename |
 | `vault_service_path` | `/etc/systemd/system/vault.service` | Full path to service unit |
 | `vault_config_path` | `/etc/vault.d/vault.hcl` | Vault configuration file path |
@@ -79,12 +79,14 @@ roles:
 Systemd unit file template with security hardening directives.
 
 **Key Features**:
+
 - **Type=notify**: Vault notifies systemd when ready
 - **Restart=on-failure**: Auto-restart on crashes
 - **Security hardening**: Multiple systemd security directives
 - **Resource limits**: File descriptor and process limits
 
 **Security Directives**:
+
 - `ProtectSystem=full`: Read-only /usr, /boot, /efi
 - `ProtectHome=read-only`: Read-only /home
 - `PrivateTmp=yes`: Private /tmp namespace
@@ -96,6 +98,7 @@ Systemd unit file template with security hardening directives.
 ### 1. Create Service Unit File
 
 Deploys systemd unit file from template with:
+
 - Owner: root:root
 - Permissions: 0644
 - Location: `/etc/systemd/system/vault.service`
@@ -107,12 +110,14 @@ Triggers daemon reload to recognize new service.
 ### 3. Start Vault Service
 
 Enables and starts the Vault service:
+
 - Enabled: Service starts on boot
 - Started: Service is running now
 
 ### 4. Wait for Vault Ready
 
 Waits for Vault to listen on port 8200:
+
 - Host: 127.0.0.1
 - Port: 8200
 - Timeout: 30 seconds
@@ -121,6 +126,7 @@ Waits for Vault to listen on port 8200:
 ### 5. Check Initialization Status
 
 Queries Vault to determine if it's already initialized using:
+
 ```bash
 vault status -format=json | python3 -c "import sys, json; ..."
 ```
@@ -130,17 +136,20 @@ Returns: `"true"` if initialized, `"false"` if not
 ### 6. Initialize Vault (Conditional)
 
 **Only runs if** Vault is not already initialized:
+
 ```bash
 vault operator init > /root/vault-keys.txt
 ```
 
 **Output contains**:
+
 - 5 unseal keys (by default)
 - Initial root token
 
 ### 7. Set File Permissions
 
 Sets permissions on keys file:
+
 - Permissions: 0600 (read/write for root only)
 - Location: `/root/vault-keys.txt`
 
@@ -205,6 +214,7 @@ Reloads systemd daemon configuration.
 ```
 
 Execute specific parts:
+
 ```bash
 # Configure service only (skip initialization)
 ansible-playbook site.yml --tags service
@@ -240,7 +250,7 @@ When Vault is initialized for the first time:
 
 ### Keys File Format
 
-```
+```text
 Unseal Key 1: <key1>
 Unseal Key 2: <key2>
 Unseal Key 3: <key3>
@@ -301,9 +311,9 @@ vault status
 
 ## Directory Structure
 
-```
+```text
 roles/systemd/
-├── README.md              # This file
+├── README.md             # This file
 ├── meta/
 │   └── main.yml          # Role metadata
 ├── tasks/
@@ -461,6 +471,7 @@ vault status
 ```
 
 **Auto-unseal options**:
+
 - AWS KMS auto-unseal
 - Azure Key Vault auto-unseal
 - GCP Cloud KMS auto-unseal
@@ -495,4 +506,3 @@ Last Updated: January 2026
 - [Vault Initialization](https://developer.hashicorp.com/vault/docs/commands/operator/init)
 - [Vault Unsealing](https://developer.hashicorp.com/vault/docs/concepts/seal)
 - [Systemd Service Hardening](https://www.freedesktop.org/software/systemd/man/systemd.exec.html)
-
