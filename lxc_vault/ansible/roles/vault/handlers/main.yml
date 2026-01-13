@@ -1,0 +1,7 @@
+---
+# Vault role handlers
+
+- name: restart vault service
+  ansible.builtin.systemd:
+    name: vault
+    state: restarted

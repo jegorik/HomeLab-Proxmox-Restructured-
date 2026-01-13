@@ -1,0 +1,75 @@
+# =============================================================================
+# S3 Backend Configuration for Remote State Storage
+# =============================================================================
+#
+# This configures AWS S3 as the backend for storing Terraform state files.
+# Backend configuration CANNOT use variable interpolation due to Terraform
+# initialization requirements.
+#
+# Configuration Methods:
+# 1. Backend config file (recommended):
+#    tofu init -backend-config=s3.backend.config
+#
+# 2. Environment variables:
+#    export AWS_PROFILE=your-profile
+#    export TF_CLI_ARGS_init="-backend-config=s3.backend.config"
+#
+# 3. Interactive input during init
+#
+# Security Features:
+# - State locking via S3 native locking (use_lockfile = true)
+# - Encryption at rest (S3 server-side encryption)
+# - State file encryption (see encryption.tf)
+# - Version control via S3 versioning
+#
+# Required S3 Bucket Configuration:
+# - Versioning: ENABLED (to track state history)
+# - Encryption: ENABLED (AES-256 or AWS KMS)
+# - Public Access: BLOCKED (prevent unauthorized access)
+# - Object Lock: OPTIONAL (for compliance requirements)
+#
+# Author: HomeLab Infrastructure
+# Last Updated: January 2026
+# =============================================================================
+
+terraform {
+  required_version = ">=1.8.0"
+terraform {
+  # Required OpenTofu/Terraform version
+  # OpenTofu 1.8+ required for state encryption features (encryption.tf)
+  # Terraform 1.7+ supported but encryption blocks will not work
+  required_version = ">= 1.8.0"
+
+  backend "s3" {
+    # Backend configuration will be provided via s3.backend.config file
+    # during initialization: tofu init -backend-config=s3.backend.config
+    #
+    # This empty block declares we're using S3 backend.
+    # All configuration values (bucket, key, region, etc.) must be
+    # provided externally as variables cannot be used here.
+  }
+
+  required_providers {
+    # Proxmox VE provider for VM and container management
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.89.1"
+    }
+
+    # AWS provider for S3 backend and optional resource management
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.26.0"
+    }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+
+    netbox = {
+      source  = "e-breuninger/netbox"
+      version = "5.0.1"
+    }
+  }
+}

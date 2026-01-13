@@ -1,0 +1,116 @@
+# =============================================================================
+# Vault Application Installation and Configuration Role
+# =============================================================================
+# This role installs HashiCorp Vault from the official repository and
+# configures the necessary system components.
+#
+# Tasks:
+#   1. Install system dependencies
+#   2. Add HashiCorp GPG key and repository
+#   3. Install Vault package
+#   4. Create system user for Vault
+#   5. Create data and configuration directories
+#   6. Deploy Vault configuration file
+#
+# Prerequisites:
+#   - Debian/Ubuntu system with apt package manager
+#   - Internet connectivity
+#   - Root or sudo privileges
+#
+# Variables Required:
+#   - vault_keyring_dir: GPG keyring directory
+#   - vault_data_dir: Vault data storage path
+#   - vault_config_dir: Configuration directory
+#   - vault_config_file: Config template name
+#   - vault_config_path: Full path to config file
+#   - vault_user: System user for Vault
+#   - vault_group: System group for Vault
+#
+# Author: HomeLab Infrastructure Team
+# =============================================================================
+
+- name: Install Vault dependencies
+  ansible.builtin.apt:
+    name:
+      - python3          # Python runtime
+      - python3-pip      # Python package installer
+      - python3-venv     # Virtual environment support
+      - python3-dev      # Python development headers
+      - wget             # File download utility
+      - gpg              # GNU Privacy Guard for key verification
+      - curl             # URL transfer utility
+      - unzip            # Archive extraction
+      - lsb-release      # Linux Standard Base version info
+      - ca-certificates  # SSL/TLS certificate authorities
+      - sudo             # Elevated privilege execution
+    state: present
+    update_cache: true
+  tags: ['install', 'dependencies']
+
+- name: Create create keyring directory
+  ansible.builtin.file:
+    path: "{{ vault_keyring_dir }}"
+    state: directory
+  tags: ['install', 'directory']
+
+# Add HashiCorp's official GPG key and APT repository
+# This ensures packages are verified and come from official sources
+- name: Add HashiCorp GPG key & HashiCorp repository
+  ansible.builtin.shell: |
+    wget -qO- https://apt.releases.hashicorp.com/gpg | 
+    gpg --dearmor | 
+    tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | 
+    tee /etc/apt/sources.list.d/hashicorp.list
+  tags: ['install', 'repository']
+
+# Install Vault from HashiCorp's official repository
+# Using -qq for quiet output, -y for automatic yes to prompts
+- name: Install Vault
+  ansible.builtin.shell: |
+    apt-get update -qq
+    apt-get install -y -qq vault
+  tags: ['install', 'vault']
+
+# Create dedicated system user for Vault service
+# - System user (no login shell, no home directory in /home)
+# - Home directory: /etc/vault.d (config directory)
+# - Shell: /bin/false (no interactive login)
+# - Used for running Vault process with limited privileges
+- name: Create Vault system user
+  ansible.builtin.shell: |
+    if ! id -u vault > /dev/null 2>&1; then
+      useradd --system --home /etc/vault.d --shell /bin/false vault
+    fi
+  tags: ['install', 'user']
+
+# Create required directories with proper ownership and permissions
+# - vault_data_dir: Stores Vault's encrypted data (755)
+# - vault_config_dir: Contains configuration files (750 for security)
+- name: Create Vault data and config directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    recurse: true
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ vault_data_dir }}", owner: "{{ vault_user }}", group: "{{ vault_group }}", mode: '0755' }
+    - { path: "{{ vault_config_dir }}", owner: "{{ vault_user }}", group: "{{ vault_group }}", mode: '0750'  }
+  tags: ['install', 'user-directories']
+
+# Deploy Vault configuration from Jinja2 template
+# Configuration includes:
+#   - UI enabled
+#   - File storage backend
+#   - TCP listener (HTTP, no TLS - use reverse proxy for production)
+#   - disable_mlock=true (required for LXC containers)
+- name: Create Vault configuration file
+  ansible.builtin.template:
+    src: "{{ vault_config_file }}"
+    dest: "{{ vault_config_path }}"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: '0640'
+  tags: [ 'install', 'configuration' ]

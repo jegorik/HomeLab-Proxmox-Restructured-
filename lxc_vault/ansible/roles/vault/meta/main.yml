@@ -1,0 +1,107 @@
+---
+# =============================================================================
+# Ansible Role Metadata - Vault Installation
+# =============================================================================
+# This file provides metadata about the vault role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Install and configure HashiCorp Vault secrets management server
+  company: HomeLab
+
+  # License for this role
+  # Choose from: MIT, BSD-3-Clause, Apache-2.0, GPL-3.0-or-later
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  # See: https://galaxy.ansible.com/docs/contributing/creating_role.html#galaxy-tags
+  galaxy_tags:
+    - vault
+    - hashicorp
+    - secrets
+    - security
+    - password
+    - credential
+    - management
+    - debian
+    - ubuntu
+    - lxc
+    - container
+
+  # Categories this role belongs to
+  categories:
+    - security
+    - system
+
+# =============================================================================
+# Role Dependencies
+# =============================================================================
+# List roles that must be executed before this role
+# Format:
+#   - role: username.rolename
+#     version: "1.0.0"
+#     vars:
+#       variable: value
+
+dependencies: []
+  # This role has no dependencies
+  # It installs Vault but does not start or initialize it
+  # Use 'systemd' role after this for service management
+
+# =============================================================================
+# Collections Dependencies
+# =============================================================================
+# List collections required by this role
+collections:
+  - ansible.builtin  # Core Ansible modules (apt, user, file, etc.)
+
+# =============================================================================
+# Role Information
+# =============================================================================
+
+# Allow duplicates (can this role be added to the same play multiple times?)
+allow_duplicates: false
+
+# Role type (for internal organization)
+role_type: installation
+
+# =============================================================================
+# Documentation
+# =============================================================================
+
+# Repository information
+repository: https://github.com/yourusername/lxc_vault
+issues: https://github.com/yourusername/lxc_vault/issues
+
+# Documentation links
+documentation: https://github.com/yourusername/lxc_vault/blob/main/ansible/roles/vault/README.md
+
+# Changelog
+# version: 1.0.0
+# date: 2026-01-13
+# changes:
+#   - Initial release
+#   - HashiCorp Vault installation from official repository
+#   - Configuration file deployment
+#   - System user and directory creation
+

@@ -1,0 +1,106 @@
+# ============================================================================
+# Ansible Inventory Example
+# ============================================================================
+# Copy this file to inventory.yml and modify for your environment:
+#   cp inventory.yml.example inventory.yml
+#
+# IMPORTANT: inventory.yml is gitignored and should contain your actual IPs
+# Documentation: https://docs.ansible.com/ansible/latest/inventory_guide/
+# ============================================================================
+
+all:
+  # -------------------------------------------------------------------------
+  # Host Groups
+  # -------------------------------------------------------------------------
+  children:
+    # HashiCorp Vault Server
+    # Secrets management and credential storage
+    vault:
+      hosts:
+        vault-server:
+          ansible_host: 10.0.100.50
+          ansible_port: 22
+          ansible_user: ansible
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: ~/.ssh/ansible
+      vars:
+        ansible_become: true
+        ansible_become_method: sudo
+
+    # Proxmox VE hypervisor hosts
+    proxmox:
+      hosts:
+        pve:
+          ansible_host: 10.0.1.100
+          ansible_python_interpreter: /usr/bin/python3
+
+    # Virtual Machines
+    vms:
+      hosts:
+        ubuntu-server:
+          ansible_host: 10.0.100.10
+          # ansible_port: 22
+
+        # Add more VMs here
+        # another-vm:
+        #   ansible_host: 10.0.100.11
+
+    # LXC Containers
+    lxc:
+      hosts:
+        vault-server:
+        grafana:
+          ansible_host: 10.0.100.20
+
+        # Add more containers here
+        # monitoring:
+        #   ansible_host: 10.0.100.21
+
+    # Group hosts by OS family (for conditional tasks)
+    debian:
+      hosts:
+        ubuntu-server:
+        grafana:
+        vault-server:
+
+    # redhat:
+    #   hosts:
+    #     rocky-server:
+
+    # Group hosts by function
+    security:
+      hosts:
+        vault-server:
+
+    monitoring:
+      hosts:
+        grafana:
+
+    # webservers:
+    #   hosts:
+    #     nginx-proxy:
+
+    # databases:
+    #   hosts:
+    #     postgres-server:
+
+  # -------------------------------------------------------------------------
+  # Global Variables (apply to all hosts)
+  # -------------------------------------------------------------------------
+  vars:
+    # SSH connection settings
+    ansible_user: ansible
+    ansible_become: true
+    ansible_become_method: sudo
+    # ansible_ssh_private_key_file: ~/.ssh/ansible_key
+
+    # Python interpreter (most modern systems)
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Connection timeout
+    ansible_ssh_timeout: 30
+
+    # Package update defaults
+    reboot_enabled: true
+    reboot_timeout: 300
+    clean_packages: true

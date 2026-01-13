@@ -1,0 +1,105 @@
+# =============================================================================
+# HashiCorp Vault Deployment Playbook
+# =============================================================================
+# This playbook automates the complete installation and configuration of
+# HashiCorp Vault on an LXC container.
+#
+# Deployment Flow:
+#   1. Install Vault from HashiCorp repository (vault role)
+#   2. Configure and start Vault service (systemd role)
+#   3. Initialize Vault and generate unseal keys (systemd role)
+#   4. Display access information and next steps
+#
+# Prerequisites:
+#   - LXC container deployed via Terraform
+#   - Ansible user created with sudo access
+#   - SSH key authentication configured
+#   - Internet connectivity for package installation
+#
+# Usage:
+#   ansible-playbook site.yml
+#   ansible-playbook site.yml -v          # Verbose output
+#   ansible-playbook site.yml --tags vault  # Run specific role
+#
+# Post-Deployment:
+#   1. Save Vault keys from /root/vault-keys.txt
+#   2. Delete keys file from container
+#   3. Access Vault UI: http://<container-ip>:8200
+#
+# Author: HomeLab Infrastructure Team
+# Last Updated: January 2026
+# =============================================================================
+
+- name: Deploy HashiCorp Vault
+  hosts: vault
+  become: true
+  gather_facts: true
+
+  vars:
+    # Vault configuration
+    vault_version: "v1.21.2"
+    vault_keyring_dir: "/usr/share/keyrings"
+    vault_data_dir: "/var/lib/vault/data"
+    vault_config_dir: "/etc/vault.d"
+    vault_config_file: "vault.hcl.j2"
+    vault_config_path: "/etc/vault.d/vault.hcl"
+    vault_service_file: "vault.service.j2"
+    vault_service_path: "/etc/systemd/system/vault.service"
+    vault_user: "vault"
+    vault_group: "vault"
+
+    # Vault web UI port configuration
+    vault_ui_port: 8200
+
+  roles:
+    # Role 1: Install and configure HashiCorp Vault
+    # - Adds HashiCorp repository
+    # - Installs Vault package
+    # - Creates system user and directories
+    # - Deploys Vault configuration
+    - role: vault
+      tags: ['vault', 'security-storage']
+
+    # Role 2: Manage Vault systemd service
+    # - Creates systemd service unit with security hardening
+    # - Starts and enables Vault service
+    # - Initializes Vault (if not already initialized)
+    # - Generates and saves unseal keys
+    - role: systemd
+      tags: ['systemd', 'services']
+
+  post_tasks:
+    # Display comprehensive deployment summary with next steps
+    # This provides users with all necessary information to access
+    # and configure their new Vault installation
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "================================================"
+          - "Vault Deployment Completed Successfully!"
+          - "================================================"
+          - "Vault Version: {{ vault_version }}"
+          - "Web UI: http://{{ ansible_default_ipv4.address }}:{{ vault_ui_port }}"
+          - ""
+          - "⚠️  IMPORTANT - Save Your Vault Keys!"
+          - ""
+          - "Vault initialization keys have been saved to:"
+          - "  /root/vault-keys.txt on the Vault server"
+          - ""
+          - "Next Steps:"
+          - "1. SSH to vault server and copy the keys:"
+          - "   ssh {{ ansible_user }}@{{ ansible_host }} sudo cat /root/vault-keys.txt"
+          - ""
+          - "2. Save the Unseal Keys and Root Token in a secure location"
+          - ""
+          - "3. Access Vault UI in your browser:"
+          - "   http://{{ ansible_default_ipv4.address }}:{{ vault_ui_port }}"
+          - ""
+          - "4. Use the Root Token to login to Vault"
+          - ""
+          - "5. Configure your secrets and policies"
+          - ""
+          - "⚠️  DELETE /root/vault-keys.txt after saving the keys!"
+          - ""
+          - "Documentation: https://developer.hashicorp.com/vault/docs"
+      tags: ['always']

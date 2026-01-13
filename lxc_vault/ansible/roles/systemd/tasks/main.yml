@@ -1,0 +1,119 @@
+# =============================================================================
+# Vault Systemd Service Management and Initialization
+# =============================================================================
+# This role manages the Vault systemd service lifecycle including:
+#   - Service unit file creation with security hardening
+#   - Service enablement and startup
+#   - Readiness verification
+#   - Automated initialization (if not already initialized)
+#   - Unseal key and root token generation
+#
+# Tasks Flow:
+#   1. Deploy systemd unit file
+#   2. Reload systemd daemon
+#   3. Enable and start Vault service
+#   4. Wait for Vault to be ready (port 8200)
+#   5. Check if Vault is already initialized
+#   6. Initialize Vault (conditional - only if needed)
+#   7. Secure the generated keys file
+#
+# Prerequisites:
+#   - Vault must be installed (vault role executed first)
+#   - Vault configuration file must exist
+#   - Vault user and directories must exist
+#
+# Variables Required:
+#   - vault_service_file: Systemd unit template name
+#   - vault_service_path: Full path to service unit file
+#
+# Security Features:
+#   - Service runs as non-root vault user
+#   - Systemd hardening directives enabled
+#   - Keys file has restrictive permissions (0600)
+#   - Idempotent initialization (won't re-initialize)
+#
+# Author: HomeLab Infrastructure Team
+# =============================================================================
+
+# Deploy systemd service unit file from Jinja2 template
+# Service includes security hardening:
+#   - ProtectSystem=full: Read-only system directories
+#   - ProtectHome=read-only: Limited home directory access
+#   - PrivateTmp=yes: Private /tmp namespace
+#   - PrivateDevices=yes: Limited device access
+#   - NoNewPrivileges=yes: Prevent privilege escalation
+- name: Create Vault service file
+  ansible.builtin.template:
+    src: "{{ vault_service_file }}"
+    dest: "{{ vault_service_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+  tags: [ 'service', 'vault' ]
+
+# Start and enable Vault service
+# - enabled: true ensures service starts on boot
+# - state: started ensures service is running now
+# - daemon-reload: true reloads systemd configuration
+- name: Starting Vault service
+  ansible.builtin.systemd_service:
+   daemon-reload: true
+   name: vault
+   enabled: true
+   state: started
+  register: vault_service_start
+  tags: ['start', 'service']
+
+# Wait for Vault to be ready to accept connections
+# Checks that port 8200 is listening on localhost
+# - delay: 2 seconds before first check
+# - timeout: 30 seconds maximum wait time
+# This ensures Vault is fully started before initialization
+- name: Wait for Vault to be ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 8200
+    delay: 2
+    timeout: 30
+  tags: ['initialize', 'vault']
+
+# Check if Vault has already been initialized
+# Uses vault status command with JSON output to check initialization state
+# - Returns "true" if initialized, "false" if not
+# - This prevents re-initialization which would fail
+# - Enables idempotent playbook execution
+- name: Check if Vault is already initialized
+  ansible.builtin.shell: |
+    export VAULT_ADDR='http://127.0.0.1:8200'
+    vault status -format=json 2>/dev/null | python3 -c "import sys, json; data=json.load(sys.stdin); print('true' if data.get('initialized', False) else 'false')"
+  register: vault_initialized
+  changed_when: false
+  failed_when: false
+  tags: ['initialize', 'vault']
+
+# Initialize Vault and save unseal keys and root token
+# Only runs if Vault is not already initialized
+# Generates:
+#   - 5 unseal keys (Shamir's secret sharing)
+#   - 1 root token (superuser access)
+# Output saved to /root/vault-keys.txt for retrieval
+# CRITICAL: This file must be saved to a secure location immediately!
+- name: Initializing Vault and save output to secure file
+  ansible.builtin.shell: |
+    export VAULT_ADDR='http://127.0.0.1:8200'
+    vault operator init > /root/vault-keys.txt
+  when: vault_initialized.stdout == "false"
+  register: vault_init_result
+  tags: ['initialize', 'vault']
+
+# Secure the Vault keys file with restrictive permissions
+# - mode: 0600 = read/write for root only
+# - Only runs if initialization was performed
+# Prevents unauthorized access to unseal keys and root token
+- name: Set permissions on Vault keys file
+  ansible.builtin.file:
+    path: "/root/vault-keys.txt"
+    mode: "0600"
+  when: vault_init_result is defined and vault_init_result.changed
+  tags: ['initialize', 'vault']

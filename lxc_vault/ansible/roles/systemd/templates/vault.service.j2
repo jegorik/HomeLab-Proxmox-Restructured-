@@ -1,0 +1,126 @@
+# =============================================================================
+# HashiCorp Vault Systemd Service Unit
+# =============================================================================
+# This systemd service unit manages the Vault server process with
+# security hardening and proper lifecycle management.
+#
+# Location: /etc/systemd/system/vault.service
+# Managed by: Ansible (auto-generated from template)
+#
+# Service Management:
+#   systemctl start vault    # Start service
+#   systemctl stop vault     # Stop service
+#   systemctl restart vault  # Restart service
+#   systemctl status vault   # Check status
+#   journalctl -u vault -f   # View logs
+#
+# Documentation:
+#   - Vault: https://developer.hashicorp.com/vault/docs
+#   - systemd: https://www.freedesktop.org/software/systemd/man/systemd.service.html
+#
+# Last Updated: January 2026
+# =============================================================================
+
+[Unit]
+# Service description shown in systemctl output
+Description=HashiCorp Vault - A tool for managing secrets
+
+# Link to official documentation
+Documentation=https://www.vaultproject.io/docs/
+
+# Network dependency - wait for network to be fully online
+# This ensures Vault can bind to network interfaces
+Requires=network-online.target
+After=network-online.target
+
+# Configuration file dependency
+# Service won't start if configuration file is missing
+ConditionFileNotEmpty=/etc/vault.d/vault.hcl
+
+# Rate limiting for restart attempts
+# Prevents rapid restart loops if service fails
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+# Service type: notify
+# Vault will notify systemd when it's ready to accept connections
+# This enables proper service ordering and health monitoring
+Type=notify
+
+# Run as dedicated vault user (not root)
+# Follows principle of least privilege
+User=vault
+Group=vault
+
+# Security Hardening Directives
+# These systemd options reduce the attack surface
+
+# ProtectSystem=full
+# Makes /usr, /boot, and /efi read-only
+# Prevents Vault from modifying system files
+ProtectSystem=full
+
+# ProtectHome=read-only
+# Makes /home read-only
+# Vault shouldn't need write access to user home directories
+ProtectHome=read-only
+
+# PrivateTmp=yes
+# Provides private /tmp and /var/tmp namespace
+# Isolates temporary files from other processes
+PrivateTmp=yes
+
+# PrivateDevices=yes
+# Provides private /dev namespace with limited devices
+# Prevents access to physical devices
+PrivateDevices=yes
+
+# NoNewPrivileges=yes
+# Prevents process from gaining new privileges
+# Blocks SUID/SGID and other privilege escalation
+NoNewPrivileges=yes
+
+# Main service command
+# Starts Vault server with specified configuration file
+ExecStart=/usr/bin/vault server -config=/etc/vault.d/vault.hcl
+
+# Reload command for graceful configuration reload
+# Sends HUP signal to main process
+ExecReload=/bin/kill --signal HUP $MAINPID
+
+# Process termination handling
+# KillMode=process: Only kill main process, not child processes
+# KillSignal=SIGINT: Use SIGINT for graceful shutdown
+KillMode=process
+KillSignal=SIGINT
+
+# Automatic restart on failure
+# Vault will automatically restart if it crashes
+# Does not restart on clean exit (e.g., manual stop)
+Restart=on-failure
+
+# Wait 5 seconds before restart attempt
+# Prevents rapid restart loops
+RestartSec=5
+
+# Graceful shutdown timeout
+# Give Vault 30 seconds to shut down cleanly
+# After timeout, systemd will send SIGKILL
+TimeoutStopSec=30
+
+# File descriptor limit
+# Vault can handle many concurrent connections
+# Increase from default (usually 1024) to 65536
+LimitNOFILE=65536
+
+# Memory Lock Limit
+# Note: LimitMEMLOCK removed because disable_mlock=true in vault.hcl
+# For VMs with CAP_IPC_LOCK, uncomment and set disable_mlock=false:
+# LimitMEMLOCK=infinity
+
+[Install]
+# Target for enabling the service
+# multi-user.target = normal system operation (non-graphical)
+# Service will start automatically on boot when enabled
+WantedBy=multi-user.target

@@ -1,0 +1,99 @@
+---
+# =============================================================================
+# Ansible Role Metadata - Systemd Service Management
+# =============================================================================
+# This file provides metadata about the systemd role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Manage HashiCorp Vault systemd service with automated initialization
+  company: HomeLab
+
+  # License for this role
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  galaxy_tags:
+    - vault
+    - hashicorp
+    - systemd
+    - service
+    - initialization
+    - security
+    - secrets
+    - debian
+    - ubuntu
+    - automation
+
+  # Categories this role belongs to
+  categories:
+    - system
+    - security
+
+# =============================================================================
+# Role Dependencies
+# =============================================================================
+# This role requires the vault role to be executed first
+
+dependencies:
+  - role: vault
+    # The vault role must install Vault before systemd can manage it
+
+# =============================================================================
+# Collections Dependencies
+# =============================================================================
+# List collections required by this role
+collections:
+  - ansible.builtin  # Core Ansible modules (systemd, template, file, etc.)
+
+# =============================================================================
+# Role Information
+# =============================================================================
+
+# Allow duplicates (can this role be added to the same play multiple times?)
+allow_duplicates: false
+
+# Role type (for internal organization)
+role_type: service_management
+
+# =============================================================================
+# Documentation
+# =============================================================================
+
+# Repository information
+repository: https://github.com/yourusername/lxc_vault
+issues: https://github.com/yourusername/lxc_vault/issues
+
+# Documentation links
+documentation: https://github.com/yourusername/lxc_vault/blob/main/ansible/roles/systemd/README.md
+
+# Changelog
+# version: 1.0.0
+# date: 2026-01-13
+# changes:
+#   - Initial release
+#   - Systemd service unit creation with security hardening
+#   - Automated Vault initialization with unseal key generation
+#   - Idempotent initialization (checks before initializing)
+#   - Service lifecycle management (start, enable, restart)
+
