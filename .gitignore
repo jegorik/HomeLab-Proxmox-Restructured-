@@ -6,6 +6,7 @@
 # These contain sensitive data and should never be committed
 *.tfstate
 *.tfstate.*
+tfplan
 *.tfstate.backup
 *.backend.config
 
