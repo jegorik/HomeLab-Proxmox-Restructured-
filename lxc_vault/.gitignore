@@ -11,7 +11,9 @@
 
 # Terraform/OpenTofu Variable Files
 # Contains sensitive configuration like API tokens and passwords
-terraform/terraform.tfvars
+terraform.tfvars
+*.tfvars
+!*.tfvars.example
 *.auto.tfvars
 *.auto.tfvars.json
 
@@ -94,6 +96,8 @@ id_ed25519.pub
 
 # Logs
 *.log
+logs/
+logs/*.log
 
 # Ansible inventory files
 inventory.ini
