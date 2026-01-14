@@ -66,22 +66,23 @@ collections:
 # Role Information
 # =============================================================================
 
+# =============================================================================
+# Role Information
+# =============================================================================
+
 # Allow duplicates (can this role be added to the same play multiple times?)
 allow_duplicates: false
 
-# Role type (for internal organization)
-role_type: service_management
-
 # =============================================================================
-# Documentation
+# Documentation (for reference only - not parsed by Ansible)
 # =============================================================================
 
 # Repository information
-repository: https://github.com/yourusername/lxc_vault
-issues: https://github.com/yourusername/lxc_vault/issues
+# repository: https://github.com/yourusername/lxc_vault
+# issues: https://github.com/yourusername/lxc_vault/issues
 
 # Documentation links
-documentation: https://github.com/yourusername/lxc_vault/blob/main/ansible/roles/systemd/README.md
+# documentation: https://github.com/yourusername/lxc_vault/blob/main/ansible/roles/systemd/README.md
 
 # Changelog
 # version: 1.0.0

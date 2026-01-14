@@ -384,7 +384,47 @@ ssh -i ~/.ssh/ansible ansible@<container-ip>
 ./deploy.sh ansible
 ```
 
-#### 4. Permission Denied on deploy.sh
+#### 4. Inventory Creation Fails - "Could not get container IP"
+
+**Error**: `Could not get container IP from Terraform outputs`
+
+**Cause**: The script expects the Terraform output `lxc_ip_address` or `vault_ip_address`.
+
+**Solution**:
+```bash
+# Verify Terraform outputs exist
+cd terraform
+tofu output
+
+# Check the IP output specifically
+tofu output lxc_ip_address
+
+# If the output exists but script still fails, manually create inventory:
+cd ../ansible
+cat > inventory.yml << 'EOF'
+all:
+  children:
+    vault:
+      hosts:
+        vault-server:
+          ansible_host: YOUR_CONTAINER_IP  # Without /24
+          ansible_port: 22
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/ansible
+          ansible_python_interpreter: /usr/bin/python3
+      vars:
+        ansible_become: true
+        ansible_become_method: sudo
+EOF
+
+# Then run Ansible
+ansible vault -m ping
+ansible-playbook site.yml
+```
+
+**Note**: The script automatically strips CIDR notation (e.g., `/24`) from IP addresses.
+
+#### 5. Permission Denied on deploy.sh
 
 **Error**: `Permission denied: ./deploy.sh`
 

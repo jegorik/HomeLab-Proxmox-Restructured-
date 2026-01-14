@@ -758,9 +758,9 @@ ansible_test() {
         return 1
     fi
 
-    log_info "Running: ansible vault -m ping"
+    log_info "Running: ansible vault -m ping -i inventory.yml"
 
-    if ansible vault -m ping | tee -a "${LOG_FILE}"; then
+    if ansible vault -m ping -i inventory.yml | tee -a "${LOG_FILE}"; then
         log_success "Ansible connectivity test passed"
         return 0
     else
@@ -789,9 +789,9 @@ ansible_deploy() {
         fi
     fi
 
-    log_info "Running: ansible-playbook site.yml"
+    log_info "Running: ansible-playbook -i inventory.yml site.yml"
 
-    if ansible-playbook site.yml | tee -a "${LOG_FILE}"; then
+    if ansible-playbook -i inventory.yml site.yml | tee -a "${LOG_FILE}"; then
         log_success "Ansible playbook completed successfully"
         ANSIBLE_APPLIED=true
         return 0
@@ -799,7 +799,7 @@ ansible_deploy() {
         log_error "Ansible playbook failed"
         log_error "Vault configuration may be incomplete"
         log_info "Check the logs for details"
-        log_info "You can re-run the playbook manually: cd ansible && ansible-playbook site.yml"
+        log_info "You can re-run the playbook manually: cd ansible && ansible-playbook -i inventory.yml site.yml"
         return 1
     fi
 }
@@ -812,12 +812,18 @@ create_ansible_inventory() {
     cd "${TERRAFORM_DIR}" || return 1
 
     local container_ip
-    container_ip=$(${iac_tool} output -raw vault_ip_address 2>/dev/null)
+    # Try multiple output names for compatibility
+    container_ip=$(${iac_tool} output -raw lxc_ip_address 2>/dev/null || ${iac_tool} output -raw vault_ip_address 2>/dev/null)
 
     if [[ -z "${container_ip}" || "${container_ip}" == "null" ]]; then
         log_error "Could not get container IP from Terraform outputs"
+        log_info "Available outputs:"
+        ${iac_tool} output 2>&1 | grep -E "^[a-z_]+" | head -5
         return 1
     fi
+
+    # Strip CIDR notation if present (e.g., 192.168.0.103/24 -> 192.168.0.103)
+    container_ip="${container_ip%%/*}"
 
     log_info "Container IP: ${container_ip}"
 
@@ -1062,7 +1068,9 @@ check_deployment_status() {
             log_info "Vault URL: ${vault_url}"
 
             local container_ip
-            container_ip=$(jq -r '.vault_ip_address.value // "N/A"' /tmp/tf_outputs.json)
+            # Try both output names and strip CIDR notation
+            container_ip=$(jq -r '.lxc_ip_address.value // .vault_ip_address.value // "N/A"' /tmp/tf_outputs.json)
+            container_ip="${container_ip%%/*}"  # Strip /24 if present
             log_info "Container IP: ${container_ip}"
 
             local ssh_command
@@ -1094,7 +1102,7 @@ check_deployment_status() {
 
         # Test connectivity
         cd "${ANSIBLE_DIR}" || return 1
-        if ansible vault -m ping &> /dev/null; then
+        if ansible vault -m ping -i inventory.yml &> /dev/null; then
             log_success "Ansible connectivity: OK"
         else
             log_warning "Ansible connectivity: FAILED"
