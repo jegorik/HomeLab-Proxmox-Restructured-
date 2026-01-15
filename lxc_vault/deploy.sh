@@ -1123,11 +1123,11 @@ print_deployment_summary() {
     log_header "Deployment Summary"
 
     echo -e "${GREEN}┌─────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${GREEN}│${NC}  ${BOLD}Deployment Completed Successfully!${NC}                        ${GREEN}│${NC}"
+    echo -e "${GREEN}│${NC}  ${BOLD}Deployment Completed Successfully!${NC}${GREEN}│${NC}"
     echo -e "${GREEN}├─────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "${GREEN}│${NC}  Deployment Time: ${minutes}m ${seconds}s                                   ${GREEN}│${NC}"
-    echo -e "${GREEN}│${NC}  Terraform Applied: ${TERRAFORM_APPLIED}                                ${GREEN}│${NC}"
-    echo -e "${GREEN}│${NC}  Ansible Applied: ${ANSIBLE_APPLIED}                                  ${GREEN}│${NC}"
+    echo -e "${GREEN}│${NC}  Deployment Time: ${minutes}m ${seconds}s      ${GREEN}│${NC}"
+    echo -e "${GREEN}│${NC}  Terraform Applied: ${TERRAFORM_APPLIED}       ${GREEN}│${NC}"
+    echo -e "${GREEN}│${NC}  Ansible Applied: ${ANSIBLE_APPLIED}           ${GREEN}│${NC}"
     echo -e "${GREEN}└─────────────────────────────────────────────────────────────┘${NC}"
 
     echo ""
