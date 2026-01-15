@@ -1,0 +1,170 @@
+# =============================================================================
+# HashiCorp Vault Policy for NetBox Deployment
+# =============================================================================
+# This policy defines the minimum required permissions for NetBox deployment
+# automation (Terraform and Ansible).
+#
+# Apply this policy:
+#   vault policy write netbox-deploy vault_policy.hcl
+#
+# Assign to user:
+#   vault write auth/userpass/users/netbox-automation policies="netbox-deploy"
+#
+# Assign to AppRole:
+#   vault write auth/approle/role/netbox-deploy \
+#     token_policies="netbox-deploy" \
+#     token_ttl=1h \
+#     token_max_ttl=4h
+# =============================================================================
+
+# =============================================================================
+# Proxmox Credentials (Read-Only)
+# =============================================================================
+# Terraform needs read access to Proxmox API credentials for LXC provisioning
+
+# Read Proxmox endpoint, node, and password
+path "secrets/data/proxmox/credentials" {
+  capabilities = ["read"]
+}
+
+# List Proxmox secrets (for verification)
+path "secrets/metadata/proxmox/*" {
+  capabilities = ["list", "read"]
+}
+
+# =============================================================================
+# NetBox Configuration Secrets
+# =============================================================================
+# Ansible needs read/write access to NetBox configuration secrets
+
+# Full access to NetBox configuration secrets
+# - Django SECRET_KEY
+# - Superuser credentials
+# - Database passwords (if stored in Vault)
+# - Redis passwords (if stored in Vault)
+path "secrets/data/netbox/config" {
+  capabilities = ["create", "read", "update", "delete"]
+}
+
+# List NetBox secrets
+path "secrets/metadata/netbox/*" {
+  capabilities = ["list", "read"]
+}
+
+# Optional: Separate path for database credentials
+path "secrets/data/netbox/database/*" {
+  capabilities = ["create", "read", "update"]
+}
+
+# Optional: Separate path for generated secrets
+path "secrets/data/netbox/generated/*" {
+  capabilities = ["create", "read", "update"]
+}
+
+# =============================================================================
+# Vault Transit Encryption Engine
+# =============================================================================
+# OpenTofu uses Transit engine for state encryption with encryption.tf
+
+# Encrypt Terraform state before storing in S3
+path "transit/encrypt/netbox" {
+  capabilities = ["update"]
+}
+
+# Decrypt Terraform state when reading from S3
+path "transit/decrypt/netbox" {
+  capabilities = ["update"]
+}
+
+# Read encryption key metadata (for verification)
+path "transit/keys/netbox" {
+  capabilities = ["read"]
+}
+
+# Optional: Allow key rotation
+# path "transit/keys/netbox/rotate" {
+#   capabilities = ["update"]
+# }
+
+# =============================================================================
+# AWS Credentials (Optional - if using S3 backend)
+# =============================================================================
+# If using Vault's AWS secrets engine for dynamic S3 credentials
+
+# Generate AWS credentials for S3 state storage
+# path "aws/creds/terraform-state" {
+#   capabilities = ["read"]
+# }
+
+# =============================================================================
+# Token Management (Optional)
+# =============================================================================
+# Allow the automation user to manage their own token
+
+# Lookup own token information
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+
+# Renew own token
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+
+# Revoke own token (logout)
+path "auth/token/revoke-self" {
+  capabilities = ["update"]
+}
+
+# =============================================================================
+# Audit and Compliance (Optional)
+# =============================================================================
+# Allow reading audit configuration for compliance checks
+
+# path "sys/audit" {
+#   capabilities = ["read", "list"]
+# }
+
+# =============================================================================
+# Example: Stricter Production Policy
+# =============================================================================
+# For production environments, consider splitting into separate policies:
+#
+# 1. netbox-terraform-policy (Terraform only):
+#    - Read: secrets/data/proxmox/credentials
+#    - Transit: encrypt/decrypt netbox state
+#
+# 2. netbox-ansible-policy (Ansible only):
+#    - Read/Write: secrets/data/netbox/*
+#    - No Proxmox access
+#    - No Transit access
+#
+# This follows the principle of least privilege.
+
+# =============================================================================
+# Policy Testing
+# =============================================================================
+# Test this policy before production use:
+#
+# 1. Create test user:
+#    vault write auth/userpass/users/netbox-test \
+#      password="test123" \
+#      policies="netbox-deploy"
+#
+# 2. Login as test user:
+#    vault login -method=userpass username=netbox-test
+#
+# 3. Test read access:
+#    vault kv get secrets/proxmox/credentials
+#    vault kv get secrets/netbox/config
+#
+# 4. Test Transit encryption:
+#    echo "test" | vault write transit/encrypt/netbox plaintext=-
+#    echo "<ciphertext>" | vault write transit/decrypt/netbox ciphertext=-
+#
+# 5. Test write access:
+#    vault kv put secrets/netbox/config test_key="test_value"
+#
+# 6. Verify denied paths:
+#    vault kv get secrets/other/path  # Should fail
+#    vault secrets enable -path=test kv  # Should fail

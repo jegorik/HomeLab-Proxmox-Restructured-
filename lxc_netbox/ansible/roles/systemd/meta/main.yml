@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# Ansible Role Metadata - Systemd Services
+# =============================================================================
+# This file provides metadata about the systemd role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Configure systemd services for NetBox (netbox, netbox-rq)
+  company: HomeLab
+
+  # License for this role
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  galaxy_tags:
+    - systemd
+    - service
+    - daemon
+    - netbox
+    - gunicorn
+    - worker
+    - debian
+    - ubuntu
+    - lxc
+    - container
+
+# Role dependencies
+dependencies:
+  []
+
+# Systemd services should be configured after NetBox application installation

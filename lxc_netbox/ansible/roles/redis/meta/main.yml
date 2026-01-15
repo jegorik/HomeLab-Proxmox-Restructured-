@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Ansible Role Metadata - Redis Installation
+# =============================================================================
+# This file provides metadata about the redis role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Install and configure Redis cache server for NetBox
+  company: HomeLab
+
+  # License for this role
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  galaxy_tags:
+    - redis
+    - cache
+    - memory
+    - keyvalue
+    - netbox
+    - debian
+    - ubuntu
+    - lxc
+    - container
+
+# Role dependencies
+dependencies:
+  []
+
+# Redis should be installed after PostgreSQL but can run independently

@@ -1,0 +1,55 @@
+---
+# =============================================================================
+# Ansible Role Metadata - PostgreSQL Installation
+# =============================================================================
+# This file provides metadata about the postgresql role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Install and configure PostgreSQL 17 database server for NetBox
+  company: HomeLab
+
+  # License for this role
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  galaxy_tags:
+    - postgresql
+    - database
+    - sql
+    - postgres
+    - netbox
+    - debian
+    - ubuntu
+    - lxc
+    - container
+
+# Role dependencies
+# List other roles that should be executed before this role
+dependencies: []
+
+# Example of role dependency:
+# dependencies:
+#   - role: common
+#     vars:
+#       some_parameter: value

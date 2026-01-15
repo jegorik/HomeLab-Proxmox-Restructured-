@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# Ansible Role Metadata - NetBox Application
+# =============================================================================
+# This file provides metadata about the netbox role for Ansible Galaxy and
+# role dependencies management.
+#
+# Galaxy: https://galaxy.ansible.com/docs/contributing/creating_role.html
+# =============================================================================
+
+galaxy_info:
+  # Role author information
+  author: HomeLab Infrastructure Team
+  description: Install and configure NetBox DCIM/IPAM platform with Vault integration
+  company: HomeLab
+
+  # License for this role
+  license: MIT
+
+  # Minimum Ansible version required
+  min_ansible_version: "2.15"
+
+  # Supported platforms
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm  # Debian 12
+        - trixie    # Debian 13
+
+    - name: Ubuntu
+      versions:
+        - jammy     # Ubuntu 22.04 LTS
+        - noble     # Ubuntu 24.04 LTS
+
+  # Galaxy tags for role discovery
+  galaxy_tags:
+    - netbox
+    - dcim
+    - ipam
+    - network
+    - infrastructure
+    - asset
+    - management
+    - vault
+    - hashicorp
+    - python
+    - django
+    - debian
+    - ubuntu
+    - lxc
+    - container
+
+# Role dependencies
+dependencies:
+  []
+
+# NetBox requires PostgreSQL and Redis to be installed first
+# These dependencies are enforced at the playbook level, not role level

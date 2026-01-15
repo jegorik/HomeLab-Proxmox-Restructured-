@@ -14,6 +14,7 @@ Automated deployment of HashiCorp Vault secrets management server in a Proxmox L
 - [Features](#features)
 - [Authentication Requirements](#authentication-requirements)
 - [Prerequisites](#prerequisites)
+  - [Deployment Order](#deployment-order)
 - [Quick Start](#quick-start)
   - [Automated Deployment (Recommended)](#automated-deployment-recommended)
   - [Manual Deployment (Advanced)](#manual-deployment-advanced)
@@ -247,6 +248,26 @@ See [terraform/README.md](terraform/README.md) for detailed configuration.
 
 ## 📦 Prerequisites
 
+> 🔗 **HomeLab Infrastructure**: This is a foundation service in the HomeLab infrastructure. See the [root README](../README.md) for the complete deployment order and architecture overview.
+
+### Deployment Order
+
+**🥇 Deploy This First** - HashiCorp Vault is the foundation service that other projects depend on.
+
+This project has **no dependencies** and should be deployed first in your HomeLab infrastructure. Other projects that depend on this:
+
+- **lxc_netbox**: Requires Vault for secrets management and state encryption
+- **Future projects**: Will integrate with Vault for centralized secrets management
+
+After deploying this project:
+
+1. Initialize and unseal Vault
+2. Configure Transit engine for state encryption
+3. Store secrets for dependent projects
+4. Set up authentication methods (userpass, approle, etc.)
+
+See [Dependent Projects](../README.md#deployment-order) for the complete deployment sequence.
+
 ### Required Software
 
 | Tool | Version | Purpose |
@@ -330,6 +351,7 @@ cd /path/to/HomeLab(Proxmox)/lxc_vault
 ```
 
 **What the script does:**
+
 - ✅ Validates all required binaries (tofu/terraform, ansible, ssh, aws)
 - ✅ Checks project structure and configuration files
 - ✅ Prompts for missing environment variables (e.g., `TF_VAR_pve_root_password`)
@@ -440,6 +462,7 @@ ssh ansible@<container-ip> sudo rm /root/vault-keys.txt
 The `deploy.sh` script provides enterprise-grade automation with:
 
 **Pre-flight Checks:**
+
 - Binary validation (tofu/terraform, ansible, ssh, aws, git, jq)
 - Directory structure validation
 - Configuration file checks (terraform.tfvars, s3.backend.config)
@@ -448,12 +471,14 @@ The `deploy.sh` script provides enterprise-grade automation with:
 - .gitignore security checks
 
 **Environment Management:**
+
 - Interactive prompts for missing variables
 - Support for file-based credentials (`~/.ssh/pve_root_password`)
 - Support for environment variables (`TF_VAR_*`)
 - Automatic credential detection and loading
 
 **Deployment Workflow:**
+
 - Terraform initialization (S3 backend with local fallback)
 - Configuration validation
 - Infrastructure planning and deployment
@@ -462,6 +487,7 @@ The `deploy.sh` script provides enterprise-grade automation with:
 - Configuration management deployment
 
 **Safety Features:**
+
 - Confirmation prompts for destructive operations
 - Double confirmation for infrastructure destruction
 - Comprehensive logging to `logs/` directory
@@ -471,12 +497,14 @@ The `deploy.sh` script provides enterprise-grade automation with:
 ### Usage Examples
 
 **Interactive Menu:**
+
 ```bash
 # Launch interactive menu
 ./deploy.sh
 ```
 
 **Command-Line Mode:**
+
 ```bash
 # Full deployment (Terraform + Ansible)
 ./deploy.sh deploy
@@ -508,6 +536,7 @@ The `deploy.sh` script provides enterprise-grade automation with:
 The script supports both file-based credentials and environment variables:
 
 **Required:**
+
 ```bash
 # Proxmox root password (for bind mounts)
 export TF_VAR_pve_root_password="your-password"
@@ -515,6 +544,7 @@ export TF_VAR_pve_root_password="your-password"
 ```
 
 **Optional (can be set in terraform.tfvars):**
+
 ```bash
 export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
 export TF_VAR_proxmox_api_token="user@pam!token=secret"
@@ -524,6 +554,7 @@ export TF_VAR_lxc_gateway="10.0.100.1"
 ```
 
 **State Encryption:**
+
 ```bash
 # Passphrase file location (auto-detected)
 export TF_VAR_passphrase="~/.ssh/state_passphrase"
@@ -549,16 +580,19 @@ grep ERROR logs/deployment_*.log
 The script provides clear error messages and recovery instructions:
 
 **Terraform Failures:**
+
 - Infrastructure left in place for debugging
 - Manual cleanup instructions provided
 - State file location displayed
 
 **Ansible Failures:**
+
 - Infrastructure remains deployed
 - Manual playbook execution commands provided
 - Connectivity troubleshooting steps shown
 
 **Partial Deployments:**
+
 - Clear indication of what succeeded
 - Instructions for completing deployment
 - Option to retry or rollback
@@ -566,12 +600,14 @@ The script provides clear error messages and recovery instructions:
 ### Credential Management
 
 **Priority Order (highest to lowest):**
+
 1. Environment variables (`TF_VAR_*`)
 2. File-based credentials (`~/.ssh/pve_root_password`)
 3. Interactive prompts (if not set)
 4. terraform.tfvars file
 
 **Security Recommendations:**
+
 ```bash
 # Create password file with secure permissions
 echo "your-password" > ~/.ssh/pve_root_password
