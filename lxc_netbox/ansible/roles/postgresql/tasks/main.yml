@@ -1,114 +1,193 @@
 ---
 # =============================================================================
-# PostgreSQL Installation and Configuration Role
+# PostgreSQL Role - Simplified
 # =============================================================================
-# Installs PostgreSQL 17 from Debian 13 repositories and configures database
-# for NetBox application with secure credentials from Vault
+# Installs PostgreSQL 17 and configures database for NetBox
+# Supports bind mount for data persistence across container recreations
 # =============================================================================
 
-- name: Install PostgreSQL server and client
+# --- Installation ---
+
+- name: Install PostgreSQL server and dependencies
   ansible.builtin.apt:
     name:
       - postgresql-{{ postgres_version }}
       - postgresql-client-{{ postgres_version }}
-      - python3-psycopg2  # Required for Ansible PostgreSQL modules
+      - python3-psycopg2
     state: present
     update_cache: true
   tags: ['install']
 
-- name: Ensure PostgreSQL service is running and enabled
+# --- Bind Mount Setup (CRITICAL for data persistence) ---
+
+- name: Ensure PostgreSQL data directory has correct ownership
+  ansible.builtin.file:
+    path: /var/lib/postgresql
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0755'
+  tags: ['install', 'permissions']
+
+# --- Cluster Initialization ---
+
+- name: Check if PostgreSQL cluster is registered
+  ansible.builtin.command:
+    cmd: pg_lsclusters -h
+  register: pg_clusters
+  changed_when: false
+  tags: ['install']
+
+- name: Check if main cluster exists
+  ansible.builtin.set_fact:
+    cluster_exists: "{{ pg_clusters.stdout | regex_search('17\\s+main') is not none }}"
+  tags: ['install']
+
+- name: Remove unregistered data directory (allows fresh cluster creation)
+  ansible.builtin.file:
+    path: /var/lib/postgresql/{{ postgres_version }}/main
+    state: absent
+  when: not cluster_exists
+  tags: ['install']
+
+- name: Create PostgreSQL cluster (Debian way, respects bind mount)
+  ansible.builtin.command:
+    cmd: pg_createcluster --datadir=/var/lib/postgresql/{{ postgres_version }}/main {{ postgres_version }} main
+  when: not cluster_exists
+  register: cluster_created
+  tags: ['install']
+
+- name: Start newly created cluster
+  ansible.builtin.command:
+    cmd: pg_ctlcluster {{ postgres_version }} main start
+  when: cluster_created is changed
+  tags: ['install']
+
+# --- Service Management ---
+
+- name: Start and enable PostgreSQL service
   ansible.builtin.systemd:
     name: postgresql
     state: started
     enabled: true
   tags: ['service']
 
-- name: Check if database credentials exist in Vault
+- name: Restart PostgreSQL if cluster was just created
+  ansible.builtin.systemd:
+    name: postgresql
+    state: restarted
+  when: cluster_created is changed
+  tags: ['service']
+
+# --- Ensure cluster is running ---
+
+- name: Check cluster status
+  ansible.builtin.command:
+    cmd: pg_lsclusters
+  register: cluster_status
+  changed_when: false
+  tags: ['service']
+
+- name: Display cluster status
+  ansible.builtin.debug:
+    var: cluster_status.stdout_lines
+  tags: ['service']
+
+- name: Start cluster if down
+  ansible.builtin.command:
+    cmd: pg_ctlcluster {{ postgres_version }} main start
+  register: start_cluster
+  when: "'down' in cluster_status.stdout"
+  tags: ['service']
+
+- name: Check PostgreSQL logs if start failed
+  ansible.builtin.shell:
+    cmd: tail -30 /var/log/postgresql/postgresql-{{ postgres_version }}-main.log
+  register: pg_logs
+  changed_when: false
+  when: start_cluster is defined and start_cluster.rc is defined and start_cluster.rc != 0
+  tags: ['service']
+
+- name: Display PostgreSQL logs on failure
+  ansible.builtin.debug:
+    var: pg_logs.stdout_lines
+  when: pg_logs.stdout_lines is defined
+  tags: ['service']
+
+- name: Verify cluster is now online
+  ansible.builtin.command:
+    cmd: pg_lsclusters
+  register: cluster_final_status
+  changed_when: false
+  tags: ['service']
+
+- name: Fail if cluster still not online
+  ansible.builtin.fail:
+    msg: "PostgreSQL cluster failed to start. Check /var/log/postgresql/postgresql-{{ postgres_version }}-main.log"
+  when: "'online' not in cluster_final_status.stdout"
+  tags: ['service']
+
+- name: Wait for PostgreSQL to be ready
+  ansible.builtin.wait_for:
+    port: 5432
+    host: 127.0.0.1
+    delay: 3
+    timeout: 30
+  tags: ['service']
+
+# --- Vault Credentials ---
+
+- name: Check for existing credentials in Vault
   ansible.builtin.uri:
     url: "{{ vault_addr }}/v1/{{ vault_kv_path }}"
     method: GET
     headers:
-      X-Vault-Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+      X-Vault-Token: "{{ vault_token | default(lookup('env', 'VAULT_TOKEN')) }}"
     return_content: true
     status_code: [200, 404]
+    validate_certs: false
   register: vault_check
-  no_log: true
-  tags: ['vault', 'secrets']
+  tags: ['vault']
 
-- name: Retrieve NetBox database password from Vault if it exists
+- name: Use existing password from Vault
   ansible.builtin.set_fact:
     netbox_db_password: "{{ vault_check.json.data.data.db_password }}"
   no_log: true
   when:
     - vault_check.status == 200
-    - vault_check.json is defined
-    - vault_check.json.data is defined
-    - vault_check.json.data.data is defined
     - vault_check.json.data.data.db_password is defined
-  tags: ['vault', 'secrets']
+  tags: ['vault']
 
-- name: Generate database password if not exists
+- name: Generate new password if not in Vault
   ansible.builtin.set_fact:
     netbox_db_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
   no_log: true
   when: netbox_db_password is not defined
-  tags: ['vault', 'secrets']
+  tags: ['vault']
 
-- name: Store database credentials in Vault
-  block:
-    - name: Get existing Vault data if it exists
-      ansible.builtin.set_fact:
-        existing_vault_data: "{{ vault_check.json.data.data }}"
-      when:
-        - vault_check.status == 200
-        - vault_check.json is defined
-        - vault_check.json.data is defined
-        - vault_check.json.data.data is defined
-        - vault_check.json.data.data | type_debug == 'dict'
+- name: Store credentials in Vault (if new or missing)
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ vault_kv_path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_token | default(lookup('env', 'VAULT_TOKEN')) }}"
+    body_format: json
+    body:
+      data:
+        db_password: "{{ netbox_db_password }}"
+        db_user: "{{ netbox_db_user }}"
+        db_name: "{{ netbox_db_name }}"
+        db_host: localhost
+        db_port: 5432
+    status_code: [200, 204]
+    validate_certs: false
+  no_log: true
+  when: vault_check.status == 404 or vault_check.json.data.data.db_password is not defined
+  tags: ['vault']
 
-    - name: Initialize empty vault data if none exists
-      ansible.builtin.set_fact:
-        existing_vault_data: {}
-      when: existing_vault_data is not defined
+# --- Database Setup ---
 
-    - name: Merge database credentials with existing data
-      ansible.builtin.set_fact:
-        vault_data_to_save: "{{ existing_vault_data | combine({
-            'db_password': netbox_db_password,
-            'db_user': netbox_db_user,
-            'db_name': netbox_db_name,
-            'db_host': 'localhost',
-            'db_port': 5432
-          }) }}"
-      no_log: true
-
-    - name: Store database credentials in Vault
-      ansible.builtin.uri:
-        url: "{{ vault_addr }}/v1/{{ vault_kv_path }}"
-        method: POST
-        headers:
-          X-Vault-Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
-        body_format: json
-        body:
-          data: "{{ vault_data_to_save }}"
-        status_code: [200, 204]
-      no_log: true
-  rescue:
-    - name: Failed to save credentials to Vault
-      ansible.builtin.debug:
-        msg: "WARNING: Failed to save database credentials to Vault, but continuing with generated password"
-  when:
-    - vault_check.status == 404
-    - vault_check.status == 200 and (
-        vault_check.json is not defined or
-        vault_check.json.data is not defined or
-        vault_check.json.data.data is not defined or
-        vault_check.json.data.data | type_debug != 'dict' or
-        vault_check.json.data.data.db_password is not defined
-      )
-  tags: ['vault', 'secrets']
-
-- name: Create NetBox database user
+- name: Create database user
   community.postgresql.postgresql_user:
     name: "{{ netbox_db_user }}"
     password: "{{ netbox_db_password }}"
@@ -117,9 +196,18 @@
   become: true
   become_user: postgres
   no_log: true
-  tags: ['database', 'user']
+  tags: ['database']
 
-- name: Create NetBox database
+- name: Check if database exists (bind mount may have existing data)
+  community.postgresql.postgresql_query:
+    db: postgres
+    query: "SELECT 1 FROM pg_database WHERE datname='{{ netbox_db_name }}'"
+  become: true
+  become_user: postgres
+  register: db_exists
+  tags: ['database']
+
+- name: Create database (only if not exists)
   community.postgresql.postgresql_db:
     name: "{{ netbox_db_name }}"
     owner: "{{ netbox_db_user }}"
@@ -130,9 +218,10 @@
     state: present
   become: true
   become_user: postgres
+  when: db_exists.rowcount == 0
   tags: ['database']
 
-- name: Grant all privileges on database to NetBox user
+- name: Grant privileges to user
   community.postgresql.postgresql_privs:
     database: "{{ netbox_db_name }}"
     state: present
@@ -141,19 +230,21 @@
     role: "{{ netbox_db_user }}"
   become: true
   become_user: postgres
-  tags: ['database', 'permissions']
+  tags: ['database']
 
-- name: Configure PostgreSQL to allow local connections
+# --- Configuration ---
+
+- name: Configure pg_hba.conf for local connections
   ansible.builtin.lineinfile:
     path: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
     regexp: '^local\s+all\s+{{ netbox_db_user }}'
     line: "local {{ netbox_db_name }} {{ netbox_db_user }} md5"
     insertafter: '^# TYPE'
   notify: restart postgresql
-  tags: ['configuration']
+  tags: ['config']
 
 - name: Reload PostgreSQL configuration
   ansible.builtin.systemd:
     name: postgresql
     state: reloaded
-  tags: ['configuration']
+  tags: ['config']

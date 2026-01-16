@@ -39,9 +39,7 @@ The script will check for these during pre-flight validation:
 | **OpenTofu** or **Terraform** | Infrastructure provisioning | `brew install opentofu` or download from [opentofu.org](https://opentofu.org) |
 | **Ansible** | Configuration management | `pip install ansible` |
 | **SSH Client** | Remote access | Pre-installed on most systems |
-| **Git** | Version control | `sudo apt install git` |
 | **jq** | JSON processing | `sudo apt install jq` |
-| **AWS CLI** | S3 backend (optional) | `pip install awscli` |
 | **Vault CLI** | Vault interaction | Download from [vaultproject.io](https://www.vaultproject.io/downloads) |
 
 ### Proxmox Setup
@@ -82,15 +80,7 @@ ssh-keygen -t ed25519 -C "ansible@netbox" -f ~/.ssh/ansible
 
    ```bash
    cp s3.backend.config.template s3.backend.config
-   vim s3.backend.config  # Add AWS credentials
-   ```
-
-3. **Vault Initialization**:
-
-   ```bash
-   cp vault_init.sh.example vault_init.sh
-   vim vault_init.sh  # Add Vault address and authentication
-   chmod 700 vault_init.sh
+   vim s3.backend.config  # Add S3 bucket configuration
    ```
 
 ## 🔐 Vault Integration
@@ -180,37 +170,49 @@ Apply the policy:
 vault policy write netbox-deploy vault_policy.hcl
 ```
 
-### vault_init.sh Configuration
+### Vault Security Model
 
-The `vault_init.sh` file sets up your Vault environment:
+The deploy.sh script uses a simplified security model without credential caching:
 
-```bash
-#!/bin/bash
-# Vault server address
-export VAULT_ADDR="https://vault.yourdomain.com:8200"
+- **Direct Vault authentication** - Tokens are obtained fresh each session
+- **Environment variables** - VAULT_TOKEN is passed via environment (not command line)
+- **No persistent cache** - Credentials are not stored on disk
+- **Session-based** - Each deployment session authenticates independently
 
-# Authentication method 1: Token (for local dev)
-# export VAULT_TOKEN="hvs.CAES..."
+**Security Benefits**:
 
-# Authentication method 2: Userpass (recommended)
-vault login -method=userpass username=netbox-automation
+- ✅ No encrypted files to manage or rotate
+- ✅ Credentials never persist on disk
+- ✅ VAULT_TOKEN not visible in process list or logs
+- ✅ Clean session isolation
 
-# Authentication method 3: AppRole (for CI/CD)
-# export VAULT_ROLE_ID="..."
-# export VAULT_SECRET_ID="..."
-# vault write auth/approle/login role_id=$VAULT_ROLE_ID secret_id=$VAULT_SECRET_ID
-```
+### Vault Environment Variables
+
+The deploy.sh script uses these Vault environment variables:
+
+- `VAULT_ADDR`: Vault server URL (prompted if not set)
+  - Set via: `export VAULT_ADDR="https://vault.example.com:8200"`
+  - Or let script prompt you during deployment
+  
+- `VAULT_USERNAME`: Vault username for authentication (prompted if not set)
+  - Set via: `export VAULT_USERNAME="your_username"`
+  - Or let script prompt you during deployment
+  
+- `VAULT_TOKEN`: Vault authentication token (generated automatically)
+- `TF_VAR_vault_password`: Vault password for OpenTofu provider (prompted during authentication)
+
+**Recommended approach**: Set these environment variables in your shell or let the script prompt you interactively.
 
 ### Vault Pre-flight Checks
 
 The deploy.sh script automatically verifies:
 
-- ✅ Vault CLI is installed
-- ✅ `vault_init.sh` exists and is executable
-- ✅ Vault server is reachable
-- ✅ Authentication is valid (token works)
-- ✅ Required secrets exist in Vault
-- ✅ Transit engine is available
+- ✅ Vault CLI is installed and accessible
+- ✅ Vault server is reachable and unsealed
+- ✅ Authentication succeeds
+- ✅ Required secrets exist in Vault (SSH keys, passwords, config)
+- ✅ Transit engine key exists for state encryption
+- ✅ AWS dynamic credentials can be generated
 
 ## 🚀 Quick Start
 
@@ -220,19 +222,23 @@ The deploy.sh script automatically verifies:
 # Navigate to project directory
 cd /path/to/lxc_netbox
 
-# Launch interactive menu
+# Launch interactive menu (will prompt for Vault configuration)
 ./deploy.sh
 ```
 
+The script will prompt for:
+
+- Vault server address (VAULT_ADDR) if not set
+- Vault username (VAULT_USERNAME) if not set
+- Vault password during authentication
+
 The interactive menu provides these options:
 
-1. **Deploy Infrastructure** - Full deployment (Terraform + Ansible)
+1. **Deploy Infrastructure** - Full deployment (Vault + Terraform + Ansible)
 2. **Dry-Run / Plan** - Preview changes without applying
 3. **Check Status** - View current deployment status
 4. **Destroy Infrastructure** - Remove all resources
-5. **Run Pre-flight Checks Only** - Validate environment and Vault connectivity
-6. **Run Terraform Only** - Infrastructure provisioning only
-7. **Run Ansible Only** - Configuration management only
+5. **Ansible Only** - Run configuration management only (requires VAULT_TOKEN)
 
 ### Command-Line Mode (For Automation)
 
@@ -248,31 +254,15 @@ The interactive menu provides these options:
 
 # Destroy infrastructure
 ./deploy.sh destroy
+
+# Ansible only (requires VAULT_TOKEN)
+export VAULT_TOKEN=$(vault print token)
+./deploy.sh ansible
 ```
 
 ## 📖 Detailed Usage
 
-### 1. Pre-flight Checks
-
-Run validation without making any changes:
-
-```bash
-./deploy.sh checks
-```
-
-This will verify:
-
-- Required binaries are installed (tofu/terraform, ansible, vault, jq)
-- Project structure is correct
-- Configuration files exist
-- SSH keys are available
-- Vault connectivity and authentication
-- Required Vault secrets exist
-- Transit encryption engine is available
-- .gitignore is properly set up
-- Environment variables are set
-
-### 2. Planning (Dry-Run)
+### 1. Planning (Dry-Run)
 
 Preview what will be created without applying changes:
 
@@ -283,14 +273,14 @@ Preview what will be created without applying changes:
 This runs:
 
 1. All pre-flight checks
-2. Vault authentication via `vault_init.sh`
+2. Vault authentication and credential generation
 3. Terraform initialization (with Transit encryption backend)
 4. Terraform validation
 5. Terraform plan (shows resources to be created)
 
 **Note**: No infrastructure is created in this mode.
 
-### 3. Full Deployment
+### 2. Full Deployment
 
 Deploy complete infrastructure and configure NetBox:
 
@@ -322,7 +312,7 @@ Deploy complete infrastructure and configure NetBox:
 
 **Duration**: Typically 8-15 minutes depending on network speed and package downloads.
 
-### 4. Checking Status
+### 3. Checking Status
 
 View information about deployed infrastructure:
 
@@ -340,7 +330,7 @@ This shows:
 - Service status (PostgreSQL, Redis, NetBox, Nginx)
 - Ansible connectivity status
 
-### 5. Destroying Infrastructure
+### 4. Destroying Infrastructure
 
 Remove all deployed resources:
 
@@ -358,27 +348,17 @@ Remove all deployed resources:
 
 **Warning**: This is destructive and cannot be undone!
 
-### 6. Terraform-Only Workflow
-
-Run only Terraform without Ansible:
-
-```bash
-./deploy.sh terraform
-```
-
-Use this when:
-
-- You want to provision infrastructure and manually configure later
-- Testing Terraform changes
-- Debugging Terraform issues
-
-### 7. Ansible-Only Workflow
+### 5. Ansible-Only Workflow
 
 Run only Ansible without Terraform:
 
 ```bash
+# Set VAULT_TOKEN first (required for Ansible to access Vault)
+export VAULT_TOKEN=$(vault print token)
 ./deploy.sh ansible
 ```
+
+**Note**: VAULT_TOKEN is passed via environment variable (secure, not shown in logs).
 
 Use this when:
 
@@ -388,39 +368,91 @@ Use this when:
 - Recovering from partial deployment
 - Updating NetBox configuration
 
+### 6. Manual Deployment (Alternative to Automated Script)
+
+For advanced users who prefer manual control or need to debug individual steps:
+
+#### Step 1: Set Vault Environment
+
+```bash
+# Set your Vault server address
+export VAULT_ADDR="https://vault.example.com:8200"
+
+# Set your Vault username
+export VAULT_USERNAME="your_username"
+```
+
+#### Step 2: Authenticate with Vault
+
+```bash
+vault login -method=userpass username="${VAULT_USERNAME}"
+```
+
+#### Step 3: Generate AWS Credentials
+
+```bash
+vault read -format=json aws/proxmox/creds/tofu_state_backup | tee /tmp/aws_creds.json
+export AWS_ACCESS_KEY_ID=$(jq -r '.data.access_key' /tmp/aws_creds.json)
+export AWS_SECRET_ACCESS_KEY=$(jq -r '.data.secret_key' /tmp/aws_creds.json)
+export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+rm -f /tmp/aws_creds.json
+```
+
+#### Step 4: Set OpenTofu Provider Password
+
+```bash
+export TF_VAR_vault_password="your_vault_password"
+```
+
+#### Step 5: Initialize and Apply Terraform
+
+```bash
+cd terraform
+tofu init -backend-config=s3.backend.config
+tofu validate
+tofu plan
+tofu apply
+```
+
+#### Step 6: Create Ansible Inventory
+
+```bash
+# Get container IP from Terraform
+CONTAINER_IP=$(tofu output -raw lxc_ip_address | cut -d'/' -f1)
+
+# Create inventory
+cat > ../ansible/inventory.yml << EOF
+all:
+  children:
+    netbox:
+      hosts:
+        netbox-server:
+          ansible_host: ${CONTAINER_IP}
+          ansible_port: 22
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/ansible
+          ansible_python_interpreter: /usr/bin/python3
+      vars:
+        ansible_become: true
+        ansible_become_method: sudo
+EOF
+```
+
+#### Step 7: Run Ansible
+
+```bash
+cd ../ansible
+export VAULT_TOKEN=$(vault print token)
+ansible-playbook -i inventory.yml site.yml
+```
+
+**Note**: VAULT_TOKEN must be set for Ansible to access Vault secrets.
+
 ## ⚙️ Configuration
-
-### Vault Authentication Methods
-
-#### Method 1: Token Authentication (Development)
-
-```bash
-# In vault_init.sh
-export VAULT_ADDR="https://vault.yourdomain.com:8200"
-export VAULT_TOKEN="hvs.CAES..."
-```
-
-#### Method 2: Userpass Authentication (Recommended)
-
-```bash
-# In vault_init.sh
-export VAULT_ADDR="https://vault.yourdomain.com:8200"
-vault login -method=userpass username=netbox-automation
-```
-
-#### Method 3: AppRole Authentication (CI/CD)
-
-```bash
-# In vault_init.sh
-export VAULT_ADDR="https://vault.yourdomain.com:8200"
-export VAULT_ROLE_ID="your-role-id"
-export VAULT_SECRET_ID="your-secret-id"
-vault write auth/approle/login role_id=$VAULT_ROLE_ID secret_id=$VAULT_SECRET_ID
-```
 
 ### Required Vault Secrets
 
-The script expects these secrets in Vault:
+The deploy.sh script verifies these secrets in Vault:
 
 | Secret Path | Keys | Purpose |
 | ------------- | ------ | --------- |
@@ -431,8 +463,8 @@ The script expects these secrets in Vault:
 Verify secrets exist:
 
 ```bash
-# Source Vault authentication
-source terraform/vault_init.sh
+# Authenticate with Vault
+vault login -method=userpass username=your_username
 
 # Check secrets
 vault kv get secrets/proxmox/credentials
@@ -757,7 +789,9 @@ If Terraform fails mid-deployment:
 
 # Try to apply again (Terraform is idempotent)
 cd terraform
-source vault_init.sh
+# Authenticate with Vault
+vault login -method=userpass username=your_username
+export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
 tofu apply
 
 # Or destroy and start over
@@ -966,7 +1000,7 @@ If you encounter issues:
 
 1. **Check logs**: `cat logs/deployment_*.log`
 2. **Run pre-flight checks**: `./deploy.sh checks`
-3. **Verify Vault connectivity**: `source terraform/vault_init.sh && vault status`
+3. **Verify Vault connectivity**: `vault status && vault login`
 4. **Check deployment status**: `./deploy.sh status`
 5. **Review service logs**: See troubleshooting section above
 6. **Check Proxmox logs**: `/var/log/pveproxy/access.log`

@@ -510,26 +510,23 @@ The `deploy.sh` script provides enterprise-grade automation with:
 
 **Pre-flight Checks:**
 
-- Binary validation (tofu/terraform, ansible, ssh, vault, aws, git, jq)
+- Binary validation (tofu/terraform, ansible, ssh, vault, jq)
 - Vault connectivity and authentication testing
 - Directory structure validation
 - Configuration file checks (terraform.tfvars, s3.backend.config)
-- SSH key detection
-- .gitignore security checks
 
 **Vault Integration:**
 
 - Automatic Vault userpass authentication
 - Dynamic AWS credentials generation via Vault
+- VAULT_TOKEN passed via environment (secure, not in logs)
 - Environment variable management
-- vault_init.sh integration for credential setup
 
 **Environment Management:**
 
 - Interactive prompts for missing variables
 - Support for Vault-based credentials
 - Automatic credential detection and loading
-- Environment variable validation
 
 **Deployment Workflow:**
 
@@ -562,7 +559,7 @@ The `deploy.sh` script provides enterprise-grade automation with:
 **Command-Line Mode:**
 
 ```bash
-# Full deployment (Terraform + Ansible)
+# Full deployment (Vault + Terraform + Ansible)
 ./deploy.sh deploy
 
 # Dry-run - plan without applying changes
@@ -574,13 +571,8 @@ The `deploy.sh` script provides enterprise-grade automation with:
 # Destroy infrastructure (requires confirmation)
 ./deploy.sh destroy
 
-# Run only pre-flight checks
-./deploy.sh checks
-
-# Run only Terraform workflow
-./deploy.sh terraform
-
-# Run only Ansible workflow
+# Run only Ansible (requires VAULT_TOKEN)
+export VAULT_TOKEN=$(vault print token)
 ./deploy.sh ansible
 
 # Show help
@@ -596,7 +588,15 @@ The script supports environment variables for automation:
 ```bash
 export VAULT_ADDR='https://vault.example.com:8200'
 export VAULT_USERNAME='terraform'
-export VAULT_PASSWORD='your-vault-password'
+# Password is prompted interactively (not stored in environment)
+```
+
+**Standalone Ansible Execution:**
+
+```bash
+# Set VAULT_TOKEN for Ansible-only runs
+export VAULT_TOKEN=$(vault print token)
+./deploy.sh ansible
 ```
 
 **Optional (can be set in terraform.tfvars):**
@@ -605,13 +605,6 @@ export VAULT_PASSWORD='your-vault-password'
 export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
 export TF_VAR_lxc_ip_address="10.0.100.60/24"
 export TF_VAR_lxc_gateway="10.0.100.1"
-```
-
-**Helper Script:**
-
-```bash
-# The deploy.sh script automatically sources vault_init.sh if present
-# vault_init.sh handles Vault authentication and AWS credentials
 ```
 
 ### Logging
@@ -667,8 +660,16 @@ lxc_netbox/
 ├── README.md                         # This file
 ├── DEPLOYMENT.md                     # Detailed deployment guide
 ├── QUICKREF.sh                       # Quick reference commands
-├── deploy.sh                         # Automated deployment script
+├── deploy.sh                         # Main deployment script (~280 lines)
 ├── .gitignore                        # Git ignore patterns
+├── vault_policy.hcl.example          # Required Vault policy example
+│
+├── scripts/                          # Modular script components
+│   ├── common.sh                     # Logging, colors, utilities
+│   ├── vault.sh                      # Vault authentication & AWS credentials
+│   ├── terraform.sh                  # Terraform/OpenTofu operations
+│   └── ansible.sh                    # Ansible inventory & deployment
+│
 ├── logs/                             # Deployment logs
 │   └── README.md                     # Log management guide
 │
@@ -681,9 +682,7 @@ lxc_netbox/
 │   ├── backend.tf                    # S3 backend configuration
 │   ├── encryption.tf                 # Vault Transit encryption
 │   ├── terraform.tfvars.example      # Example variables
-│   ├── s3.backend.config.template    # Example backend config
-│   ├── vault_init.sh.example         # Vault auth helper example
-│   └── vault_policy.hcl.example      # Required Vault policy
+│   └── s3.backend.config.template    # Example backend config
 │
 └── ansible/                          # Configuration management
     ├── site.yml                      # Main playbook
@@ -691,31 +690,11 @@ lxc_netbox/
     ├── inventory.yml.example         # Example inventory
     └── roles/                        # Ansible roles
         ├── postgresql/               # PostgreSQL 17 installation
-        │   ├── README.md
-        │   ├── tasks/
-        │   └── handlers/
         ├── redis/                    # Redis cache server
-        │   ├── README.md
-        │   ├── tasks/
-        │   └── handlers/
         ├── netbox/                   # NetBox application
-        │   ├── README.md
-        │   ├── tasks/
-        │   ├── templates/
-        │   └── handlers/
         ├── systemd/                  # Systemd services
-        │   ├── README.md
-        │   ├── tasks/
-        │   ├── templates/
-        │   └── handlers/
         ├── nginx/                    # Nginx reverse proxy
-        │   ├── README.md
-        │   ├── tasks/
-        │   ├── templates/
-        │   └── handlers/
         └── superuser/                # Django admin user
-            ├── README.md
-            └── tasks/
 ```
 
 ## 🔄 Deployment Workflow
@@ -1476,7 +1455,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 For issues and questions:
 
 - Check [DEPLOYMENT.md](DEPLOYMENT.md) for detailed setup instructions
-- Review [Troubleshooting](#troubleshooting) section above
+- Review the Troubleshooting section in this document
 - Check [NetBox Documentation](https://docs.netbox.dev/)
 - Open an issue in the repository
 

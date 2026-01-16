@@ -44,4 +44,34 @@ terraform {
     # IMPORTANT: Variables are NOT allowed in backend blocks!
     # The backend is initialized before variables are evaluated.
   }
+
+  required_providers {
+    # Proxmox VE provider for VM and container management
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.90.0"
+    }
+
+    # AWS provider for S3 backend and optional resource management
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.27.0"
+    }
+
+    # Vault provider for secrets management
+    vault = {
+      source  = "hashicorp/vault"
+      version = "5.6.0"
+    }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "3.7.2"
+    }
+
+    netbox = {
+      source  = "e-breuninger/netbox"
+      version = "5.0.1"
+    }
+  }
 }

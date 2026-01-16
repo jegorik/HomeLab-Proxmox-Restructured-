@@ -49,6 +49,16 @@ variable "proxmox_user_name_vault_path" {
   type        = string
 }
 
+variable "proxmox_root_name_vault_path" {
+  description = "Vault path to Proxmox root name secret"
+  type        = string
+}
+
+variable "proxmox_root_password_vault_path" {
+  description = "Vault path to Proxmox root password secret"
+  type        = string
+}
+
 variable "s3_bucket_name_vault_path" {
   description = "Vault path to S3 bucket name secret"
   type        = string
@@ -178,17 +188,42 @@ variable "lxc_disk_storage" {
   default     = "local-lvm"
 }
 
-variable "lxc_mount_point_volume" {
-  description = "Host volume to bind mount into container (e.g., /rpool/data/vault)"
+variable "lxc_netbox_mount_point_volume" {
+  description = "Host volume to bind mount into container (e.g., /rpool/data/netbox)"
   type        = string
-  default     = "/rpool/data/vault"
+  default     = "/rpool/data/netbox"
 }
 
-variable "lxc_mount_point_path" {
+variable "lxc_netbox_mount_point_path" {
   description = "Mount point path inside the container"
   type        = string
-  default     = "/var/lib/vault/data/"
+  default     = "/opt/netbox"
 }
+
+variable "lxc_postgresql_mount_point_volume" {
+  description = "PostgresSql volume to bind mount into container (e.g., /rpool/data/netbox-db)"
+  type        = string
+  default     = "/rpool/data/netbox-db"
+}
+
+variable "lxc_postgresql_mount_point_path" {
+  description = "PostgresSql mount point path inside the container"
+  type        = string
+  default     = "/var/lib/postgresql"
+}
+
+variable "lxc_redis_mount_point_volume" {
+  description = "Redis volume to bind mount into container (e.g., /rpool/data/netbox-redis)"
+  type        = string
+  default     = "/rpool/data/netbox-redis"
+}
+
+variable "lxc_redis_mount_point_path" {
+  description = "Redis mount point path inside the container"
+  type        = string
+  default     = "/var/lib/redis"
+}
+
 
 variable "lxc_startup_order" {
   description = "Startup order for container (lower numbers start first)"

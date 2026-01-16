@@ -41,25 +41,53 @@
     mode: '0755'
   tags: ['install', 'directory']
 
+- name: Ensure NetBox installation directory exists with proper ownership
+  ansible.builtin.file:
+    path: "{{ netbox_install_dir }}"
+    state: directory
+    owner: "{{ netbox_user }}"
+    group: "{{ netbox_group }}"
+    mode: '0755'
+  tags: ['install', 'directory']
+
 - name: Check if NetBox is already cloned
   ansible.builtin.stat:
     path: "{{ netbox_install_dir }}/.git"
   register: netbox_git_check
   tags: ['install', 'git']
 
-- name: Clone NetBox repository from GitHub
+- name: Clone NetBox to temporary directory (fresh installation)
+  ansible.builtin.git:
+    repo: https://github.com/netbox-community/netbox.git
+    dest: /tmp/netbox-clone
+    version: "{{ netbox_version }}"
+    force: true
+  when: not netbox_git_check.stat.exists
+  tags: ['install', 'git']
+
+- name: Move NetBox files to installation directory
+  ansible.builtin.shell: |
+    # Remove all content except lost+found
+    find "{{ netbox_install_dir }}" -mindepth 1 -maxdepth 1 ! -name 'lost+found' -exec rm -rf {} +
+    # Move cloned files (including hidden .git)
+    mv /tmp/netbox-clone/* /tmp/netbox-clone/.* "{{ netbox_install_dir }}/" 2>/dev/null || true
+    # Cleanup
+    rm -rf /tmp/netbox-clone
+  when: not netbox_git_check.stat.exists
+  tags: ['install', 'git']
+
+- name: Update NetBox repository (existing installation from bind mount)
   ansible.builtin.git:
     repo: https://github.com/netbox-community/netbox.git
     dest: "{{ netbox_install_dir }}"
     version: "{{ netbox_version }}"
-    force: false
     update: true
   become: true
-  become_user: root
-  when: not netbox_git_check.stat.exists
-  tags: ['install', 'git']
+  become_user: "{{ netbox_user }}"
+  when: netbox_git_check.stat.exists
+  tags: ['install', 'git', 'update']
 
-- name: Set ownership of NetBox directory
+- name: Set ownership of NetBox directory (ensure all files owned by netbox user)
   ansible.builtin.file:
     path: "{{ netbox_install_dir }}"
     owner: "{{ netbox_user }}"

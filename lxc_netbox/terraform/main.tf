@@ -112,9 +112,23 @@ resource "proxmox_virtual_environment_container" "netbox" {
   # - For production: Use unprivileged + proper UID mapping, or mount via NFS/CIFS
   #
   # See: https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
+  
+  # NetBox application directory (persistent across container recreations)
   mount_point {
-    volume = var.lxc_mount_point_volume
-    path   = var.lxc_mount_point_path
+    volume = var.lxc_netbox_mount_point_volume
+    path   = var.lxc_netbox_mount_point_path
+  }
+
+  # PostgreSQL database directory (persistent database storage)
+  mount_point {
+    volume = var.lxc_postgresql_mount_point_volume
+    path   = var.lxc_postgresql_mount_point_path
+  }
+
+  # Redis cache directory (optional, for cache persistence)
+  mount_point {
+    volume = var.lxc_redis_mount_point_volume
+    path   = var.lxc_redis_mount_point_path
   }
 
   # Network configuration
