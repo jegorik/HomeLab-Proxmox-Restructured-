@@ -1,0 +1,82 @@
+# =============================================================================
+# LXC Base Template - NetBox Registration
+# =============================================================================
+# Automatically registers the container in NetBox for DCIM/IPAM tracking
+
+# -----------------------------------------------------------------------------
+# Virtual Machine in NetBox
+# -----------------------------------------------------------------------------
+
+resource "netbox_virtual_machine" "lxc" {
+  name         = var.lxc_hostname
+  description  = var.lxc_description
+  cluster_id   = var.netbox_cluster_id
+  site_id      = var.netbox_site_id
+  vcpus        = var.lxc_cpu_cores
+  memory_mb    = var.lxc_memory
+  disk_size_mb = (var.lxc_disk_size * 1024)
+
+  status = "active"
+
+  comments = <<-EOT
+    LXC Container deployed by lxc_vault_module  
+    Proxmox Node: ${var.proxmox_node}
+    VMID: ${var.lxc_id}
+    Created: ${timestamp()}
+  EOT
+
+  tags = var.lxc_tags
+
+  lifecycle {
+    ignore_changes = [
+      comments
+    ]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Network Interface in NetBox
+# -----------------------------------------------------------------------------
+
+resource "netbox_interface" "eth0" {
+  virtual_machine_id = netbox_virtual_machine.lxc.id
+  name               = var.interface_name
+
+  depends_on = [netbox_virtual_machine.lxc]
+}
+
+# -----------------------------------------------------------------------------
+# Virtual Disk in NetBox
+# -----------------------------------------------------------------------------
+
+resource "netbox_virtual_disk" "disk-01" {
+  name               = var.disk_name
+  description        = var.disk_description
+  size_mb            = (var.lxc_disk_size * 1024)
+  virtual_machine_id = netbox_virtual_machine.lxc.id
+}
+
+# -----------------------------------------------------------------------------
+# IP Address in NetBox
+# -----------------------------------------------------------------------------
+
+resource "netbox_ip_address" "primary" {
+  ip_address = var.lxc_ip_address
+  status     = "active"
+
+  object_type  = "virtualization.vminterface"
+  interface_id = netbox_interface.eth0.id
+
+  description = "${var.lxc_hostname} primary IP"
+
+  depends_on = [netbox_interface.eth0]
+}
+
+# Assign IP as primary for the VM
+resource "netbox_primary_ip" "lxc" {
+  virtual_machine_id = netbox_virtual_machine.lxc.id
+  ip_address_id      = netbox_ip_address.primary.id
+
+  depends_on = [netbox_ip_address.primary]
+}
+

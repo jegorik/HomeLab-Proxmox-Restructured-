@@ -496,3 +496,49 @@ variable "aws_region" {
     error_message = "AWS region must be in format: xx-xxxx-N (e.g., us-east-1, eu-central-1)."
   }
 }
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+variable "netbox_url" {
+  description = "NetBox server URL"
+  type        = string
+}
+
+variable "netbox_api_token" {
+  description = "NetBox API token (fallback if not using Vault)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "netbox_site_id" {
+  description = "NetBox site ID for the container"
+  type        = number
+  default     = 1
+}
+
+variable "netbox_cluster_id" {
+  description = "NetBox cluster ID for the container"
+  type        = number
+  default     = 1
+}
+
+variable "interface_name" {
+  description = "Name of the interface"
+  type        = string
+  default     = "eth0"
+}
+
+variable "disk_name" {
+  description = "Name of the disk"
+  type        = string
+  default     = "disk-01"
+}
+
+variable "disk_description" {
+  description = "Description of the disk"
+  type        = string
+  default     = "Main disk"
+}

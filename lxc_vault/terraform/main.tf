@@ -43,6 +43,9 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Use Vault secrets or fallback to variables
+  netbox_token = trimspace(file(pathexpand(var.netbox_api_token)))
 }
 
 # -----------------------------------------------------------------------------

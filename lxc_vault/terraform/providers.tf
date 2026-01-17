@@ -118,3 +118,15 @@ provider "aws" {
   # Uncomment and set var.aws_profile in terraform.tfvars
   # profile = var.aws_profile
 }
+
+# -----------------------------------------------------------------------------
+# NetBox Provider
+# -----------------------------------------------------------------------------
+
+provider "netbox" {
+  server_url = var.netbox_url
+  api_token  = local.netbox_token
+
+  # Skip TLS verification for self-signed certs
+  allow_insecure_https = true
+}
