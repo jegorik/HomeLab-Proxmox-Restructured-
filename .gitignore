@@ -73,6 +73,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# Development history
+projects_history/
+
 # Output Files
 outputs.json
 terraform-output.txt
