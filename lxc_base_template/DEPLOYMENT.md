@@ -57,7 +57,7 @@ vim terraform/terraform.tfvars
 ### Required Variables
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| ---------- | ------------- | --------- |
 | `vault_address` | Vault server URL | `https://vault.example.com:8200` |
 | `pve_api_url` | Proxmox API URL | `https://192.168.1.100:8006/api2/json` |
 | `netbox_url` | NetBox server URL | `https://netbox.example.com` |
