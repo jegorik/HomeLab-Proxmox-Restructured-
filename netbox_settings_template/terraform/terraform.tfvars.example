@@ -4,11 +4,21 @@
 # Copy this file to terraform.tfvars to configure your NetBox instance.
 
 # -----------------------------------------------------------------------------
-# Connection
+# Vault Connection
 # -----------------------------------------------------------------------------
 
-netbox_url = "https://netbox.example.com"
-# netbox_api_token = "..." # Sourced from Vault or env (TF_VAR_netbox_api_token)
+vault_address               = "https://vault.example.com"
+vault_skip_tls_verify       = true
+vault_kv_mount              = "secrets"
+netbox_api_token_vault_path = "proxmox/netbox_api_token"
+
+# -----------------------------------------------------------------------------
+# NetBox Connection
+# -----------------------------------------------------------------------------
+
+netbox_url      = "https://netbox.example.com"
+netbox_insecure = true
+# netbox_api_token = "..."  # Sourced from Vault (no need to set manually)
 
 # -----------------------------------------------------------------------------
 # Organization

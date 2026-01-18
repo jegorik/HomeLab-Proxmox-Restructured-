@@ -10,5 +10,9 @@ terraform {
       source  = "e-breuninger/netbox"
       version = ">= 3.0.0"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = ">= 4.0.0"
+    }
   }
 }

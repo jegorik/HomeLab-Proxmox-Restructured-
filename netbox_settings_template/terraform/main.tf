@@ -14,13 +14,25 @@ resource "netbox_region" "all" {
   description = each.value.description
 }
 
-resource "netbox_site_group" "all" {
-  for_each = var.site_groups
+# Parent site groups (without parent)
+resource "netbox_site_group" "parent" {
+  for_each = { for k, v in var.site_groups : k => v if v.parent == null }
 
   name        = each.key
   slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   description = each.value.description
-  parent_id   = each.value.parent != null ? netbox_site_group.all[each.value.parent].id : null
+}
+
+# Child site groups (with parent)
+resource "netbox_site_group" "child" {
+  for_each = { for k, v in var.site_groups : k => v if v.parent != null }
+
+  name        = each.key
+  slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
+  description = each.value.description
+  parent_id   = netbox_site_group.parent[each.value.parent].id
+
+  depends_on = [netbox_site_group.parent]
 }
 
 resource "netbox_site" "all" {
@@ -31,7 +43,7 @@ resource "netbox_site" "all" {
   status      = each.value.status
   description = each.value.description
   region_id   = each.value.region != null ? netbox_region.all[each.value.region].id : null
-  group_id    = each.value.group != null ? netbox_site_group.all[each.value.group].id : null
+  group_id    = each.value.group != null ? try(netbox_site_group.parent[each.value.group].id, netbox_site_group.child[each.value.group].id) : null
   facility    = each.value.facility
   asn_ids     = []
   timezone    = each.value.timezone
@@ -39,13 +51,25 @@ resource "netbox_site" "all" {
   longitude   = each.value.longitude
 }
 
-resource "netbox_tenant_group" "all" {
-  for_each = var.tenant_groups
+# Parent tenant groups (without parent)
+resource "netbox_tenant_group" "parent" {
+  for_each = { for k, v in var.tenant_groups : k => v if v.parent == null }
 
   name        = each.key
   slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   description = each.value.description
-  parent_id   = each.value.parent != null ? netbox_tenant_group.all[each.value.parent].id : null
+}
+
+# Child tenant groups (with parent)
+resource "netbox_tenant_group" "child" {
+  for_each = { for k, v in var.tenant_groups : k => v if v.parent != null }
+
+  name        = each.key
+  slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
+  description = each.value.description
+  parent_id   = netbox_tenant_group.parent[each.value.parent].id
+
+  depends_on = [netbox_tenant_group.parent]
 }
 
 resource "netbox_tenant" "all" {
@@ -54,7 +78,7 @@ resource "netbox_tenant" "all" {
   name        = each.key
   slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   description = each.value.description
-  group_id    = each.value.group != null ? netbox_tenant_group.all[each.value.group].id : null
+  group_id    = each.value.group != null ? try(netbox_tenant_group.parent[each.value.group].id, netbox_tenant_group.child[each.value.group].id) : null
 }
 
 # -----------------------------------------------------------------------------
@@ -108,10 +132,6 @@ resource "netbox_vlan_group" "all" {
   name        = each.key
   slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   description = each.value.description
-  # site_id is unexpected, replacing with scope logic if possible or commenting out
-  # site_id     = each.value.site != null ? netbox_site.all[each.value.site].id : null
-
-  # min_vid/max_vid replaced by vid_ranges
   vid_ranges = [[each.value.min_vid, each.value.max_vid]]
 }
 
@@ -136,7 +156,6 @@ resource "netbox_manufacturer" "all" {
 
   name = each.key
   slug = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
-  # description = each.value.description # Unexpected attribute
 }
 
 resource "netbox_device_type" "all" {
@@ -166,7 +185,6 @@ resource "netbox_platform" "all" {
   name            = each.key
   slug            = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   manufacturer_id = each.value.manufacturer != null ? netbox_manufacturer.all[each.value.manufacturer].id : null
-  # description     = each.value.description # Unexpected attribute
 }
 
 # -----------------------------------------------------------------------------

@@ -3,6 +3,33 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Vault Connection
+# -----------------------------------------------------------------------------
+
+variable "vault_address" {
+  description = "HashiCorp Vault server address"
+  type        = string
+}
+
+variable "vault_skip_tls_verify" {
+  description = "Skip TLS verification for Vault (use true for self-signed certs)"
+  type        = bool
+  default     = true
+}
+
+variable "vault_kv_mount" {
+  description = "Vault KV secrets engine mount path"
+  type        = string
+  default     = "secrets"
+}
+
+variable "netbox_api_token_vault_path" {
+  description = "Path within Vault KV mount for NetBox API token"
+  type        = string
+  default     = "netbox_api_token"
+}
+
+# -----------------------------------------------------------------------------
 # NetBox Connection
 # -----------------------------------------------------------------------------
 
@@ -11,10 +38,10 @@ variable "netbox_url" {
   type        = string
 }
 
-variable "netbox_api_token" {
-  description = "NetBox API token"
-  type        = string
-  sensitive   = true
+variable "netbox_insecure" {
+  description = "Skip TLS verification for NetBox (use true for self-signed certs)"
+  type        = bool
+  default     = true
 }
 
 # -----------------------------------------------------------------------------
