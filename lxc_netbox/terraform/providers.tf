@@ -1,9 +1,9 @@
 # =============================================================================
-# Terraform Provider Configuration - HashiCorp Vault LXC Container
+# Terraform Provider Configuration - NetBox LXC Container
 # =============================================================================
 #
 # This file configures the Terraform providers required for deploying a
-# HashiCorp Vault instance in a Proxmox LXC container with S3 state backend.
+# NetBox DCIM/IPAM instance in a Proxmox LXC container with S3 state backend.
 #
 # Providers Used:
 # - bpg/proxmox: Proxmox VE management (containers, VMs, storage)
@@ -78,7 +78,7 @@
 #
 # Author: HomeLab Infrastructure
 # Provider Versions: proxmox 0.89.1, aws 6.26.0, random 3.6.x
-# Last Updated: January 2025
+# Last Updated: January 2026
 # =============================================================================
 
 # -----------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# HashiCorp Vault LXC Container - Deployment Script
+# LXC Base Template - Deployment Script
 # =============================================================================
-# Simplified deployment using modular scripts
+# Deploys LXC containers with Vault and NetBox integration
 #
 # Usage:
 #   ./deploy.sh              # Interactive menu
@@ -60,7 +60,7 @@ check_files() {
         [[ -f "${TERRAFORM_DIR}/${f}" ]] && log_success "Found: ${f}" || { log_error "Missing: ${f}"; ok=false; }
     done
     
-    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars"
+    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars (using terraform.tfvars.example as reference)"
     
     return $([[ "${ok}" == true ]])
 }
@@ -101,11 +101,8 @@ deploy_full() {
     log_header "Deployment Complete"
     log_success "Time: $((duration / 60))m $((duration % 60))s"
     
-    echo ""
-    log_info "Next steps:"
-    echo "  1. Access Vault UI: https://<container-ip>:8200"
-    echo "  2. Get root token: ssh ansible@<ip> sudo cat /root/vault-keys.txt"
-    echo ""
+    # Show outputs
+    terraform_output deployment_summary 2>/dev/null || true
 }
 
 deploy_plan() {
@@ -163,7 +160,7 @@ check_status() {
     if [[ -f "${ANSIBLE_DIR}/inventory.yml" ]]; then
         log_success "Ansible inventory exists"
         cd "${ANSIBLE_DIR}"
-        ansible vault -m ping -i inventory.yml &>/dev/null && log_success "Container reachable" || log_warning "Container not reachable"
+        ansible all -m ping -i inventory.yml &>/dev/null && log_success "Container reachable" || log_warning "Container not reachable"
     fi
 }
 
@@ -175,8 +172,8 @@ show_menu() {
     clear
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════╗"
-    echo "║       HashiCorp Vault LXC Container Deployment       ║"
-    echo "║       OpenTofu/Terraform + Ansible                   ║"
+    echo "║         LXC Base Template - Deployment               ║"
+    echo "║         Vault + NetBox Integration                   ║"
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo ""

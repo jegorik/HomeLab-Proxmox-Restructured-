@@ -352,16 +352,26 @@ cd /path/to/HomeLab(Proxmox)/lxc_vault
 
 **What the script does:**
 
-- ✅ Validates all required binaries (tofu/terraform, ansible, ssh, aws)
-- ✅ Checks project structure and configuration files
-- ✅ Prompts for missing environment variables (e.g., `TF_VAR_pve_root_password`)
-- ✅ Supports both file-based credentials and environment variables
+- ✅ Validates all required binaries (tofu/terraform, ansible, ssh, jq)
+- ✅ Loads credentials from files or environment variables
+- ✅ Prompts for missing credentials (e.g., `TF_VAR_pve_root_password`)
 - ✅ Handles S3 backend configuration (with local state fallback)
 - ✅ Runs Terraform initialization, validation, and deployment
 - ✅ Creates Ansible inventory from Terraform outputs
 - ✅ Tests connectivity and deploys Vault configuration
 - ✅ Provides detailed logs and deployment summary
 - ✅ Safe destruction with double confirmation
+
+### Modular Architecture
+
+The deployment script uses modular components in `scripts/`:
+
+| Script | Purpose |
+|--------|--------|
+| `common.sh` | Logging, colors, utility functions |
+| `credentials.sh` | Load local credentials (PVE password, AWS) |
+| `terraform.sh` | Terraform/OpenTofu operations |
+| `ansible.sh` | Ansible inventory and deployment |
 
 ### Manual Deployment (Advanced)
 
@@ -625,9 +635,17 @@ grep -E "password|secret|tfvars" .gitignore
 ```text
 lxc_vault/
 ├── README.md                         # This file
-├── deploy.sh                         # Automated deployment script ⭐ NEW
+├── DEPLOYMENT.md                     # Detailed deployment guide
+├── QUICKREF.sh                       # Quick reference commands
+├── deploy.sh                         # Main deployment orchestrator
 ├── .gitignore                        # Git ignore patterns
 ├── logs/                             # Deployment logs (auto-generated)
+│
+├── scripts/                          # Modular script components
+│   ├── common.sh                     # Logging, colors, utilities
+│   ├── credentials.sh                # Local credentials (PVE password, AWS)
+│   ├── terraform.sh                  # Terraform/OpenTofu operations
+│   └── ansible.sh                    # Ansible inventory & deployment
 │
 ├── terraform/                        # Infrastructure provisioning
 │   ├── README.md                     # Terraform documentation
@@ -1041,4 +1059,4 @@ For issues and questions:
 
 **⚠️ Production Warning**: This configuration is designed for homelab/development use. For production deployments, implement additional security measures including TLS encryption, network segregation, proper access controls, and regular security audits.
 
-**Last Updated**: January 2026
+**Last Updated**: January 17, 2026

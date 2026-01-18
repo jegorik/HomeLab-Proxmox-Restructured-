@@ -22,12 +22,6 @@
 # - State file encryption (see encryption.tf)
 # - Version control via S3 versioning
 #
-# Required S3 Bucket Configuration:
-# - Versioning: ENABLED (to track state history)
-# - Encryption: ENABLED (AES-256 or AWS KMS)
-# - Public Access: BLOCKED (prevent unauthorized access)
-# - Object Lock: OPTIONAL (for compliance requirements)
-#
 # Author: HomeLab Infrastructure
 # Last Updated: January 2026
 # =============================================================================
@@ -46,32 +40,22 @@ terraform {
   }
 
   required_providers {
-    # Proxmox VE provider for VM and container management
-    proxmox = {
-      source  = "bpg/proxmox"
-      version = "0.90.0"
+    # NetBox provider for DCIM/IPAM management
+    netbox = {
+      source  = "e-breuninger/netbox"
+      version = ">= 3.0.0"
     }
 
-    # AWS provider for S3 backend and optional resource management
+    # AWS provider for S3 backend
     aws = {
       source  = "hashicorp/aws"
-      version = "6.27.0"
+      version = "~> 6.0"
     }
 
     # Vault provider for secrets management
     vault = {
       source  = "hashicorp/vault"
-      version = "5.6.0"
-    }
-
-    random = {
-      source  = "hashicorp/random"
-      version = "3.7.2"
-    }
-
-    netbox = {
-      source  = "e-breuninger/netbox"
-      version = "5.0.1"
+      version = ">= 4.0.0"
     }
   }
 }

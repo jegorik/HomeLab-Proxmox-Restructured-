@@ -8,32 +8,48 @@ cat << 'EOF'
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
+PROJECT STRUCTURE
+───────────────────────────────────────────────────────────────
+lxc_vault/
+├── deploy.sh           # Main deployment script (~230 lines)
+├── scripts/            # Modular script components
+│   ├── common.sh       #   Logging, colors, utilities
+│   ├── credentials.sh  #   Local file credentials (PVE password, AWS)
+│   ├── terraform.sh    #   Terraform/OpenTofu operations
+│   └── ansible.sh      #   Ansible inventory & deployment
+├── terraform/          # Infrastructure as Code
+├── ansible/            # Configuration management
+│   └── roles/          # vault, tls, systemd
+└── logs/               # Deployment logs
+
 BASIC USAGE
 ───────────────────────────────────────────────────────────────
-  ./deploy.sh              # Interactive menu
+  ./deploy.sh              # Interactive menu (recommended)
   ./deploy.sh deploy       # Full deployment (Terraform + Ansible)
   ./deploy.sh plan         # Dry-run (preview changes)
   ./deploy.sh status       # Check deployment status
   ./deploy.sh destroy      # Destroy infrastructure
+  ./deploy.sh ansible      # Ansible only
   ./deploy.sh help         # Show help
 
-ADVANCED USAGE
+INTERACTIVE MENU OPTIONS
 ───────────────────────────────────────────────────────────────
-  ./deploy.sh checks       # Pre-flight checks only
-  ./deploy.sh terraform    # Terraform workflow only
-  ./deploy.sh ansible      # Ansible workflow only
+  1) Deploy Infrastructure (full)
+  2) Dry-Run / Plan
+  3) Check Status
+  4) Destroy Infrastructure
+  5) Ansible Only
+  0) Exit
 
-ENVIRONMENT VARIABLES
+PREREQUISITES
 ───────────────────────────────────────────────────────────────
-Required:
-  TF_VAR_pve_root_password    # Proxmox root@pam password
-  OR file: ~/.ssh/pve_root_password
+Required binaries: tofu/terraform, ansible, jq, ssh
 
-Optional (can be in terraform.tfvars):
-  TF_VAR_proxmox_endpoint     # https://proxmox-ip:8006
-  TF_VAR_proxmox_node         # pve
-  TF_VAR_lxc_ip_address       # 10.0.100.50/24
-  TF_VAR_lxc_gateway          # 10.0.100.1
+CREDENTIAL SOURCES (Priority Order)
+───────────────────────────────────────────────────────────────
+1. Environment variables (TF_VAR_pve_root_password)
+2. File-based (~/.ssh/pve_root_password)
+3. Interactive prompts
 
 QUICK SETUP
 ───────────────────────────────────────────────────────────────
@@ -50,35 +66,12 @@ QUICK SETUP
    cp s3.backend.config.template s3.backend.config
    vim s3.backend.config
 
-4. Generate state encryption passphrase:
+4. Generate state encryption passphrase (optional):
    openssl rand -base64 32 > ~/.ssh/state_passphrase
    chmod 600 ~/.ssh/state_passphrase
 
 5. Deploy:
    ./deploy.sh deploy
-
-LOGS
-───────────────────────────────────────────────────────────────
-Location: logs/deployment_YYYYMMDD_HHMMSS.log
-
-View:      tail -f logs/deployment_*.log
-Search:    grep ERROR logs/*.log
-Filter:    grep -E "ERROR|WARNING" logs/*.log
-
-TROUBLESHOOTING
-───────────────────────────────────────────────────────────────
-Binary not found:
-  ./deploy.sh checks
-
-Terraform fails:
-  cd terraform && tofu plan
-
-Ansible connectivity fails:
-  cd ansible && ansible vault -m ping
-
-Re-run specific component:
-  ./deploy.sh terraform    # or
-  ./deploy.sh ansible
 
 AFTER DEPLOYMENT
 ───────────────────────────────────────────────────────────────
@@ -86,40 +79,37 @@ AFTER DEPLOYMENT
    ssh ansible@<ip> sudo cat /root/vault-keys.txt
 
 2. Access Vault UI:
-   # URL from: ./deploy.sh status
+   https://<container-ip>:8200
 
 3. Secure keys:
    - Save to password manager
-   - Delete from container
-   - ssh ansible@<ip> sudo rm /root/vault-keys.txt
+   - Delete from container:
+     ssh ansible@<ip> sudo rm /root/vault-keys.txt
 
-CREDENTIAL PRIORITY
+COMMON COMMANDS
 ───────────────────────────────────────────────────────────────
-1. Environment variables (TF_VAR_*)     [Highest]
-2. File-based (~/.ssh/pve_root_password)
-3. Interactive prompts
-4. terraform.tfvars                     [Lowest]
+# Get container IP
+cd terraform && tofu output lxc_ip_address
 
-PRE-REQUISITES CHECK
+# SSH to container
+ssh ansible@<container-ip>
+
+# Check Vault status
+ssh ansible@<ip> vault status
+
+# View logs
+tail -f logs/deployment_*.log
+
+TROUBLESHOOTING
 ───────────────────────────────────────────────────────────────
-Required Software:
-  ✓ OpenTofu/Terraform
-  ✓ Ansible
-  ✓ SSH client
-  ✓ Git
-  ✓ jq
-  ✓ AWS CLI (optional for S3 backend)
+Binary not found:
+  ./deploy.sh plan   # Will check binaries
 
-Required Files:
-  ✓ terraform/terraform.tfvars
-  ✓ ~/.ssh/pve_ssh (SSH keys)
-  ✓ ~/.ssh/ansible (SSH keys)
-  ✓ ~/.ssh/state_passphrase (optional)
+Terraform fails:
+  cd terraform && tofu plan
 
-Proxmox:
-  ✓ LXC template downloaded
-  ✓ Network bridge (vmbr0)
-  ✓ Root@pam credentials
+Ansible connectivity fails:
+  cd ansible && ansible vault -m ping -i inventory.yml
 
 DOCUMENTATION
 ───────────────────────────────────────────────────────────────
@@ -128,14 +118,4 @@ Main README:     README.md
 Terraform:       terraform/README.md
 Ansible:         ansible/README.md
 
-SAFETY FEATURES
-───────────────────────────────────────────────────────────────
-✓ Pre-flight validation
-✓ Dry-run mode available
-✓ Confirmation prompts for destructive actions
-✓ Double confirmation for destroy
-✓ Comprehensive logging
-✓ Error recovery instructions
-
 EOF
-

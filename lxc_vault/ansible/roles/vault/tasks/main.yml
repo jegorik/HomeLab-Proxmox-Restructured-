@@ -32,26 +32,26 @@
 - name: Install Vault dependencies
   ansible.builtin.apt:
     name:
-      - python3          # Python runtime
-      - python3-pip      # Python package installer
-      - python3-venv     # Virtual environment support
-      - python3-dev      # Python development headers
-      - wget             # File download utility
-      - gpg              # GNU Privacy Guard for key verification
-      - curl             # URL transfer utility
-      - unzip            # Archive extraction
-      - lsb-release      # Linux Standard Base version info
-      - ca-certificates  # SSL/TLS certificate authorities
-      - sudo             # Elevated privilege execution
+      - python3 # Python runtime
+      - python3-pip # Python package installer
+      - python3-venv # Virtual environment support
+      - python3-dev # Python development headers
+      - wget # File download utility
+      - gpg # GNU Privacy Guard for key verification
+      - curl # URL transfer utility
+      - unzip # Archive extraction
+      - lsb-release # Linux Standard Base version info
+      - ca-certificates # SSL/TLS certificate authorities
+      - sudo # Elevated privilege execution
     state: present
     update_cache: true
-  tags: ['install', 'dependencies']
+  tags: ["install", "dependencies"]
 
-- name: Create create keyring directory
+- name: Create keyring directory
   ansible.builtin.file:
     path: "{{ vault_keyring_dir }}"
     state: directory
-  tags: ['install', 'directory']
+  tags: ["install", "directory"]
 
 # Add HashiCorp's official GPG key and APT repository
 # This ensures packages are verified and come from official sources
@@ -62,7 +62,7 @@
     tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | 
     tee /etc/apt/sources.list.d/hashicorp.list
-  tags: ['install', 'repository']
+  tags: ["install", "repository"]
 
 # Install Vault from HashiCorp's official repository
 # Using -qq for quiet output, -y for automatic yes to prompts
@@ -70,7 +70,7 @@
   ansible.builtin.shell: |
     apt-get update -qq
     apt-get install -y -qq vault
-  tags: ['install', 'vault']
+  tags: ["install", "vault"]
 
 # Create dedicated system user for Vault service
 # - System user (no login shell, no home directory in /home)
@@ -82,7 +82,7 @@
     if ! id -u vault > /dev/null 2>&1; then
       useradd --system --home /etc/vault.d --shell /bin/false vault
     fi
-  tags: ['install', 'user']
+  tags: ["install", "user"]
 
 # Create required directories with proper ownership and permissions
 # - vault_data_dir: Stores Vault's encrypted data (755)
@@ -96,9 +96,19 @@
     recurse: true
     mode: "{{ item.mode }}"
   loop:
-    - { path: "{{ vault_data_dir }}", owner: "{{ vault_user }}", group: "{{ vault_group }}", mode: '0755' }
-    - { path: "{{ vault_config_dir }}", owner: "{{ vault_user }}", group: "{{ vault_group }}", mode: '0750'  }
-  tags: ['install', 'user-directories']
+    - {
+        path: "{{ vault_data_dir }}",
+        owner: "{{ vault_user }}",
+        group: "{{ vault_group }}",
+        mode: "0755",
+      }
+    - {
+        path: "{{ vault_config_dir }}",
+        owner: "{{ vault_user }}",
+        group: "{{ vault_group }}",
+        mode: "0750",
+      }
+  tags: ["install", "user-directories"]
 
 # Deploy Vault configuration from Jinja2 template
 # Configuration includes:
@@ -112,5 +122,5 @@
     dest: "{{ vault_config_path }}"
     owner: "{{ vault_user }}"
     group: "{{ vault_group }}"
-    mode: '0640'
-  tags: [ 'install', 'configuration' ]
+    mode: "0640"
+  tags: ["install", "configuration"]

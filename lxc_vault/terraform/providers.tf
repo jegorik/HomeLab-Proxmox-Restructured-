@@ -78,7 +78,7 @@
 #
 # Author: HomeLab Infrastructure
 # Provider Versions: proxmox 0.89.1, aws 6.26.0, random 3.6.x
-# Last Updated: December 2025
+# Last Updated: January 2026
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -117,4 +117,16 @@ provider "aws" {
   # Optional: AWS CLI profile to use
   # Uncomment and set var.aws_profile in terraform.tfvars
   # profile = var.aws_profile
+}
+
+# -----------------------------------------------------------------------------
+# NetBox Provider
+# -----------------------------------------------------------------------------
+
+provider "netbox" {
+  server_url = var.netbox_url
+  api_token  = local.netbox_token
+
+  # Skip TLS verification for self-signed certs
+  allow_insecure_https = true
 }

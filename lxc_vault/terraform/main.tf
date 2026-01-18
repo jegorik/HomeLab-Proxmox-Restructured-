@@ -27,7 +27,7 @@
 # 5. Configure authentication methods
 #
 # Author: HomeLab Infrastructure
-# Last Updated: December 2025
+# Last Updated: January 2026
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -43,6 +43,9 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Use Vault secrets or fallback to variables
+  netbox_token = trimspace(file(pathexpand(var.netbox_api_token)))
 }
 
 # -----------------------------------------------------------------------------

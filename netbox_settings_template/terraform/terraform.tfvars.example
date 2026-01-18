@@ -1,0 +1,158 @@
+# =============================================================================
+# NetBox Settings Template - Example Configuration
+# =============================================================================
+# Copy this file to terraform.tfvars to configure your NetBox instance.
+
+# -----------------------------------------------------------------------------
+# Vault Connection
+# -----------------------------------------------------------------------------
+
+vault_address               = "https://vault.example.com"
+vault_skip_tls_verify       = true
+vault_kv_mount              = "secrets"
+netbox_api_token_vault_path = "proxmox/netbox_api_token"
+
+# -----------------------------------------------------------------------------
+# NetBox Connection
+# -----------------------------------------------------------------------------
+
+netbox_url      = "https://netbox.example.com"
+netbox_insecure = true
+# netbox_api_token = "..."  # Sourced from Vault (no need to set manually)
+
+# -----------------------------------------------------------------------------
+# Organization
+# -----------------------------------------------------------------------------
+
+regions = {
+  "Europe" = { description = "European operations" }
+  "US"     = { description = "US operations" }
+}
+
+site_groups = {
+  "Germany" = {
+    parent      = null
+    description = "Sites in Germany"
+  }
+}
+
+sites = {
+  "FRA1" = {
+    status      = "active"
+    region      = "Europe"
+    group       = "Germany"
+    description = "Frankfurt Data Center 1"
+    timezone    = "Europe/Berlin"
+  }
+}
+
+tenants = {
+  "Internal" = { description = "Internal IT" }
+  "Customers" = { description = "External Customers" }
+}
+
+# -----------------------------------------------------------------------------
+# IPAM
+# -----------------------------------------------------------------------------
+
+rirs = {
+  "RFC1918" = {
+    is_private  = true
+    description = "Private address space"
+  }
+}
+
+aggregates = {
+  "10.0.0.0/8" = { rir = "RFC1918", description = "Private corp network" }
+}
+
+vrfs = {
+  "MGMT" = { rd = "65000:1", description = "Management VRF" }
+}
+
+prefixes = {
+  "10.1.0.0/24" = {
+    site        = "FRA1"
+    status      = "active"
+    description = "FRA1 Management LAN"
+    vrf         = "MGMT"
+  }
+}
+
+vlans = {
+  "Management" = { vid = 10, site = "FRA1", status = "active" }
+  "Servers"    = { vid = 20, site = "FRA1", status = "active" }
+}
+
+# -----------------------------------------------------------------------------
+# DCIM
+# -----------------------------------------------------------------------------
+
+manufacturers = {
+  "Cisco"    = {}
+  "Juniper"  = {}
+  "Dell"     = {}
+  "Generic"  = {}
+}
+
+device_types = {
+  "Cisco CSR1000v" = {
+    manufacturer = "Cisco"
+    model        = "CSR1000v"
+    u_height     = 0
+  }
+  "Dell R740" = {
+    manufacturer = "Dell"
+    model        = "PowerEdge R740"
+    u_height     = 2
+  }
+}
+
+device_roles = {
+  "Router"  = { color = "ff0000", vm_role = true }
+  "Switch"  = { color = "00ff00" }
+  "Server"  = { color = "0000ff", vm_role = true }
+  "Firewall"= { color = "ff9800", vm_role = true }
+}
+
+platforms = {
+  "Cisco IOS" = { manufacturer = "Cisco" }
+  "Linux"     = { manufacturer = "Generic" }
+}
+
+# -----------------------------------------------------------------------------
+# Virtualization
+# -----------------------------------------------------------------------------
+
+cluster_types = {
+  "Proxmox" = {}
+  "VMware"  = {}
+}
+
+clusters = {
+  "PVE-Cluster-01" = {
+    type = "Proxmox"
+    site = "FRA1"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Extras
+# -----------------------------------------------------------------------------
+
+tags = {
+  "Production" = { color = "4caf50" }
+  "Staging"    = { color = "ffeb3b" }
+}
+
+# -----------------------------------------------------------------------------
+# AWS / Encryption Configuration
+# -----------------------------------------------------------------------------
+
+# AWS region for S3 backend
+aws_region = "eu-central-1"
+
+# Vault Transit encryption key (must exist in Vault)
+transit_key_name    = "tofu-state-encryption"
+transit_engine_path = "transit"
+transit_key_length  = 32

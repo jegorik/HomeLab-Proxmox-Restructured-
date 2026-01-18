@@ -6,13 +6,15 @@
 # These contain sensitive data and should never be committed
 *.tfstate
 *.tfstate.*
-tfplan
 *.tfstate.backup
 *.backend.config
 
 # Terraform/OpenTofu Variable Files
 # Contains sensitive configuration like API tokens and passwords
-terraform/terraform.tfvars
+terraform.tfvars
+*.tfvars
+!*.tfvars.example
+tfplan
 *.auto.tfvars
 *.auto.tfvars.json
 
@@ -73,9 +75,6 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Development history
-projects_history/
-
 # Output Files
 outputs.json
 terraform-output.txt
@@ -98,6 +97,8 @@ id_ed25519.pub
 
 # Logs
 *.log
+logs/
+logs/*.log
 
 # Ansible inventory files
 inventory.ini
@@ -113,6 +114,13 @@ ansible-vault-pass
 # Ansible encrypted files
 *.enc
 *.vault
+
+# Credential Cache Files
+# Encrypted cache for Vault credentials
+.terraform/*/credentials.enc
+.terraform/lxc-netbox/credentials.enc
+terraform-creds.key
+terraform-creds.key.pub
 
 ### JetBrains template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -190,5 +198,16 @@ fabric.properties
 # Editor-based Rest Client
 .idea/httpRequests
 
+# -----------------------------------------------------------------------------
+# Scripts
+# -----------------------------------------------------------------------------
+# Vault initialization script with sensitive defaults
+vault_init.sh
+!vault_init.sh.example
+
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+# Ansible playbooks with sensitive Vault URLs and paths
+*/site.yml
+!*/site.yml.example

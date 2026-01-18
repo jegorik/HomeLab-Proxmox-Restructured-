@@ -14,7 +14,7 @@ This guide covers the automated deployment script (`deploy.sh`) for the HashiCor
 
 ## 🔍 Overview
 
-The `deploy.sh` script is a professional-grade bash automation tool that handles the complete lifecycle of your Vault infrastructure deployment on Proxmox. It combines pre-flight validation, interactive prompts, Terraform/OpenTofu provisioning, and Ansible configuration management into a single, user-friendly interface.
+The `deploy.sh` script is a modular automation tool that handles the complete lifecycle of your Vault infrastructure deployment on Proxmox. It uses separate script modules (`scripts/`) for better maintainability and combines credential loading, Terraform/OpenTofu provisioning, and Ansible configuration management into a single, user-friendly interface.
 
 ### Key Benefits
 
@@ -100,9 +100,7 @@ The interactive menu provides these options:
 2. **Dry-Run / Plan** - Preview changes without applying
 3. **Check Status** - View current deployment status
 4. **Destroy Infrastructure** - Remove all resources
-5. **Run Pre-flight Checks Only** - Validate environment
-6. **Run Terraform Only** - Infrastructure provisioning only
-7. **Run Ansible Only** - Configuration management only
+5. **Ansible Only** - Configuration management only
 
 ### Command-Line Mode (For Automation)
 
