@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Common Functions and Variables for LXC Base Template
+# Common Functions and Variables for NetBox Settings Template
 # =============================================================================
 
 # Prevent multiple sourcing

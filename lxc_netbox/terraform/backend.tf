@@ -29,7 +29,7 @@
 # - Object Lock: OPTIONAL (for compliance requirements)
 #
 # Author: HomeLab Infrastructure
-# Last Updated: December 2025
+# Last Updated: January 2026
 # =============================================================================
 
 terraform {

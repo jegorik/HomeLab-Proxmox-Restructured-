@@ -174,7 +174,53 @@ sequenceDiagram
 
 ---
 
-### 3. **Future Projects**
+### 3. **lxc_base_template** - LXC Container Template
+
+**Purpose**: Reusable template for creating new LXC container projects
+
+**Status**: 📋 Template (not directly deployable)
+
+**Key Features**:
+
+- Starting point for new LXC container projects
+- Vault integration for secrets management
+- Automatic NetBox registration
+- Modular architecture (scripts/, terraform/, ansible/)
+- Security hardened (SSH key-only, UFW firewall)
+
+**Documentation**: See [lxc_base_template/README.md](lxc_base_template/README.md)
+
+**Usage**: Copy this template to create new container projects
+
+---
+
+### 4. **netbox_settings_template** - NetBox Configuration
+
+**Purpose**: Data-driven configuration of NetBox instance settings
+
+**Status**: 📋 Template for NetBox initial configuration
+
+**Key Features**:
+
+- Data-driven configuration via `terraform.tfvars`
+- Bulk creation of Sites, Prefixes, VLANs, Device Types
+- Vault integration for API token and state encryption
+- S3 remote backend with state locking
+- Covers Organization, IPAM, DCIM, Virtualization
+
+**Documentation**: See [netbox_settings_template/README.md](netbox_settings_template/README.md)
+
+**Deployment Order**: 🥉 **After NetBox** - Requires working NetBox instance
+
+**Prerequisites**:
+
+- lxc_netbox deployed and running
+- NetBox API token stored in Vault
+- Vault Transit engine for state encryption
+
+---
+
+### 5. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -220,7 +266,8 @@ Additional services will be added following the same patterns and deployment ord
 | --------- | ----------- | --------------------- |
 | **lxc_vault** | None | N/A (foundation) |
 | **lxc_netbox** | lxc_vault | Transit engine, KV secrets, userpass auth |
-| **Future Projects** | TBD | TBD |
+| **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
+| **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
 ## 🎯 Getting Started
 
@@ -412,7 +459,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 17, 2026
+**Last Updated**: January 18, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

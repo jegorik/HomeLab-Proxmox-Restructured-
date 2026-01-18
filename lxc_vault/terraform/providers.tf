@@ -78,7 +78,7 @@
 #
 # Author: HomeLab Infrastructure
 # Provider Versions: proxmox 0.89.1, aws 6.26.0, random 3.6.x
-# Last Updated: December 2025
+# Last Updated: January 2026
 # =============================================================================
 
 # -----------------------------------------------------------------------------
