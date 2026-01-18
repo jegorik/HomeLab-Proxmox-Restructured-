@@ -1,18 +1,9 @@
 # =============================================================================
 # NetBox Settings Template - Versions
 # =============================================================================
+# Note: required_providers are defined in backend.tf to keep backend and
+# provider declarations together.
 
 terraform {
   required_version = ">= 1.0.0"
-
-  required_providers {
-    netbox = {
-      source  = "e-breuninger/netbox"
-      version = ">= 3.0.0"
-    }
-    vault = {
-      source  = "hashicorp/vault"
-      version = ">= 4.0.0"
-    }
-  }
 }

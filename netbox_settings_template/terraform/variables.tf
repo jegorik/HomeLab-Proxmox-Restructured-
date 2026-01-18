@@ -30,6 +30,43 @@ variable "netbox_api_token_vault_path" {
 }
 
 # -----------------------------------------------------------------------------
+# AWS Configuration (for S3 Backend)
+# -----------------------------------------------------------------------------
+
+variable "aws_region" {
+  description = "AWS region for S3 backend state storage"
+  type        = string
+  default     = "eu-central-1"
+
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]$", var.aws_region))
+    error_message = "AWS region must be in format: xx-xxxx-N (e.g., us-east-1, eu-central-1)."
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Encryption Configuration (Vault Transit)
+# -----------------------------------------------------------------------------
+
+variable "transit_engine_path" {
+  description = "Vault Transit secrets engine mount path"
+  type        = string
+  default     = "transit"
+}
+
+variable "transit_key_name" {
+  description = "Name of the encryption key in Vault Transit engine"
+  type        = string
+  default     = "tofu-state-encryption"
+}
+
+variable "transit_key_length" {
+  description = "Length of the encryption key in bytes (32 = 256-bit AES)"
+  type        = number
+  default     = 32
+}
+
+# -----------------------------------------------------------------------------
 # NetBox Connection
 # -----------------------------------------------------------------------------
 
@@ -84,6 +121,12 @@ variable "sites" {
   default = {}
 }
 
+variable "site_name" {
+  description = "Name of the site"
+  type        = string
+  default     = "HomeLabSite"
+}
+
 variable "tenants" {
   description = "Map of tenants to create"
   type = map(object({
@@ -92,6 +135,12 @@ variable "tenants" {
     group       = optional(string) # Tenant group slug
   }))
   default = {}
+}
+
+variable "tenant_name" {
+  description = "Name of the tenant"
+  type        = string
+  default     = "HomeLabTenant"
 }
 
 variable "tenant_groups" {
@@ -206,6 +255,18 @@ variable "device_types" {
   default = {}
 }
 
+variable "device_type_id" {
+  description = "Device type ID"
+  type        = number
+  default     = 0
+}
+
+variable "device_type_model" {
+  description = "Model of the device type"
+  type        = string
+  default     = "Custom"
+}
+
 variable "device_roles" {
   description = "Map of Device Roles"
   type = map(object({
@@ -217,6 +278,12 @@ variable "device_roles" {
   default = {}
 }
 
+variable "device_role_name" {
+  description = "Name of the device role"
+  type        = string
+  default     = "Hypervisor"
+}
+
 variable "platforms" {
   description = "Map of Platforms"
   type = map(object({
@@ -225,6 +292,12 @@ variable "platforms" {
     slug         = optional(string)
   }))
   default = {}
+}
+
+variable "device_name" {
+  description = "Name of the device"
+  type        = string
+  default     = "HomeLab"
 }
 
 # -----------------------------------------------------------------------------
@@ -260,6 +333,12 @@ variable "clusters" {
     tenant      = optional(string)
   }))
   default = {}
+}
+
+variable "cluster_name" {
+  description = "Name of the cluster"
+  type        = string
+  default     = "PVE-Cluster-01"
 }
 
 # -----------------------------------------------------------------------------

@@ -132,7 +132,7 @@ resource "netbox_vlan_group" "all" {
   name        = each.key
   slug        = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
   description = each.value.description
-  vid_ranges = [[each.value.min_vid, each.value.max_vid]]
+  vid_ranges  = [[each.value.min_vid, each.value.max_vid]]
 }
 
 resource "netbox_vlan" "all" {
@@ -187,6 +187,38 @@ resource "netbox_platform" "all" {
   manufacturer_id = each.value.manufacturer != null ? netbox_manufacturer.all[each.value.manufacturer].id : null
 }
 
+data "netbox_cluster" "cluster_01" {
+  name = var.cluster_name
+}
+
+data "netbox_device_type" "device_type_01" {
+  model = var.device_type_model
+}
+
+data "netbox_device_role" "device_role_01" {
+  name = var.device_role_name
+}
+
+data "netbox_site" "site_01" {
+  name = var.site_name
+}
+
+data "netbox_tenant" "tenant_01" {
+  name = var.tenant_name
+}
+
+
+resource "netbox_device" "device_01" {
+  name           = var.device_name
+  device_type_id = data.netbox_device_type.device_type_01.id
+  role_id        = data.netbox_device_role.device_role_01.id
+  site_id        = data.netbox_site.site_01.id
+  cluster_id     = data.netbox_cluster.cluster_01.id
+  tenant_id      = data.netbox_tenant.tenant_01.id
+  status         = "active"
+  depends_on     = [data.netbox_cluster.cluster_01, data.netbox_device_type.device_type_01, data.netbox_device_role.device_role_01, data.netbox_site.site_01, data.netbox_tenant.tenant_01]
+}
+
 # -----------------------------------------------------------------------------
 # 4. Virtualization
 # -----------------------------------------------------------------------------
@@ -196,7 +228,6 @@ resource "netbox_cluster_type" "all" {
 
   name = each.key
   slug = coalesce(each.value.slug, replace(lower(each.key), " ", "-"))
-  # description = each.value.description # Unexpected attribute
 }
 
 resource "netbox_cluster_group" "all" {
@@ -215,8 +246,7 @@ resource "netbox_cluster" "all" {
   cluster_group_id = each.value.group != null ? netbox_cluster_group.all[each.value.group].id : null
   site_id          = each.value.site != null ? netbox_site.all[each.value.site].id : null
   description      = each.value.description
-  # status           = each.value.status # Unexpected attribute
-  tenant_id = each.value.tenant != null ? netbox_tenant.all[each.value.tenant].id : null
+  tenant_id        = each.value.tenant != null ? netbox_tenant.all[each.value.tenant].id : null
 }
 
 # -----------------------------------------------------------------------------

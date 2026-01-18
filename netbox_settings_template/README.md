@@ -9,6 +9,8 @@ This template allows you to define your infrastructure (Sites, Regions, Prefixes
 - **Data-Driven**: No need to edit Terraform code. Define everything in `terraform.tfvars`.
 - **Bulk Creation**: Manage lists of sites, prefixes, and devices easily.
 - **Vault Integration**: Securely fetches NetBox API tokens from HashiCorp Vault.
+- **Remote State**: S3 backend with state locking.
+- **State Encryption**: Vault Transit engine for tfstate encryption.
 - **Comprehensive Coverage**: Organization, IPAM, DCIM, Virtualization, and Extras.
 
 ## Prerequisites
@@ -16,13 +18,34 @@ This template allows you to define your infrastructure (Sites, Regions, Prefixes
 - OpenTofu >= 1.0 or Terraform >= 1.5
 - HashiCorp Vault (running and accessible)
 - NetBox instance with API access
+- AWS S3 bucket for state storage
+- Vault Transit engine enabled with encryption key
 
-### Vault Secret Required
-
-Store your NetBox API token in Vault:
+### Vault Setup
 
 ```bash
+# Store NetBox API token
 vault kv put secrets/proxmox/netbox_api_token token="your-netbox-api-token"
+
+# Enable Transit engine (if not already)
+vault secrets enable transit
+
+# Create encryption key
+vault write -f transit/keys/tofu-state-encryption
+```
+
+### AWS Credentials
+
+Get dynamic credentials from Vault or configure static credentials:
+
+```bash
+# Option 1: Vault dynamic credentials
+vault read -format=json aws/proxmox/creds/tofu_state_backup | jq -r '.data'
+export AWS_ACCESS_KEY_ID="<access_key>"
+export AWS_SECRET_ACCESS_KEY="<secret_key>"
+
+# Option 2: Static credentials via AWS CLI profile
+aws configure --profile tofu-backup
 ```
 
 ## Quick Start
@@ -31,10 +54,10 @@ vault kv put secrets/proxmox/netbox_api_token token="your-netbox-api-token"
 
 ```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+cp terraform/s3.backend.config.template terraform/s3.backend.config
 vim terraform/terraform.tfvars
+vim terraform/s3.backend.config
 ```
-
-Edit with your actual Vault address, NetBox URL, and desired configuration.
 
 ### 2. Authenticate to Vault
 
@@ -44,73 +67,53 @@ vault login -method=userpass username=YOUR_USER
 export VAULT_TOKEN=$(vault print token)
 ```
 
-### 3. Run Terraform
+### 3. Deploy
 
 ```bash
-# Initialize
-./apply.sh init
+# Interactive menu
+./deploy.sh
 
-# Plan
-./apply.sh plan
-
-# Apply
-./apply.sh apply
+# Or use CLI commands:
+./deploy.sh plan     # Dry-run
+./deploy.sh deploy   # Full deployment
+./deploy.sh destroy  # Remove resources
+./deploy.sh status   # Check status
 ```
 
 ## Configuration Variables
 
-| Variable                      | Description                    | Default                    |
-| ----------------------------- | ------------------------------ | -------------------------- |
-| `vault_address`               | Vault server URL               | (required)                 |
-| `vault_skip_tls_verify`       | Skip TLS verification          | `true`                     |
-| `vault_kv_mount`              | Vault KV mount path            | `secrets`                  |
-| `netbox_api_token_vault_path` | Path to token in Vault         | `proxmox/netbox_api_token` |
-| `netbox_url`                  | NetBox server URL              | (required)                 |
-| `netbox_insecure`             | Skip TLS for NetBox            | `true`                     |
-
-## Managed Resources
-
-### Organization
-
-- Regions, Site Groups, Sites
-- Tenants, Tenant Groups
-
-### IPAM
-
-- RIRs, Aggregates
-- VRFs, Prefixes
-- VLAN Groups, VLANs
-
-### DCIM
-
-- Manufacturers
-- Device Types, Device Roles
-- Platforms
-
-### Virtualization
-
-- Cluster Types, Cluster Groups, Clusters
-
-### Extras
-
-- Tags
+| Variable                      | Description                    | Default                   |
+| ----------------------------- | ------------------------------ | ------------------------- |
+| `vault_address`               | Vault server URL               | (required)                |
+| `vault_skip_tls_verify`       | Skip TLS verification          | `true`                    |
+| `vault_kv_mount`              | Vault KV mount path            | `secrets`                 |
+| `netbox_api_token_vault_path` | Path to token in Vault         | `netbox_api_token`        |
+| `netbox_url`                  | NetBox server URL              | (required)                |
+| `aws_region`                  | AWS region for S3 backend      | `eu-central-1`            |
+| `transit_key_name`            | Vault Transit key name         | `tofu-state-encryption`   |
 
 ## Project Structure
 
 ```text
 netbox_settings_template/
-├── apply.sh                      # Wrapper script
-├── README.md                     # This file
+├── deploy.sh                        # Main deployment script
+├── README.md                        # This file
 ├── scripts/
-│   └── common.sh                 # Logging utilities
+│   ├── common.sh                    # Logging utilities
+│   ├── vault.sh                     # Vault authentication + AWS creds
+│   └── terraform.sh                 # Terraform operations
 └── terraform/
-    ├── main.tf                   # Resources
-    ├── providers.tf              # Vault + NetBox providers
-    ├── variables.tf              # Variable definitions
-    ├── versions.tf               # Provider versions
-    ├── outputs.tf                # Outputs
-    ├── terraform.tfvars.example  # Example config
-    └── terraform.tfvars          # Your config (gitignored)
+    ├── backend.tf                   # S3 backend + providers
+    ├── encryption.tf                # Vault Transit encryption
+    ├── main.tf                      # Resources
+    ├── providers.tf                 # Vault + NetBox + AWS providers
+    ├── variables.tf                 # Variable definitions
+    ├── versions.tf                  # Provider versions
+    ├── outputs.tf                   # Outputs
+    ├── s3.backend.config            # Backend config (gitignored)
+    ├── s3.backend.config.template   # Backend config template
+    ├── terraform.tfvars.example     # Example config
+    └── terraform.tfvars             # Your config (gitignored)
 ```
 
 ## License

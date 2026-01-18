@@ -1,0 +1,68 @@
+# =============================================================================
+# AWS S3 Backend Configuration Template for OpenTofu State Storage
+# =============================================================================
+# Copy this file to s3.backend.config and fill in your values.
+#
+# Usage:
+#   cp s3.backend.config.template s3.backend.config
+#   # Edit s3.backend.config with your values
+#   tofu init -backend-config=s3.backend.config
+#
+# Prerequisites:
+# 1. AWS S3 bucket created for state storage
+# 2. AWS credentials configured via environment variables or ~/.aws/credentials
+#
+# Required IAM Permissions:
+# - s3:ListBucket, s3:GetObject, s3:PutObject, s3:DeleteObject
+#
+# Security Best Practices:
+# - Enable S3 bucket versioning for state history
+# - Enable S3 bucket encryption at rest (AES-256 or KMS)
+# - Restrict bucket access with IAM policies
+# - Enable CloudTrail logging for S3 bucket access
+#
+# References:
+# - OpenTofu S3 Backend: https://opentofu.org/docs/language/settings/backends/s3/
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# S3 Backend Configuration
+# -----------------------------------------------------------------------------
+
+# S3 bucket name where state files are stored
+# IMPORTANT: Change this to your own bucket name
+bucket = "your-tofu-state-bucket"
+
+# Object key path within the S3 bucket
+# Format: <project>/<component>.tfstate
+key = "netbox-settings/terraform.tfstate"
+
+# AWS region where S3 bucket is located
+# IMPORTANT: This must be hardcoded as variables cannot be used in backend config
+region = "your-aws-region"
+
+# -----------------------------------------------------------------------------
+# AWS Authentication via Vault Dynamic Credentials
+# -----------------------------------------------------------------------------
+# Using Vault AWS secrets engine to generate temporary credentials dynamically.
+# Credentials are passed via environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+#
+# To generate credentials before running 'tofu init':
+#   vault read -format=json aws/proxmox/creds/tofu_state_backup | jq -r '.data'
+#   export AWS_ACCESS_KEY_ID="<access_key_from_vault>"
+#   export AWS_SECRET_ACCESS_KEY="<secret_key_from_vault>"
+#
+# Note: If you prefer static credentials, uncomment:
+# profile = "tofu-backup"
+# shared_credentials_files = ["~/.aws/credentials"]
+# shared_config_files = ["~/.aws/config"]
+
+# -----------------------------------------------------------------------------
+# State Locking
+# -----------------------------------------------------------------------------
+
+# Tags to be applied to the lock object
+lock_tags = {"lock-owner":"opentofu"}
+
+# S3 enable state locking (prevents concurrent modifications)
+use_lockfile = true

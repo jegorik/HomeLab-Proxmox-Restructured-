@@ -144,3 +144,15 @@ tags = {
   "Production" = { color = "4caf50" }
   "Staging"    = { color = "ffeb3b" }
 }
+
+# -----------------------------------------------------------------------------
+# AWS / Encryption Configuration
+# -----------------------------------------------------------------------------
+
+# AWS region for S3 backend
+aws_region = "eu-central-1"
+
+# Vault Transit encryption key (must exist in Vault)
+transit_key_name    = "tofu-state-encryption"
+transit_engine_path = "transit"
+transit_key_length  = 32

@@ -14,6 +14,16 @@ provider "vault" {
 }
 
 # -----------------------------------------------------------------------------
+# AWS Provider Configuration (for S3 Backend)
+# -----------------------------------------------------------------------------
+
+provider "aws" {
+  region = var.aws_region
+  # Credentials via AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY environment variables
+  # or via Vault AWS secrets engine dynamic credentials
+}
+
+# -----------------------------------------------------------------------------
 # Vault Data Source - Retrieve NetBox API Token
 # -----------------------------------------------------------------------------
 
