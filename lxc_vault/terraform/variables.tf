@@ -513,16 +513,34 @@ variable "netbox_api_token" {
   default     = ""
 }
 
-variable "netbox_site_id" {
-  description = "NetBox site ID for the container"
+variable "site_name" {
+  description = "NetBox site name for the container"
+  type        = string
+  default     = "site_01"
+}
+
+variable "cluster_name" {
+  description = "NetBox cluster name for the container"
+  type        = string
+  default     = "cluster_01"
+}
+
+variable "device_id" {
+  description = "NetBox device ID for the container"
   type        = number
   default     = 1
 }
 
-variable "netbox_cluster_id" {
-  description = "NetBox cluster ID for the container"
-  type        = number
-  default     = 1
+variable "vrf_name" {
+  description = "NetBox VRF name for the container"
+  type        = string
+  default     = "vrf_01"
+}
+
+variable "tenant_name" {
+  description = "NetBox tenant name for the container"
+  type        = string
+  default     = "tenant_01"
 }
 
 variable "interface_name" {

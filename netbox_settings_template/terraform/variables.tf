@@ -203,6 +203,31 @@ variable "prefixes" {
   default = {}
 }
 
+variable "ip_range_start_address" {
+  description = "IP Ranges start address"
+  type        = string
+}
+
+variable "ip_range_end_address" {
+  description = "IP Ranges end address"
+  type        = string
+}
+
+variable "ip_range_vrf" {
+  description = "IP Ranges VRF"
+  type        = string
+}
+
+variable "ip_range_tenant" {
+  description = "IP Ranges Tenant"
+  type        = string
+}
+
+variable "ip_range_status" {
+  description = "IP Ranges Status"
+  type        = string
+}
+
 variable "vlan_groups" {
   description = "Map of VLAN Groups"
   type = map(object({

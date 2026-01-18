@@ -126,6 +126,14 @@ resource "netbox_prefix" "all" {
   # Note: role_id would need a netbox_role data source or resource lookup
 }
 
+resource "netbox_ip_range" "range_1" {
+  start_address = var.ip_range_start_address
+  end_address   = var.ip_range_end_address
+  status        = var.ip_range_status
+  vrf_id        = var.ip_range_vrf != null ? netbox_vrf.all[var.ip_range_vrf].id : null
+  tenant_id     = var.ip_range_tenant != null ? netbox_tenant.all[var.ip_range_tenant].id : null
+}
+
 resource "netbox_vlan_group" "all" {
   for_each = var.vlan_groups
 

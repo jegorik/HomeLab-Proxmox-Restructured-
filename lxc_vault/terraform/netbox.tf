@@ -7,11 +7,29 @@
 # Virtual Machine in NetBox
 # -----------------------------------------------------------------------------
 
+data "netbox_cluster" "cluster_01" {
+  name = var.cluster_name
+}
+
+data "netbox_site" "site_01" {
+  name = var.site_name
+}
+
+data "netbox_tenant" "tenant_01" {
+  name = var.tenant_name
+}
+
+data "netbox_vrf" "vrf_01" {
+  name = var.vrf_name
+}
+
 resource "netbox_virtual_machine" "lxc" {
   name         = var.lxc_hostname
   description  = var.lxc_description
-  cluster_id   = var.netbox_cluster_id
-  site_id      = var.netbox_site_id
+  cluster_id   = data.netbox_cluster.cluster_01.id
+  device_id    = var.device_id
+  site_id      = data.netbox_site.site_01.id
+  tenant_id    = data.netbox_tenant.tenant_01.id
   vcpus        = var.lxc_cpu_cores
   memory_mb    = var.lxc_memory
   disk_size_mb = (var.lxc_disk_size * 1024)
@@ -63,6 +81,7 @@ resource "netbox_virtual_disk" "disk-01" {
 resource "netbox_ip_address" "primary" {
   ip_address = var.lxc_ip_address
   status     = "active"
+  vrf_id     = data.netbox_vrf.vrf_01.id
 
   object_type  = "virtualization.vminterface"
   interface_id = netbox_interface.eth0.id
