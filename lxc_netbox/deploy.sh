@@ -82,11 +82,20 @@ deploy_full() {
     terraform_validate || return 1
     terraform_apply || return 1
     
-    log_info "Waiting 30s for container boot..."
-    sleep 30
-    
     ansible_create_inventory || return 1
     
+    # Get IP to wait for boot
+    local container_ip
+    container_ip=$(terraform_get_output "lxc_ip_address" 2>/dev/null)
+    container_ip="${container_ip%%/*}"
+
+    if [[ -z "${container_ip}" ]]; then
+        log_error "Could not get container IP from Terraform"
+        return 1
+    fi
+
+    wait_for_port "${container_ip}" 22 300 || return 1
+
     # Retry connectivity test
     local retry=0
     while [[ ${retry} -lt 3 ]]; do
@@ -274,4 +283,6 @@ main() {
     log_info "Completed at $(date)"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
