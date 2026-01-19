@@ -9,24 +9,34 @@
 # Container Information
 # -----------------------------------------------------------------------------
 
-output "container_id" {
+output "lxc_id" {
   description = "LXC container VMID"
-  value       = proxmox_virtual_environment_container.lxc.vm_id
+  value       = proxmox_virtual_environment_container.npm.vm_id
 }
 
-output "container_hostname" {
+output "lxc_hostname" {
   description = "Container hostname"
-  value       = var.container_hostname
+  value       = var.lxc_hostname
 }
 
-output "container_ip" {
+output "lxc_ip_address" {
   description = "Container IP address (without CIDR)"
-  value       = split("/", var.network_ip)[0]
+  value       = local.container_ip
 }
 
-output "container_ip_cidr" {
-  description = "Container IP address (with CIDR)"
-  value       = var.network_ip
+output "lxc_node" {
+  description = "Proxmox node where container is deployed"
+  value       = data.vault_generic_secret.proxmox_node_name.data["node_name"]
+}
+
+# -----------------------------------------------------------------------------
+# Credentials (Sensitive)
+# -----------------------------------------------------------------------------
+
+output "lxc_root_password" {
+  description = "Root password for the container"
+  value       = random_password.root_password.result
+  sensitive   = true
 }
 
 # -----------------------------------------------------------------------------
@@ -35,17 +45,17 @@ output "container_ip_cidr" {
 
 output "ssh_user" {
   description = "SSH user for Ansible"
-  value       = var.ssh_user
-}
-
-output "ssh_port" {
-  description = "SSH port"
-  value       = 22
+  value       = var.ansible_user_name
 }
 
 output "ssh_command" {
   description = "SSH command to access the container"
-  value       = "ssh ${var.ssh_user}@${split("/", var.network_ip)[0]}"
+  value       = "ssh ${var.ansible_user_name}@${local.container_ip}"
+}
+
+output "ssh_command_root" {
+  description = "SSH command to access container as root"
+  value       = "ssh root@${local.container_ip}"
 }
 
 # -----------------------------------------------------------------------------
@@ -54,31 +64,17 @@ output "ssh_command" {
 
 output "npm_admin_url" {
   description = "Nginx Proxy Manager admin UI URL"
-  value       = "http://${split("/", var.network_ip)[0]}:${var.npm_admin_port}"
+  value       = "http://${local.container_ip}:${var.npm_admin_port}"
 }
 
 output "npm_http_url" {
   description = "HTTP proxy URL"
-  value       = "http://${split("/", var.network_ip)[0]}:${var.npm_http_port}"
+  value       = "http://${local.container_ip}:${var.npm_http_port}"
 }
 
 output "npm_https_url" {
   description = "HTTPS proxy URL"
-  value       = "https://${split("/", var.network_ip)[0]}:${var.npm_https_port}"
-}
-
-# -----------------------------------------------------------------------------
-# NetBox Information
-# -----------------------------------------------------------------------------
-
-output "netbox_vm_id" {
-  description = "NetBox virtual machine ID"
-  value       = netbox_virtual_machine.lxc.id
-}
-
-output "netbox_vm_url" {
-  description = "NetBox virtual machine URL"
-  value       = "${var.netbox_url}/virtualization/virtual-machines/${netbox_virtual_machine.lxc.id}/"
+  value       = "https://${local.container_ip}:${var.npm_https_port}"
 }
 
 # -----------------------------------------------------------------------------
@@ -93,12 +89,12 @@ output "deployment_summary" {
     ║           Nginx Proxy Manager Deployed               ║
     ╚══════════════════════════════════════════════════════╝
     
-    Container:  ${var.container_hostname} (VMID: ${proxmox_virtual_environment_container.lxc.vm_id})
-    Node:       ${var.pve_target_node}
-    IP:         ${split("/", var.network_ip)[0]}
+    Container:  ${var.lxc_hostname} (VMID: ${proxmox_virtual_environment_container.npm.vm_id})
+    Node:       ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
+    IP:         ${local.container_ip}
     
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    NPM Admin:  http://${split("/", var.network_ip)[0]}:81
+    NPM Admin:  http://${local.container_ip}:${var.npm_admin_port}
     
     Default Login:
       Email:    admin@example.com
@@ -107,8 +103,7 @@ output "deployment_summary" {
     ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
-    SSH:        ssh ${var.ssh_user}@${split("/", var.network_ip)[0]}
-    NetBox:     ${var.netbox_url}/virtualization/virtual-machines/${netbox_virtual_machine.lxc.id}/
+    SSH:        ssh ${var.ansible_user_name}@${local.container_ip}
     
   EOT
 }

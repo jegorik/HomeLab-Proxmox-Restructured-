@@ -1,87 +1,73 @@
 # =============================================================================
-# Nginx Proxy Manager LXC Container - Example terraform.tfvars
+# Terraform Variables Configuration File - EXAMPLE
 # =============================================================================
 # Copy this file to terraform.tfvars and fill in your values.
-# DO NOT commit terraform.tfvars to version control!
+# Sensitive values (like vault_password) should be set via environment variables.
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   export TF_VAR_vault_password="your-vault-password"
+#   tofu plan
+#   tofu apply
+# =============================================================================
 
 # -----------------------------------------------------------------------------
 # Vault Configuration
 # -----------------------------------------------------------------------------
 
-vault_address = "https://vault.example.com:8200"
-# vault_token = ""  # Leave empty to use VAULT_TOKEN env var
+vault_address         = "https://vault.example.com:8200"
+vault_username        = "your-vault-username"
+vault_skip_tls_verify = true
 
-vault_pve_secret_path    = "proxmox/root"
-vault_netbox_secret_path = "proxmox/netbox_api_token"
+# Vault secret paths (adjust to your Vault structure)
+proxmox_api_token_vault_path     = "path/to/proxmox_api_token"
+proxmox_endpoint_vault_path      = "path/to/proxmox_endpoint"
+proxmox_node_name_vault_path     = "path/to/proxmox_node_name"
+proxmox_user_name_vault_path     = "path/to/proxmox_user"
+proxmox_root_name_vault_path     = "path/to/proxmox_root"
+proxmox_root_password_vault_path = "path/to/pve_root_password"
+s3_bucket_name_vault_path        = "path/to/s3_bucket"
+root_ssh_public_key_path         = "path/to/root_ssh_public_key"
+root_ssh_private_key_path        = "path/to/root_ssh_private_key"
+ansible_ssh_public_key_path      = "path/to/ansible_ssh_public_key"
+ephemeral_vault_mount_path       = "secrets/"
+
+# -----------------------------------------------------------------------------
+# AWS Configuration
+# -----------------------------------------------------------------------------
+
+aws_region = "us-east-1"
 
 # -----------------------------------------------------------------------------
 # Proxmox Configuration
 # -----------------------------------------------------------------------------
 
-pve_api_url     = "https://192.168.1.100:8006/api2/json"
-pve_target_node = "pve"
-
-# pve_root_password = ""  # Leave empty to fetch from Vault
+connection_insecure = true
+ssh_agent_enabled   = true
 
 # -----------------------------------------------------------------------------
-# NetBox Configuration
+# NPM LXC Container Configuration
 # -----------------------------------------------------------------------------
 
-netbox_url = "https://netbox.example.com"
-# netbox_api_token = ""  # Leave empty to fetch from Vault
-
-netbox_site_id    = 1
-netbox_cluster_id = 1
-
-# -----------------------------------------------------------------------------
-# Container Configuration
-# -----------------------------------------------------------------------------
-
-container_id          = 110
-container_hostname    = "npm"
-container_description = "Nginx Proxy Manager - Reverse Proxy Management"
-container_template    = "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
-
-container_onboot       = true
-container_start        = true
-container_unprivileged = true
+lxc_id            = 100
+lxc_hostname      = "npm"
+lxc_description   = "Nginx Proxy Manager - Managed by OpenTofu"
+lxc_ip_address    = "10.0.0.100/24"
+lxc_gateway       = "10.0.0.1"
+lxc_dns_servers   = "8.8.8.8 8.8.4.4"
+lxc_start_on_boot = true
+lxc_unprivileged  = true
+lxc_disk_storage  = "local-lvm"
+lxc_disk_size     = 8
+lxc_cpu_cores     = 2
+lxc_memory        = 2048
+lxc_swap          = 512
+lxc_tags          = ["lxc", "npm", "proxy", "tofu-managed"]
 
 # -----------------------------------------------------------------------------
-# Hardware Resources (NPM recommended: 2GB RAM, 2 cores)
+# Encryption Configuration
 # -----------------------------------------------------------------------------
 
-container_memory    = 2048   # MB - Required for Node.js build
-container_swap      = 512    # MB
-container_cores     = 2
-container_disk_size = 8192   # MB (~8GB)
-container_storage   = "local-lvm"
-
-# -----------------------------------------------------------------------------
-# Network Configuration
-# -----------------------------------------------------------------------------
-
-network_bridge  = "vmbr0"
-network_ip      = "192.168.1.110/24"
-network_gateway = "192.168.1.1"
-network_dns     = "8.8.8.8"
-
-# -----------------------------------------------------------------------------
-# SSH Configuration
-# -----------------------------------------------------------------------------
-
-ssh_user       = "ansible"
-ssh_public_key = "ssh-ed25519 AAAA... your-key-here"
-
-# -----------------------------------------------------------------------------
-# NPM Ports (defaults are fine for most setups)
-# -----------------------------------------------------------------------------
-
-npm_http_port  = 80   # HTTP proxy
-npm_https_port = 443  # HTTPS proxy
-npm_admin_port = 81   # Admin UI
-
-# -----------------------------------------------------------------------------
-# Tags
-# -----------------------------------------------------------------------------
-
-tags = ["lxc", "npm", "proxy", "reverse-proxy"]
+transit_key_name    = "your-encryption-key-name"
+transit_engine_path = "transit"
+transit_key_length  = 32

@@ -1,18 +1,24 @@
 # =============================================================================
-# S3 Backend Configuration Template
+# AWS S3 Backend Configuration Template
 # =============================================================================
 # Copy this file to s3.backend.config and fill in your values.
-# Then run: terraform init -backend-config=s3.backend.config
+#
+# Usage:
+#   cp s3.backend.config.template s3.backend.config
+#   tofu init -backend-config=s3.backend.config
+# =============================================================================
 
-bucket         = "your-terraform-state-bucket"
-key            = "lxc_base_template/terraform.tfstate"
-region         = "us-east-1"
-encrypt        = true
-dynamodb_table = "terraform-state-lock"
+# S3 bucket name where state files are stored
+bucket = "your-bucket-name"
 
-# For MinIO or other S3-compatible storage:
-# endpoint                    = "https://minio.example.com:9000"
-# skip_credentials_validation = true
-# skip_metadata_api_check     = true
-# skip_region_validation      = true
-# force_path_style            = true
+# Object key path within the S3 bucket
+key = "npm/npm.tfstate"
+
+# AWS region where S3 bucket is located
+region = "eu-central-1"
+
+# S3 enable state locking
+use_lockfile = true
+
+# Tags for lock object
+lock_tags = {"lock-owner":"opentofu"}
