@@ -1,0 +1,9 @@
+---
+# Defaults for vault role
+vault_user: "vault"
+vault_group: "vault"
+vault_keyring_dir: "/usr/share/keyrings"
+vault_data_dir: "/var/lib/vault/data"
+vault_config_dir: "/etc/vault.d"
+vault_config_file: "vault.hcl.j2"
+vault_config_path: "/etc/vault.d/vault.hcl"

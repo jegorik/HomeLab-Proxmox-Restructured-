@@ -66,12 +66,20 @@
   tags: ["install", "repository"]
 
 # Install Vault from HashiCorp's official repository
-# Using -qq for quiet output, -y for automatic yes to prompts
 - name: Install Vault
-  ansible.builtin.shell: |
-    apt-get update -qq
-    apt-get install -y -qq vault
+  ansible.builtin.apt:
+    name: vault
+    state: present
+    update_cache: true
   tags: ["install", "vault"]
+
+# Create dedicated system group for Vault service
+- name: Create Vault system group
+  ansible.builtin.group:
+    name: "{{ vault_group }}"
+    system: true
+    state: present
+  tags: ["install", "user"]
 
 # Create dedicated system user for Vault service
 # - System user (no login shell, no home directory in /home)
@@ -79,10 +87,13 @@
 # - Shell: /bin/false (no interactive login)
 # - Used for running Vault process with limited privileges
 - name: Create Vault system user
-  ansible.builtin.shell: |
-    if ! id -u vault > /dev/null 2>&1; then
-      useradd --system --home /etc/vault.d --shell /bin/false vault
-    fi
+  ansible.builtin.user:
+    name: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    system: true
+    home: "{{ vault_config_dir }}"
+    shell: /bin/false
+    create_home: false
   tags: ["install", "user"]
 
 # Create required directories with proper ownership and permissions
