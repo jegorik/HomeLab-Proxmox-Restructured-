@@ -50,8 +50,8 @@ Type=notify
 
 # Run as dedicated vault user (not root)
 # Follows principle of least privilege
-User=vault
-Group=vault
+User={{ vault_user }}
+Group={{ vault_group }}
 
 # Security Hardening Directives
 # These systemd options reduce the attack surface

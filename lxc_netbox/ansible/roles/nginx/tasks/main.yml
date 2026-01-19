@@ -10,6 +10,7 @@
     name: nginx
     state: present
     update_cache: true
+    cache_valid_time: 3600
   tags: ['install']
 
 - name: Check if port 80 is available
