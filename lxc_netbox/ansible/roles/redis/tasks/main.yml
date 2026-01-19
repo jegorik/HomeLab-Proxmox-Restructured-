@@ -12,6 +12,7 @@
       - python3-redis  # Required for Ansible Redis modules
     state: present
     update_cache: true
+    cache_valid_time: 3600
   tags: ['install']
 
 - name: Configure Redis to bind to localhost only
