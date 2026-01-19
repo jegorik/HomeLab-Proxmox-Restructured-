@@ -49,6 +49,27 @@ EOF
     return 0
 }
 
+ansible_wait_for_connection() {
+    local retries=${1:-30}
+    local delay=${2:-2}
+
+    log_info "Waiting for container connectivity (max $((retries * delay))s)..."
+    cd "${ANSIBLE_DIR}" || return 1
+
+    local count=0
+    while [[ ${count} -lt ${retries} ]]; do
+        if ansible all -m ping -i inventory.yml &>/dev/null; then
+            log_success "Container is reachable"
+            return 0
+        fi
+        count=$((count + 1))
+        sleep ${delay}
+    done
+
+    log_error "Timed out waiting for container connectivity"
+    return 1
+}
+
 ansible_test() {
     log_info "Testing Ansible connectivity..."
     cd "${ANSIBLE_DIR}" || return 1
