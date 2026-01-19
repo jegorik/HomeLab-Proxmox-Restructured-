@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# NPM Role - Main Tasks
+# =============================================================================
+# Installs Nginx Proxy Manager from source
+# Based on: https://github.com/community-scripts/ProxmoxVE
+
+- name: Include dependencies installation
+  ansible.builtin.include_tasks: dependencies.yml
+  tags: [npm, dependencies]
+
+- name: Include Python/Certbot setup
+  ansible.builtin.include_tasks: certbot.yml
+  tags: [npm, certbot]
+
+- name: Include OpenResty installation
+  ansible.builtin.include_tasks: openresty.yml
+  tags: [npm, openresty]
+
+- name: Include Node.js installation
+  ansible.builtin.include_tasks: nodejs.yml
+  tags: [npm, nodejs]
+
+- name: Include NPM application installation
+  ansible.builtin.include_tasks: npm_app.yml
+  tags: [npm, app]
+
+- name: Include service configuration
+  ansible.builtin.include_tasks: service.yml
+  tags: [npm, service]

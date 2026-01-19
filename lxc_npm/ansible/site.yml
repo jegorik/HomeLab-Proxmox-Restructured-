@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# Nginx Proxy Manager LXC Container - Main Ansible Playbook
+# =============================================================================
+# Configures the LXC container and installs Nginx Proxy Manager
+
+- name: Configure NPM LXC Container
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Base packages
+    base_packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - apt-transport-https
+      - software-properties-common
+      - python3
+      - python3-pip
+      - vim
+      - htop
+      - tree
+      - jq
+
+    # System settings
+    timezone: "UTC"
+    locale: "en_US.UTF-8"
+
+    # SSH security
+    ssh_permit_root_login: "no"
+    ssh_password_authentication: "no"
+    ssh_pubkey_authentication: "yes"
+
+    # Firewall
+    enable_firewall: true
+    firewall_allowed_ports:
+      - "22/tcp" # SSH
+      - "80/tcp" # HTTP proxy
+      - "81/tcp" # NPM Admin UI
+      - "443/tcp" # HTTPS proxy
+
+  roles:
+    - role: base
+      tags: [base]
+
+    - role: npm
+      tags: [npm]

@@ -1,0 +1,22 @@
+---
+# =============================================================================
+# NPM Role - Dependencies Installation
+# =============================================================================
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - apache2-utils
+      - logrotate
+      - build-essential
+      - git
+      - curl
+      - wget
+      - gnupg
+    state: present

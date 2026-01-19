@@ -1,0 +1,87 @@
+# =============================================================================
+# Nginx Proxy Manager LXC Container - Example terraform.tfvars
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars to version control!
+
+# -----------------------------------------------------------------------------
+# Vault Configuration
+# -----------------------------------------------------------------------------
+
+vault_address = "https://vault.example.com:8200"
+# vault_token = ""  # Leave empty to use VAULT_TOKEN env var
+
+vault_pve_secret_path    = "proxmox/root"
+vault_netbox_secret_path = "proxmox/netbox_api_token"
+
+# -----------------------------------------------------------------------------
+# Proxmox Configuration
+# -----------------------------------------------------------------------------
+
+pve_api_url     = "https://192.168.1.100:8006/api2/json"
+pve_target_node = "pve"
+
+# pve_root_password = ""  # Leave empty to fetch from Vault
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+netbox_url = "https://netbox.example.com"
+# netbox_api_token = ""  # Leave empty to fetch from Vault
+
+netbox_site_id    = 1
+netbox_cluster_id = 1
+
+# -----------------------------------------------------------------------------
+# Container Configuration
+# -----------------------------------------------------------------------------
+
+container_id          = 110
+container_hostname    = "npm"
+container_description = "Nginx Proxy Manager - Reverse Proxy Management"
+container_template    = "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+
+container_onboot       = true
+container_start        = true
+container_unprivileged = true
+
+# -----------------------------------------------------------------------------
+# Hardware Resources (NPM recommended: 2GB RAM, 2 cores)
+# -----------------------------------------------------------------------------
+
+container_memory    = 2048   # MB - Required for Node.js build
+container_swap      = 512    # MB
+container_cores     = 2
+container_disk_size = 8192   # MB (~8GB)
+container_storage   = "local-lvm"
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+
+network_bridge  = "vmbr0"
+network_ip      = "192.168.1.110/24"
+network_gateway = "192.168.1.1"
+network_dns     = "8.8.8.8"
+
+# -----------------------------------------------------------------------------
+# SSH Configuration
+# -----------------------------------------------------------------------------
+
+ssh_user       = "ansible"
+ssh_public_key = "ssh-ed25519 AAAA... your-key-here"
+
+# -----------------------------------------------------------------------------
+# NPM Ports (defaults are fine for most setups)
+# -----------------------------------------------------------------------------
+
+npm_http_port  = 80   # HTTP proxy
+npm_https_port = 443  # HTTPS proxy
+npm_admin_port = 81   # Admin UI
+
+# -----------------------------------------------------------------------------
+# Tags
+# -----------------------------------------------------------------------------
+
+tags = ["lxc", "npm", "proxy", "reverse-proxy"]

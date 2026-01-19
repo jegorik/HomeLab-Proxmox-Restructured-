@@ -1,0 +1,25 @@
+---
+# =============================================================================
+# NPM Role - Default Variables
+# =============================================================================
+
+# Node.js version
+nodejs_version: "22"
+
+# NPM installation directory
+npm_install_dir: "/opt/nginxproxymanager"
+npm_app_dir: "/app"
+npm_data_dir: "/data"
+
+# NPM service user (runs as root for port binding)
+npm_user: "root"
+
+# OpenResty configuration
+openresty_user: "root"
+
+# Certbot configuration
+certbot_venv: "/opt/certbot"
+
+# Build settings
+node_options: "--max_old_space_size=2048 --openssl-legacy-provider"
+yarn_network_timeout: 600000
