@@ -81,19 +81,8 @@ deploy_full() {
     terraform_validate || return 1
     terraform_apply || return 1
     
-    log_info "Waiting 30s for container boot..."
-    sleep 30
-    
     ansible_create_inventory || return 1
-    
-    # Retry connectivity test
-    local retry=0
-    while [[ ${retry} -lt 3 ]]; do
-        ansible_test && break
-        retry=$((retry + 1))
-        [[ ${retry} -lt 3 ]] && { log_warning "Retry ${retry}/3..."; sleep 10; }
-    done
-    [[ ${retry} -eq 3 ]] && { log_error "Connectivity failed after 3 retries"; return 1; }
+    ansible_wait_for_connection || return 1
     
     ansible_deploy || return 1
     
