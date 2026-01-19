@@ -81,19 +81,37 @@ deploy_full() {
     terraform_validate || return 1
     terraform_apply || return 1
     
-    log_info "Waiting 30s for container boot..."
-    sleep 30
-    
     ansible_create_inventory || return 1
     
-    # Retry connectivity test
+    log_info "Waiting for container connectivity..."
+
+    # Retry connectivity test with polling
     local retry=0
-    while [[ ${retry} -lt 3 ]]; do
-        ansible_test && break
+    local max_retries=30
+    local connected=false
+
+    # Switch to Ansible directory for config
+    cd "${ANSIBLE_DIR}" || return 1
+
+    while [[ ${retry} -lt ${max_retries} ]]; do
+        if ansible vault -m ping -i inventory.yml &>/dev/null; then
+            connected=true
+            log_success "Connectivity OK"
+            break
+        fi
+
         retry=$((retry + 1))
-        [[ ${retry} -lt 3 ]] && { log_warning "Retry ${retry}/3..."; sleep 10; }
+        # Log every 5 seconds (assuming ~2s per loop iteration including sleep)
+        if (( retry % 5 == 0 )); then
+            log_info "Waiting for container... (${retry}/${max_retries})"
+        fi
+        sleep 2
     done
-    [[ ${retry} -eq 3 ]] && { log_error "Connectivity failed after 3 retries"; return 1; }
+
+    if [[ "${connected}" == false ]]; then
+        log_error "Connectivity failed after ${max_retries} attempts"
+        return 1
+    fi
     
     ansible_deploy || return 1
     
