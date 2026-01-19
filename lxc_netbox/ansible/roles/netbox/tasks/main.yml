@@ -249,14 +249,6 @@
   changed_when: "'0 static files copied' not in collectstatic_result.stdout"
   tags: ['static']
 
-- name: Set ownership of NetBox directory
-  ansible.builtin.file:
-    path: "{{ netbox_install_dir }}"
-    owner: "{{ netbox_user }}"
-    group: "{{ netbox_group }}"
-    recurse: true
-  tags: ['permissions']
-
 - name: Configure Gunicorn
   ansible.builtin.include_tasks: gunicorn.yml
   tags: ['gunicorn', 'configuration']
