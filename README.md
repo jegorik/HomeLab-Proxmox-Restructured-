@@ -54,6 +54,9 @@ graph TB
         F1[PostgreSQL :5432]
         F2[Redis :6379]
         F3[Nginx Reverse Proxy]
+        NPM[lxc_npm<br/>Nginx Proxy Manager<br/>:80/81/443]
+        NPM1[OpenResty]
+        NPM2[SQLite]
     end
     
     subgraph "State Management"
@@ -67,28 +70,36 @@ graph TB
     
     A -->|Provision| E
     A -->|Provision| F
+    A -->|Provision| NPM
     A -->|State| G
     G -->|Encrypted| H
     
     B -->|Configure| E
     B -->|Configure| F
+    B -->|Configure| NPM
     
     C -->|Automate| A
     C -->|Automate| B
     
     E --> E1
     E -->|Secrets & Encryption| F
+    E -->|Secrets & Encryption| NPM
     
     F --> F1
     F --> F2
     F --> F3
     
+    NPM --> NPM1
+    NPM --> NPM2
+    
     D -->|Network| E
     D -->|Network| F
+    D -->|Network| NPM
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
     style F fill:#0066cc,color:#fff
+    style NPM fill:#1abc9c,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -220,7 +231,35 @@ sequenceDiagram
 
 ---
 
-### 5. **Future Projects**
+### 5. **lxc_npm** - Nginx Proxy Manager
+
+**Purpose**: Reverse proxy management with SSL certificate automation
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- OpenResty-based reverse proxy management
+- Let's Encrypt SSL certificate automation (DNS challenge support)
+- Web-based UI for proxy host configuration
+- Full Vault integration for secrets management
+- Vault Transit engine for state encryption
+- Data persistence via bind mounts
+
+**Documentation**: See [lxc_npm/README.md](lxc_npm/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+
+---
+
+### 6. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -253,6 +292,13 @@ Additional services will be added following the same patterns and deployment ord
    ./deploy.sh deploy
    ```
 
+2. **lxc_npm** - Deploy Nginx Proxy Manager (requires Vault)
+
+   ```bash
+   cd lxc_npm
+   ./deploy.sh deploy
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -266,6 +312,7 @@ Additional services will be added following the same patterns and deployment ord
 | --------- | ----------- | --------------------- |
 | **lxc_vault** | None | N/A (foundation) |
 | **lxc_netbox** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **lxc_npm** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
@@ -459,7 +506,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 18, 2026
+**Last Updated**: January 20, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

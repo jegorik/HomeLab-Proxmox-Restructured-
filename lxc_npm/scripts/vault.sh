@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for NetBox Deployment
+# Vault Functions for NPM Deployment
 # =============================================================================
 
 # Prevent multiple sourcing
@@ -107,7 +107,7 @@ vault_authenticate() {
     read -s VAULT_PASSWORD
     echo ""
 
-    if ! echo "${VAULT_PASSWORD}" | vault login -method=userpass username="${VAULT_USERNAME}" password=- -token-only &>/dev/null; then
+    if ! vault login -method=userpass username="${VAULT_USERNAME}" password="${VAULT_PASSWORD}" -token-only &>/dev/null; then
         log_error "Authentication failed"
         return 1
     fi

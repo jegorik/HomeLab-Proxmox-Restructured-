@@ -1,0 +1,229 @@
+---
+# =============================================================================
+# NPM Role - NPM Application Installation
+# =============================================================================
+# This playbook supports data persistence via bind mounts.
+# If existing data is detected in {{ npm_data_dir }}, the playbook will
+# preserve user data (database, SSL certs, proxy configs) and skip
+# re-initialization of data directories.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Data Persistence Detection
+# -----------------------------------------------------------------------------
+# Check if existing NPM data exists in the bind-mounted /data directory.
+# The database.sqlite file is the primary indicator of existing user data.
+
+- name: Check for existing NPM database (data persistence indicator)
+  ansible.builtin.stat:
+    path: "{{ npm_data_dir }}/database.sqlite"
+  register: npm_database_exists
+
+- name: Set data persistence fact
+  ansible.builtin.set_fact:
+    npm_data_persisted: "{{ npm_database_exists.stat.exists | default(false) }}"
+
+- name: Display data persistence status
+  ansible.builtin.debug:
+    msg: >-
+      {% if npm_data_persisted %}
+      [DATA PERSISTENCE] Existing NPM data detected. User data will be preserved.
+      {% else %}
+      [FRESH INSTALL] No existing data found. Performing full initialization.
+      {% endif %}
+
+# -----------------------------------------------------------------------------
+# Version Detection and Download
+# -----------------------------------------------------------------------------
+
+- name: Get latest NPM release version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest
+    return_content: true
+  register: npm_release
+
+- name: Set NPM version fact
+  ansible.builtin.set_fact:
+    npm_version: "{{ npm_release.json.tag_name | regex_replace('^v', '') }}"
+
+# -----------------------------------------------------------------------------
+# Directory Structure
+# -----------------------------------------------------------------------------
+# Application directories are always created.
+# Data directories are only created if no existing data is detected.
+
+- name: Create application directories (always)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ npm_install_dir }}"
+    - "{{ npm_app_dir }}"
+    - "{{ npm_app_dir }}/frontend/images"
+    - /var/www/html
+    - /etc/nginx/logs
+    - /tmp/nginx/body
+    - /run/nginx
+    - /var/lib/nginx/cache/public
+    - /var/lib/nginx/cache/private
+    - /var/cache/nginx/proxy_temp
+
+- name: Create data directories (only if no existing data)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ npm_data_dir }}"
+    - "{{ npm_data_dir }}/nginx"
+    - "{{ npm_data_dir }}/custom_ssl"
+    - "{{ npm_data_dir }}/logs"
+    - "{{ npm_data_dir }}/access"
+    - "{{ npm_data_dir }}/nginx/default_host"
+    - "{{ npm_data_dir }}/nginx/default_www"
+    - "{{ npm_data_dir }}/nginx/proxy_host"
+    - "{{ npm_data_dir }}/nginx/redirection_host"
+    - "{{ npm_data_dir }}/nginx/stream"
+    - "{{ npm_data_dir }}/nginx/dead_host"
+    - "{{ npm_data_dir }}/nginx/temp"
+  when: not npm_data_persisted
+
+- name: Download NPM release
+  ansible.builtin.unarchive:
+    src: "https://github.com/NginxProxyManager/nginx-proxy-manager/archive/refs/tags/v{{ npm_version }}.tar.gz"
+    dest: "{{ npm_install_dir }}"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+  args:
+    creates: "{{ npm_install_dir }}/backend"
+
+- name: Remove existing /etc/nginx directory (required for symlink)
+  ansible.builtin.file:
+    path: /etc/nginx
+    state: absent
+
+- name: Create symlinks for nginx
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+  loop:
+    - { src: "/usr/bin/python3", dest: "/usr/bin/python" }
+    - { src: "/usr/local/openresty/nginx/sbin/nginx", dest: "/usr/sbin/nginx" }
+    - { src: "/usr/local/openresty/nginx/", dest: "/etc/nginx" }
+
+- name: Update package.json versions
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: '"version": "2.0.0"'
+    replace: '"version": "{{ npm_version }}"'
+  loop:
+    - "{{ npm_install_dir }}/backend/package.json"
+    - "{{ npm_install_dir }}/frontend/package.json"
+
+- name: Replace node-sass with sass in frontend package.json
+  ansible.builtin.replace:
+    path: "{{ npm_install_dir }}/frontend/package.json"
+    regexp: '"node-sass" *: *"([^"]*)"'
+    replace: '"sass": "\1"'
+
+- name: Disable daemon in nginx.conf
+  ansible.builtin.lineinfile:
+    path: "{{ npm_install_dir }}/docker/rootfs/etc/nginx/nginx.conf"
+    regexp: '^daemon'
+    line: '#daemon'
+
+- name: Copy docker rootfs files
+  ansible.builtin.shell: |
+    cp -r {{ npm_install_dir }}/docker/rootfs/var/www/html/* /var/www/html/
+    cp -r {{ npm_install_dir }}/docker/rootfs/etc/nginx/* /etc/nginx/
+    cp -f {{ npm_install_dir }}/docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
+    cp -f {{ npm_install_dir }}/docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
+  args:
+    creates: /etc/nginx/conf.d/default.conf
+
+- name: Create nginx.conf symlink
+  ansible.builtin.file:
+    src: /etc/nginx/nginx.conf
+    dest: /etc/nginx/conf/nginx.conf
+    state: link
+    force: true
+
+- name: Create conf.d symlink for OpenResty
+  ansible.builtin.file:
+    src: /etc/nginx/conf.d
+    dest: /etc/nginx/conf/conf.d
+    state: link
+    force: true
+
+- name: Remove dev.conf
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d/dev.conf
+    state: absent
+
+- name: Set cache directory permissions
+  ansible.builtin.file:
+    path: /var/cache/nginx
+    mode: '0777'
+    recurse: true
+
+- name: Ensure dummy SSL certificate exists
+  ansible.builtin.shell: |
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+      -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" \
+      -keyout {{ npm_data_dir }}/nginx/dummykey.pem \
+      -out {{ npm_data_dir }}/nginx/dummycert.pem
+  args:
+    creates: "{{ npm_data_dir }}/nginx/dummycert.pem"
+
+- name: Copy backend to app directory
+  ansible.builtin.shell: |
+    cp -r {{ npm_install_dir }}/backend/* {{ npm_app_dir }}/
+  args:
+    creates: "{{ npm_app_dir }}/package.json"
+
+- name: Build frontend
+  ansible.builtin.shell: |
+    export NODE_OPTIONS="{{ node_options }}"
+    cd {{ npm_install_dir }}/frontend
+    yarn install --network-timeout {{ yarn_network_timeout }}
+    yarn locale-compile
+    yarn build
+    cp -r {{ npm_install_dir }}/frontend/dist/* {{ npm_app_dir }}/frontend/
+    cp -r {{ npm_install_dir }}/frontend/public/images/* {{ npm_app_dir }}/frontend/images/
+  args:
+    creates: "{{ npm_app_dir }}/frontend/index.html"
+  environment:
+    NODE_OPTIONS: "{{ node_options }}"
+
+- name: Create production config
+  ansible.builtin.copy:
+    dest: "{{ npm_app_dir }}/config/production.json"
+    content: |
+      {
+        "database": {
+          "engine": "knex-native",
+          "knex": {
+            "client": "sqlite3",
+            "connection": {
+              "filename": "{{ npm_data_dir }}/database.sqlite"
+            }
+          }
+        }
+      }
+    mode: '0644'
+    force: false
+
+- name: Remove default config
+  ansible.builtin.file:
+    path: "{{ npm_app_dir }}/config/default.json"
+    state: absent
+
+- name: Install backend dependencies
+  ansible.builtin.shell: |
+    cd {{ npm_app_dir }}
+    yarn install --network-timeout {{ yarn_network_timeout }}
+  args:
+    creates: "{{ npm_app_dir }}/node_modules"

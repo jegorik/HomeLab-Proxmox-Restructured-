@@ -1,4 +1,11 @@
 # =============================================================================
+# Nginx Proxy Manager LXC Container - Terraform Variables
+# =============================================================================
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# =============================================================================
 # Vault Configuration Variables
 # =============================================================================
 
@@ -71,6 +78,20 @@ variable "ephemeral_vault_mount_path" {
 }
 
 # -----------------------------------------------------------------------------
+# SSH Key Vault Paths
+# -----------------------------------------------------------------------------
+
+variable "root_ssh_public_key_path" {
+  description = "Vault path to SSH public key for root access"
+  type        = string
+}
+
+variable "root_ssh_private_key_path" {
+  description = "Vault path to SSH private key for root access"
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
 # AWS Configuration (for S3 Backend State Storage)
 # -----------------------------------------------------------------------------
 
@@ -108,7 +129,7 @@ variable "ssh_agent_enabled" {
 variable "lxc_id" {
   description = "Unique container ID (VMID) in Proxmox"
   type        = number
-  default     = 200
+  default     = 105
 
   validation {
     condition     = var.lxc_id >= 100 && var.lxc_id <= 999999999
@@ -119,7 +140,7 @@ variable "lxc_id" {
 variable "lxc_hostname" {
   description = "Container hostname"
   type        = string
-  default     = "netbox"
+  default     = "npm"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{0,62}$", var.lxc_hostname))
@@ -130,13 +151,13 @@ variable "lxc_hostname" {
 variable "lxc_description" {
   description = "Container description shown in Proxmox GUI"
   type        = string
-  default     = "Netbox platform for network and infrastructure management - Managed by OpenTofu"
+  default     = "Nginx Proxy Manager - Reverse Proxy Management - Managed by OpenTofu"
 }
 
 variable "lxc_tags" {
   description = "Tags for container organization in Proxmox"
   type        = list(string)
-  default     = ["network", "management", "tofu-managed"]
+  default     = ["lxc", "npm", "proxy", "tofu-managed"]
 }
 
 # -----------------------------------------------------------------------------
@@ -146,7 +167,7 @@ variable "lxc_tags" {
 variable "lxc_cpu_cores" {
   description = "Number of CPU cores allocated to the container"
   type        = number
-  default     = 1
+  default     = 2
 
   validation {
     condition     = var.lxc_cpu_cores >= 1 && var.lxc_cpu_cores <= 128
@@ -155,7 +176,7 @@ variable "lxc_cpu_cores" {
 }
 
 variable "lxc_memory" {
-  description = "Dedicated memory in MB"
+  description = "Dedicated memory in MB (NPM requires ~2GB for build)"
   type        = number
   default     = 2048
 
@@ -168,7 +189,7 @@ variable "lxc_memory" {
 variable "lxc_swap" {
   description = "Swap memory in MB (0 to disable)"
   type        = number
-  default     = 1024
+  default     = 512
 }
 
 variable "lxc_disk_size" {
@@ -188,47 +209,10 @@ variable "lxc_disk_storage" {
   default     = "local-lvm"
 }
 
-variable "lxc_netbox_mount_point_volume" {
-  description = "Host volume to bind mount into container (e.g., /rpool/data/netbox)"
-  type        = string
-  default     = "/rpool/data/netbox"
-}
-
-variable "lxc_netbox_mount_point_path" {
-  description = "Mount point path inside the container"
-  type        = string
-  default     = "/opt/netbox"
-}
-
-variable "lxc_postgresql_mount_point_volume" {
-  description = "PostgresSql volume to bind mount into container (e.g., /rpool/data/netbox-db)"
-  type        = string
-  default     = "/rpool/data/netbox-db"
-}
-
-variable "lxc_postgresql_mount_point_path" {
-  description = "PostgresSql mount point path inside the container"
-  type        = string
-  default     = "/var/lib/postgresql"
-}
-
-variable "lxc_redis_mount_point_volume" {
-  description = "Redis volume to bind mount into container (e.g., /rpool/data/netbox-redis)"
-  type        = string
-  default     = "/rpool/data/netbox-redis"
-}
-
-variable "lxc_redis_mount_point_path" {
-  description = "Redis mount point path inside the container"
-  type        = string
-  default     = "/var/lib/redis"
-}
-
-
 variable "lxc_startup_order" {
   description = "Startup order for container (lower numbers start first)"
   type        = number
-  default     = 11
+  default     = 10
 }
 
 variable "lxc_up_delay" {
@@ -241,6 +225,24 @@ variable "lxc_down_delay" {
   description = "Delay in seconds before stopping this container before the next one"
   type        = number
   default     = 10
+}
+
+# -----------------------------------------------------------------------------
+# LXC Bind Mount Configuration (Data Persistence)
+# -----------------------------------------------------------------------------
+# Bind mounts allow persistent storage that survives container recreation.
+# IMPORTANT: Bind mounts REQUIRE privileged containers (lxc_unprivileged = false)
+
+variable "lxc_npm_data_mount_volume" {
+  description = "Host path for NPM data directory (SSL certs, database, configs)"
+  type        = string
+  default     = "/rpool/data/npm-data"
+}
+
+variable "lxc_npm_data_mount_path" {
+  description = "Container path for NPM data directory"
+  type        = string
+  default     = "/data"
 }
 
 # -----------------------------------------------------------------------------
@@ -282,7 +284,7 @@ variable "lxc_network_interface_name" {
 }
 
 variable "lxc_ip_address" {
-  description = "IPv4 address with CIDR (e.g., 192.168.1.50/24) or 'dhcp'"
+  description = "IPv4 address with CIDR (e.g., 192.168.1.105/24) or 'dhcp'"
   type        = string
   default     = "dhcp"
 }
@@ -331,53 +333,6 @@ variable "lxc_started" {
   description = "Ensure container is started after creation"
   type        = bool
   default     = true
-}
-
-# -----------------------------------------------------------------------------
-# LXC Container User Variables
-# -----------------------------------------------------------------------------
-
-variable "lxc_root_password" {
-  description = "Root password for container (leave empty to generate)"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "password_lower_chars_count" {
-  description = "Minimum number of lowercase characters in generated passwords"
-  type        = number
-  default     = 4
-}
-
-variable "password_upper_chars_count" {
-  description = "Minimum number of uppercase characters in generated passwords"
-  type        = number
-  default     = 4
-}
-
-variable "password_upper_numeric_count" {
-  description = "Minimum number of numeric characters in generated passwords"
-  type        = number
-  default     = 4
-}
-
-variable "password_upper_special_chars_count" {
-  description = "Minimum number of special characters in generated passwords"
-  type        = number
-  default     = 4
-}
-
-variable "root_ssh_public_key_path" {
-  description = "Path to SSH public key file for root access"
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
-}
-
-variable "root_ssh_private_key_path" {
-  description = "Path to SSH private key file for root access"
-  type        = string
-  default     = "~/.ssh/id_rsa"
 }
 
 # -----------------------------------------------------------------------------
@@ -444,17 +399,39 @@ variable "ansible_user_shell" {
 }
 
 # -----------------------------------------------------------------------------
-# Netbox Configuration Variables
+# NPM Port Configuration
 # -----------------------------------------------------------------------------
 
-variable "netbox_port" {
-  description = "NetBox web UI HTTP port"
+variable "npm_http_port" {
+  description = "HTTP proxy port"
   type        = number
-  default     = 8300
+  default     = 80
 
   validation {
-    condition     = var.netbox_port >= 1024 && var.netbox_port <= 65535
-    error_message = "NetBox port must be between 1024 and 65535."
+    condition     = var.npm_http_port >= 1 && var.npm_http_port <= 65535
+    error_message = "Port must be between 1 and 65535."
+  }
+}
+
+variable "npm_https_port" {
+  description = "HTTPS proxy port"
+  type        = number
+  default     = 443
+
+  validation {
+    condition     = var.npm_https_port >= 1 && var.npm_https_port <= 65535
+    error_message = "Port must be between 1 and 65535."
+  }
+}
+
+variable "npm_admin_port" {
+  description = "NPM Admin UI port"
+  type        = number
+  default     = 81
+
+  validation {
+    condition     = var.npm_admin_port >= 1 && var.npm_admin_port <= 65535
+    error_message = "Port must be between 1 and 65535."
   }
 }
 
@@ -479,9 +456,34 @@ variable "password_special_chars" {
   default     = "!@#$%^&*"
 }
 
+variable "password_lower_chars_count" {
+  description = "Minimum number of lowercase characters in generated passwords"
+  type        = number
+  default     = 4
+}
+
+variable "password_upper_chars_count" {
+  description = "Minimum number of uppercase characters in generated passwords"
+  type        = number
+  default     = 4
+}
+
+variable "password_numeric_count" {
+  description = "Minimum number of numeric characters in generated passwords"
+  type        = number
+  default     = 4
+}
+
+variable "password_special_chars_count" {
+  description = "Minimum number of special characters in generated passwords"
+  type        = number
+  default     = 4
+}
+
 # -----------------------------------------------------------------------------
 # Encryption Configuration Variables
 # -----------------------------------------------------------------------------
+
 variable "transit_engine_path" {
   description = "Vault Transit secrets engine mount path"
   type        = string
@@ -568,3 +570,4 @@ variable "disk_description" {
   type        = string
   default     = "Main disk"
 }
+

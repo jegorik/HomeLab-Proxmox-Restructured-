@@ -1,0 +1,101 @@
+---
+# =============================================================================
+# NPM Role - Service Configuration
+# =============================================================================
+
+- name: Configure OpenResty nginx.conf for root user
+  ansible.builtin.replace:
+    path: /usr/local/openresty/nginx/conf/nginx.conf
+    regexp: 'user npm'
+    replace: 'user root'
+
+- name: Disable pid in nginx.conf
+  ansible.builtin.lineinfile:
+    path: /usr/local/openresty/nginx/conf/nginx.conf
+    regexp: '^pid'
+    line: '#pid'
+
+- name: Update logrotate for root
+  ansible.builtin.replace:
+    path: /etc/logrotate.d/nginx-proxy-manager
+    regexp: '^\s*su npm npm'
+    replace: '    #su npm npm'
+
+- name: Create NPM systemd service
+  ansible.builtin.copy:
+    dest: /lib/systemd/system/npm.service
+    content: |
+      [Unit]
+      Description=Nginx Proxy Manager
+      After=network.target
+      Wants=openresty.service
+
+      [Service]
+      Type=simple
+      Environment=NODE_ENV=production
+      ExecStartPre=-mkdir -p /tmp/nginx/body /data/letsencrypt-acme-challenge
+      ExecStart=/usr/bin/node index.js --abort_on_uncaught_exception --max_old_space_size=250
+      WorkingDirectory={{ npm_app_dir }}
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  notify:
+    - Enable npm
+
+- name: Generate resolver configuration
+  ansible.builtin.shell: |
+    echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
+  args:
+    creates: /etc/nginx/conf.d/include/resolvers.conf
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Stop NPM before OpenResty restart
+  ansible.builtin.systemd:
+    name: npm
+    state: stopped
+  ignore_errors: true
+
+- name: Restart OpenResty to apply new configuration
+  ansible.builtin.systemd:
+    name: openresty
+    enabled: true
+    state: restarted
+
+- name: Wait for OpenResty to be ready
+  ansible.builtin.wait_for:
+    port: 80
+    delay: 2
+    timeout: 30
+  ignore_errors: true
+
+- name: Enable and start NPM
+  ansible.builtin.systemd:
+    name: npm
+    enabled: true
+    state: restarted
+
+- name: Wait for NPM to start
+  ansible.builtin.wait_for:
+    port: 81
+    delay: 5
+    timeout: 30
+
+- name: Display NPM access information
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════╗
+      ║       Nginx Proxy Manager Installed Successfully     ║
+      ╚══════════════════════════════════════════════════════╝
+      
+      Admin UI: http://{{ ansible_default_ipv4.address }}:81
+      
+      Default Login:
+        Email:    admin@example.com
+        Password: changeme
+      
+      ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!

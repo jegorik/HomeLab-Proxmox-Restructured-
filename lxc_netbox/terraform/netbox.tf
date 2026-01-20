@@ -39,7 +39,7 @@
 
 #   comments = <<-EOT
 #     LXC Container deployed by lxc_vault_module  
-#     Proxmox Node: ${var.proxmox_node}
+#     Proxmox Node: ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
 #     VMID: ${var.lxc_id}
 #     Created: ${timestamp()}
 #   EOT
@@ -99,4 +99,3 @@
 
 #   depends_on = [netbox_ip_address.primary]
 # }
-

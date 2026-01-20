@@ -94,3 +94,16 @@ lxc_os_type                = "debian"
 transit_key_name    = "your-transit-key-name"
 transit_engine_path = "transit"
 transit_key_length  = 32
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+netbox_url = "https://netbox.example.com"
+# netbox_api_token = ""  # Leave empty to fetch from Vault
+
+cluster_name = "Clustr_01"
+site_name    = "Site_01"
+device_id    = 1
+vrf_name     = "VRF_01"
+tenant_name  = "Tenant_01"

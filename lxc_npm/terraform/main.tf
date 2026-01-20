@@ -1,11 +1,16 @@
+# =============================================================================
+# Nginx Proxy Manager LXC Container - Main Terraform Configuration
+# =============================================================================
+# Deploys NPM in a Proxmox LXC container
+#
+# Last Updated: January 2026
+# =============================================================================
+
 # -----------------------------------------------------------------------------
 # Local Values
 # -----------------------------------------------------------------------------
 
 locals {
-  # Use provided password or generated one
-  root_password = var.lxc_root_password != "" ? var.lxc_root_password : random_password.root_password.result
-
   # Container tags as comma-separated string
   tags = join(",", var.lxc_tags)
 
@@ -17,21 +22,18 @@ locals {
 # Password Generation
 # -----------------------------------------------------------------------------
 
-# Generate secure root password if not provided via variable
-# Password will be stored in encrypted state file and can be retrieved
-# using: tofu output -raw lxc_root_password
+# Generate secure root password
 resource "random_password" "root_password" {
   length           = var.password_length
   special          = true
   override_special = var.password_special_chars
   min_lower        = var.password_lower_chars_count
   min_upper        = var.password_upper_chars_count
-  min_numeric      = var.password_upper_numeric_count
-  min_special      = var.password_upper_special_chars_count
+  min_numeric      = var.password_numeric_count
+  min_special      = var.password_special_chars_count
 }
 
 # Password lifecycle: Generate once and don't rotate on every apply
-# This prevents breaking SSH access during infrastructure updates
 resource "terraform_data" "password_keeper" {
   input = random_password.root_password.result
 }
@@ -40,9 +42,7 @@ resource "terraform_data" "password_keeper" {
 # LXC Container Resource
 # -----------------------------------------------------------------------------
 
-# Create Proxmox LXC container for NetBox DCIM/IPAM platform
-# This container will host the NetBox service with PostgreSQL database backend
-resource "proxmox_virtual_environment_container" "netbox" {
+resource "proxmox_virtual_environment_container" "npm" {
   # Basic identification
   description = var.lxc_description
   node_name   = data.vault_generic_secret.proxmox_node_name.data["node_name"]
@@ -52,12 +52,12 @@ resource "proxmox_virtual_environment_container" "netbox" {
   # Lifecycle settings
   start_on_boot = var.lxc_start_on_boot
   started       = var.lxc_started
-  unprivileged  = var.lxc_unprivileged # Run unprivileged for security
-  protection    = var.lxc_protection   # Prevent accidental deletion
+  unprivileged  = var.lxc_unprivileged
+  protection    = var.lxc_protection
 
   # Container features
   features {
-    nesting = var.lxc_nesting # Required for systemd and proper service management
+    nesting = var.lxc_nesting
   }
 
   # Operating system template
@@ -83,52 +83,16 @@ resource "proxmox_virtual_environment_container" "netbox" {
     swap      = var.lxc_swap
   }
 
-  # Bind Mount Configuration
-  # ------------------------
-  # Bind mounts allow the container to access directories from the Proxmox host filesystem.
-  # This is useful for sharing data, storing Vault data on ZFS, or using external storage.
+  # Bind Mount Configuration for Data Persistence
+  # ---------------------------------------------
+  # NPM stores all user data (SSL certs, database, proxy configs) in /data
+  # This bind mount ensures data survives container recreation.
   #
-  # IMPORTANT: Bind mounts REQUIRE root@pam authentication with password
-  # API tokens do NOT work for bind mount operations, even with full permissions.
-  #
-  # Why root@pam is required:
-  # 1. Bind mounts require direct filesystem access on the Proxmox host
-  # 2. The Proxmox API uses elevated privileges to modify host mount points
-  # 3. API tokens cannot execute certain privileged operations (security limitation)
-  # 4. The bpg/proxmox provider needs username/password for mount point operations
-  #
-  # Proxmox Documentation:
-  # - Bind Mounts: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
-  # - Container Configuration: https://pve.proxmox.com/pve-docs/pct.conf.5.html
-  #
-  # Provider Documentation:
-  # - https://github.com/bpg/terraform-provider-proxmox/issues/836
-  #
-  # Privileged vs Unprivileged Containers:
-  # - Bind mounts work best with PRIVILEGED containers (lxc_unprivileged = false)
-  # - Unprivileged containers use UID/GID mapping which can cause permission issues
-  # - With unprivileged containers, you must configure /etc/subuid and /etc/subgid on host
-  # - Privileged containers: root in container = root on host (simpler, less secure)
-  # - For production: Use unprivileged + proper UID mapping, or mount via NFS/CIFS
-  #
-  # See: https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
-
-  # NetBox application directory (persistent across container recreations)
+  # IMPORTANT: Requires privileged container (lxc_unprivileged = false)
+  # Host directory must exist before container creation.
   mount_point {
-    volume = var.lxc_netbox_mount_point_volume
-    path   = var.lxc_netbox_mount_point_path
-  }
-
-  # PostgreSQL database directory (persistent database storage)
-  mount_point {
-    volume = var.lxc_postgresql_mount_point_volume
-    path   = var.lxc_postgresql_mount_point_path
-  }
-
-  # Redis cache directory (optional, for cache persistence)
-  mount_point {
-    volume = var.lxc_redis_mount_point_volume
-    path   = var.lxc_redis_mount_point_path
+    volume = var.lxc_npm_data_mount_volume
+    path   = var.lxc_npm_data_mount_path
   }
 
   # Network configuration
@@ -154,25 +118,24 @@ resource "proxmox_virtual_environment_container" "netbox" {
       servers = split(" ", var.lxc_dns_servers)
     }
 
-    # User account configuration
+    # User configuration - use SSH key from Vault
     user_account {
-      password = local.root_password
-      keys     = [data.vault_generic_secret.root_ssh_public_key.data["key"]]
+      keys     = [trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])]
+      password = random_password.root_password.result
     }
   }
 
-  # Startup/shutdown behavior
+  # Startup/shutdown order
   startup {
     order      = var.lxc_startup_order
     up_delay   = var.lxc_up_delay
     down_delay = var.lxc_down_delay
   }
 
-  # Prevent unnecessary recreation when password or SSH keys change
-  # This ensures container stability during state refreshes
+  # Ignore password changes after initial creation
   lifecycle {
     ignore_changes = [
-      initialization,
+      initialization[0].user_account[0].password
     ]
   }
 }
@@ -186,11 +149,11 @@ resource "proxmox_virtual_environment_container" "netbox" {
 resource "terraform_data" "ansible_user_setup" {
   # Trigger user creation only when container is recreated
   triggers_replace = [
-    proxmox_virtual_environment_container.netbox.id,
+    proxmox_virtual_environment_container.npm.id,
   ]
 
   # Ensure container is fully created before user setup
-  depends_on = [proxmox_virtual_environment_container.netbox]
+  depends_on = [proxmox_virtual_environment_container.npm]
 
   # Create Ansible user via SSH
   provisioner "remote-exec" {
@@ -282,4 +245,3 @@ connection {
 }
 }
 }
-

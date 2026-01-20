@@ -1,9 +1,12 @@
 ---
 # =============================================================================
-# PostgreSQL Role - Simplified
+# PostgreSQL Role - With Bind Mount Data Preservation
 # =============================================================================
 # Installs PostgreSQL 17 and configures database for NetBox
 # Supports bind mount for data persistence across container recreations
+#
+# CRITICAL: This role detects existing data in bind mounts and preserves it
+# instead of creating a fresh database cluster.
 # =============================================================================
 
 # --- Installation ---
@@ -17,7 +20,7 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-  tags: ['install']
+  tags: ["install"]
 
 # --- Bind Mount Setup (CRITICAL for data persistence) ---
 
@@ -27,42 +30,164 @@
     state: directory
     owner: postgres
     group: postgres
-    mode: '0755'
-  tags: ['install', 'permissions']
+    mode: "0755"
+  tags: ["install", "permissions"]
 
-# --- Cluster Initialization ---
+# --- Cluster Initialization (preserves bind mount data) ---
 
 - name: Check if PostgreSQL cluster is registered
   ansible.builtin.command:
     cmd: pg_lsclusters -h
   register: pg_clusters
   changed_when: false
-  tags: ['install']
+  tags: ["install"]
 
 - name: Check if main cluster exists
   ansible.builtin.set_fact:
     cluster_exists: "{{ pg_clusters.stdout | regex_search('17\\s+main') is not none }}"
-  tags: ['install']
+  tags: ["install"]
 
-- name: Remove unregistered data directory (allows fresh cluster creation)
+- name: Check if existing PostgreSQL data exists (bind mount preservation)
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/{{ postgres_version }}/main/PG_VERSION
+  register: pg_data_exists
+  tags: ["install"]
+
+- name: Display data detection results
+  ansible.builtin.debug:
+    msg:
+      - "Cluster registered: {{ cluster_exists }}"
+      - "Existing data found: {{ pg_data_exists.stat.exists | default(false) }}"
+  tags: ["install"]
+
+# CRITICAL: Re-register existing cluster from bind mount data (DO NOT DELETE!)
+# First ensure config directory exists (it won't after container recreation)
+- name: Ensure PostgreSQL config directory exists
   ansible.builtin.file:
-    path: /var/lib/postgresql/{{ postgres_version }}/main
-    state: absent
-  when: not cluster_exists
-  tags: ['install']
+    path: /etc/postgresql/{{ postgres_version }}/main
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0755"
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
 
-- name: Create PostgreSQL cluster (Debian way, respects bind mount)
+# Create minimal postgresql.conf if not exists (required for pg_createcluster)
+- name: Check if postgresql.conf exists in data dir
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/{{ postgres_version }}/main/postgresql.conf
+  register: pg_conf_in_data
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
+
+# pg_createcluster needs postgresql.conf - create it from postmaster.opts or defaults
+- name: Generate default postgresql.conf for existing data
+  ansible.builtin.shell:
+    cmd: |
+      # Create config in /etc/postgresql location (Debian standard)
+      cat > /etc/postgresql/{{ postgres_version }}/main/postgresql.conf << 'EOF'
+      # Auto-generated config for existing data directory
+      data_directory = '/var/lib/postgresql/{{ postgres_version }}/main'
+      hba_file = '/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf'
+      ident_file = '/etc/postgresql/{{ postgres_version }}/main/pg_ident.conf'
+      external_pid_file = '/var/run/postgresql/{{ postgres_version }}-main.pid'
+      port = 5432
+      max_connections = 100
+      unix_socket_directories = '/var/run/postgresql'
+      ssl = on
+      ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
+      ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'
+      shared_buffers = 128MB
+      dynamic_shared_memory_type = posix
+      max_wal_size = 1GB
+      min_wal_size = 80MB
+      log_line_prefix = '%m [%p] %q%u@%d '
+      log_timezone = 'Etc/UTC'
+      datestyle = 'iso, mdy'
+      timezone = 'Etc/UTC'
+      lc_messages = 'C.UTF-8'
+      lc_monetary = 'C.UTF-8'
+      lc_numeric = 'C.UTF-8'
+      lc_time = 'C.UTF-8'
+      default_text_search_config = 'pg_catalog.english'
+      EOF
+      chown postgres:postgres /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
+
+# Create pg_hba.conf
+- name: Generate pg_hba.conf for existing data
+  ansible.builtin.copy:
+    dest: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
+    owner: postgres
+    group: postgres
+    mode: "0640"
+    content: |
+      # PostgreSQL Client Authentication Configuration File
+      local   all             postgres                                peer
+      local   all             all                                     peer
+      host    all             all             127.0.0.1/32            scram-sha-256
+      host    all             all             ::1/128                 scram-sha-256
+      local   replication     all                                     peer
+      host    replication     all             127.0.0.1/32            scram-sha-256
+      host    replication     all             ::1/128                 scram-sha-256
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
+
+# Create pg_ident.conf
+- name: Generate pg_ident.conf for existing data
+  ansible.builtin.copy:
+    dest: /etc/postgresql/{{ postgres_version }}/main/pg_ident.conf
+    owner: postgres
+    group: postgres
+    mode: "0640"
+    content: |
+      # PostgreSQL User Name Maps
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
+
+# Now start cluster directly (skip pg_createcluster which has issues)
+- name: Start existing cluster directly with pg_ctlcluster
+  ansible.builtin.command:
+    cmd: pg_ctlcluster {{ postgres_version }} main start
+  register: cluster_registered
+  failed_when: false
+  when:
+    - not cluster_exists
+    - pg_data_exists.stat.exists | default(false)
+  tags: ["install"]
+
+- name: Display cluster start result
+  ansible.builtin.debug:
+    var: cluster_registered
+  when: cluster_registered is defined
+  tags: ["install"]
+
+# Only create fresh cluster if NO existing data
+- name: Create fresh PostgreSQL cluster (no existing data)
   ansible.builtin.command:
     cmd: pg_createcluster --datadir=/var/lib/postgresql/{{ postgres_version }}/main {{ postgres_version }} main
-  when: not cluster_exists
+  when:
+    - not cluster_exists
+    - not (pg_data_exists.stat.exists | default(false))
   register: cluster_created
-  tags: ['install']
+  tags: ["install"]
 
 - name: Start newly created cluster
   ansible.builtin.command:
     cmd: pg_ctlcluster {{ postgres_version }} main start
   when: cluster_created is changed
-  tags: ['install']
+  tags: ["install"]
 
 # --- Service Management ---
 
@@ -71,14 +196,14 @@
     name: postgresql
     state: started
     enabled: true
-  tags: ['service']
+  tags: ["service"]
 
-- name: Restart PostgreSQL if cluster was just created
+- name: Restart PostgreSQL if cluster was just created or registered
   ansible.builtin.systemd:
     name: postgresql
     state: restarted
-  when: cluster_created is changed
-  tags: ['service']
+  when: cluster_created is changed or cluster_registered is changed
+  tags: ["service"]
 
 # --- Ensure cluster is running ---
 
@@ -87,19 +212,19 @@
     cmd: pg_lsclusters
   register: cluster_status
   changed_when: false
-  tags: ['service']
+  tags: ["service"]
 
 - name: Display cluster status
   ansible.builtin.debug:
     var: cluster_status.stdout_lines
-  tags: ['service']
+  tags: ["service"]
 
 - name: Start cluster if down
   ansible.builtin.command:
     cmd: pg_ctlcluster {{ postgres_version }} main start
   register: start_cluster
   when: "'down' in cluster_status.stdout"
-  tags: ['service']
+  tags: ["service"]
 
 - name: Check PostgreSQL logs if start failed
   ansible.builtin.shell:
@@ -107,26 +232,26 @@
   register: pg_logs
   changed_when: false
   when: start_cluster is defined and start_cluster.rc is defined and start_cluster.rc != 0
-  tags: ['service']
+  tags: ["service"]
 
 - name: Display PostgreSQL logs on failure
   ansible.builtin.debug:
     var: pg_logs.stdout_lines
   when: pg_logs.stdout_lines is defined
-  tags: ['service']
+  tags: ["service"]
 
 - name: Verify cluster is now online
   ansible.builtin.command:
     cmd: pg_lsclusters
   register: cluster_final_status
   changed_when: false
-  tags: ['service']
+  tags: ["service"]
 
 - name: Fail if cluster still not online
   ansible.builtin.fail:
     msg: "PostgreSQL cluster failed to start. Check /var/log/postgresql/postgresql-{{ postgres_version }}-main.log"
   when: "'online' not in cluster_final_status.stdout"
-  tags: ['service']
+  tags: ["service"]
 
 - name: Wait for PostgreSQL to be ready
   ansible.builtin.wait_for:
@@ -134,7 +259,7 @@
     host: 127.0.0.1
     delay: 3
     timeout: 30
-  tags: ['service']
+  tags: ["service"]
 
 # --- Vault Credentials ---
 
@@ -148,7 +273,7 @@
     status_code: [200, 404]
     validate_certs: false
   register: vault_check
-  tags: ['vault']
+  tags: ["vault"]
 
 - name: Use existing password from Vault
   ansible.builtin.set_fact:
@@ -157,14 +282,14 @@
   when:
     - vault_check.status == 200
     - vault_check.json.data.data.db_password is defined
-  tags: ['vault']
+  tags: ["vault"]
 
 - name: Generate new password if not in Vault
   ansible.builtin.set_fact:
     netbox_db_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
   no_log: true
   when: netbox_db_password is not defined
-  tags: ['vault']
+  tags: ["vault"]
 
 - name: Store credentials in Vault (if new or missing)
   ansible.builtin.uri:
@@ -184,7 +309,7 @@
     validate_certs: false
   no_log: true
   when: vault_check.status == 404 or vault_check.json.data.data.db_password is not defined
-  tags: ['vault']
+  tags: ["vault"]
 
 # --- Database Setup ---
 
@@ -197,7 +322,7 @@
   become: true
   become_user: postgres
   no_log: true
-  tags: ['database']
+  tags: ["database"]
 
 - name: Check if database exists (bind mount may have existing data)
   community.postgresql.postgresql_query:
@@ -206,7 +331,7 @@
   become: true
   become_user: postgres
   register: db_exists
-  tags: ['database']
+  tags: ["database"]
 
 - name: Create database (only if not exists)
   community.postgresql.postgresql_db:
@@ -220,7 +345,7 @@
   become: true
   become_user: postgres
   when: db_exists.rowcount == 0
-  tags: ['database']
+  tags: ["database"]
 
 - name: Grant privileges to user
   community.postgresql.postgresql_privs:
@@ -231,7 +356,7 @@
     role: "{{ netbox_db_user }}"
   become: true
   become_user: postgres
-  tags: ['database']
+  tags: ["database"]
 
 # --- Configuration ---
 
@@ -240,12 +365,12 @@
     path: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
     regexp: '^local\s+all\s+{{ netbox_db_user }}'
     line: "local {{ netbox_db_name }} {{ netbox_db_user }} md5"
-    insertafter: '^# TYPE'
+    insertafter: "^# TYPE"
   notify: restart postgresql
-  tags: ['config']
+  tags: ["config"]
 
 - name: Reload PostgreSQL configuration
   ansible.builtin.systemd:
     name: postgresql
     state: reloaded
-  tags: ['config']
+  tags: ["config"]
