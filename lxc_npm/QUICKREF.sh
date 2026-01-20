@@ -1,120 +1,197 @@
 #!/usr/bin/env bash
-# =============================================================================
-# Nginx Proxy Manager LXC - Quick Reference Commands
-# =============================================================================
-# Last Updated: January 2026
+# Quick reference for deploy.sh usage
 
-echo "
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                    NGINX PROXY MANAGER - QUICK REFERENCE                     ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+cat << 'EOF'
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║      Nginx Proxy Manager LXC - Deployment Quick Reference      ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DEPLOYMENT COMMANDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROJECT STRUCTURE
+───────────────────────────────────────────────────────────────
+lxc_npm/
+├── deploy.sh           # Main deployment script
+├── scripts/            # Modular script components
+│   ├── common.sh       #   Logging, colors, utilities
+│   ├── vault.sh        #   Vault authentication & AWS credentials
+│   ├── terraform.sh    #   Terraform/OpenTofu operations
+│   └── ansible.sh      #   Ansible inventory & deployment
+├── terraform/          # Infrastructure as Code
+├── ansible/            # Configuration management
+│   └── roles/          # base, npm
+└── logs/               # Deployment logs
 
-# Full deployment (interactive)
-./deploy.sh
+BASIC USAGE
+───────────────────────────────────────────────────────────────
+  ./deploy.sh              # Interactive menu (recommended)
+  ./deploy.sh deploy       # Full deployment (Vault + Terraform + Ansible)
+  ./deploy.sh plan         # Dry-run (preview changes)
+  ./deploy.sh status       # Check deployment status
+  ./deploy.sh destroy      # Destroy infrastructure
+  ./deploy.sh ansible      # Ansible only (requires VAULT_TOKEN)
+  ./deploy.sh terraform    # Terraform only (no Ansible)
+  ./deploy.sh help         # Show help
 
-# CLI commands
-./deploy.sh deploy    # Full deployment
-./deploy.sh plan      # Dry-run
-./deploy.sh destroy   # Destroy infrastructure
-./deploy.sh ansible   # Run Ansible only
-./deploy.sh status    # Check status
+INTERACTIVE MENU OPTIONS
+───────────────────────────────────────────────────────────────
+  1) Deploy Infrastructure (full)
+  2) Dry-Run / Plan
+  3) Check Status
+  4) Destroy Infrastructure
+  5) Ansible Only (requires VAULT_TOKEN)
+  6) Terraform Only (no Ansible)
+  0) Exit
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TERRAFORM COMMANDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREREQUISITES
+───────────────────────────────────────────────────────────────
+⚠️  HashiCorp Vault REQUIRED (deploy lxc_vault first)
+    See: ../lxc_vault/README.md
 
-cd terraform
+Required binaries: tofu/terraform, ansible, vault, jq, ssh
 
-# Initialize with S3 backend
-tofu init -backend-config=s3.backend.config
+VAULT AUTHENTICATION
+───────────────────────────────────────────────────────────────
+The deploy.sh script handles Vault authentication automatically:
+  • Prompts for VAULT_ADDR if not set
+  • Prompts for VAULT_USERNAME if not set
+  • Prompts for password during authentication
+  • Token stored in VAULT_TOKEN environment variable
+  • No credential caching (simplified security model)
 
-# Plan changes
-tofu plan -var-file=terraform.tfvars
+Set Environment Variables (Optional):
+  export VAULT_ADDR='https://vault.example.com:8200'
+  export VAULT_USERNAME='your_username'
 
-# Apply changes
-tofu apply -var-file=terraform.tfvars
+STANDALONE ANSIBLE EXECUTION
+───────────────────────────────────────────────────────────────
+To run Ansible independently (e.g., re-run configuration):
 
-# Destroy
-tofu destroy -var-file=terraform.tfvars
+  # Set VAULT_TOKEN before running
+  export VAULT_TOKEN=$(vault print token)
+  ./deploy.sh ansible
 
-# View outputs
-tofu output
+  # Or run Ansible manually
+  export VAULT_TOKEN=$(vault print token)
+  cd ansible
+  ansible-playbook -i inventory.yml site.yml
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ANSIBLE COMMANDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Note: VAULT_TOKEN is passed via environment variable (secure, not shown in logs)
 
-cd ansible
+BIND MOUNTS (DATA PERSISTENCE)
+───────────────────────────────────────────────────────────────
+Default mount points (configurable in terraform.tfvars):
+  Host: /mnt/pve/.../lxc_npm/data → Container: /data
 
-# Run full playbook
-ansible-playbook -i inventory.yml site.yml
+User data preserved across container recreation:
+  • Database (database.sqlite)
+  • SSL certificates
+  • Proxy host configurations
 
-# Run specific role
-ansible-playbook -i inventory.yml site.yml --tags npm
+NPM SERVICES
+───────────────────────────────────────────────────────────────
+Check all services (inside container):
+  ssh ansible@<container-ip>
+  sudo systemctl status npm openresty
 
-# Check syntax
-ansible-playbook -i inventory.yml site.yml --syntax-check
+View logs:
+  sudo journalctl -u npm -f
+  sudo journalctl -u openresty -f
 
-# Dry run
-ansible-playbook -i inventory.yml site.yml --check
+NPM PORTS
+───────────────────────────────────────────────────────────────
+  Port 80   - HTTP proxy traffic
+  Port 443  - HTTPS proxy traffic
+  Port 81   - Admin UI
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VAULT COMMANDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK SETUP
+───────────────────────────────────────────────────────────────
+1. (Optional) Set Vault environment variables:
+   export VAULT_ADDR='https://vault.example.com:8200'
+   export VAULT_USERNAME='your_username'
+   # Or let script prompt you during deployment
 
-# Login to Vault
-export VAULT_ADDR='https://vault.example.com:8200'
-vault login
+2. Configure Terraform:
+   cd terraform
+   cp terraform.tfvars.example terraform.tfvars
+   vim terraform.tfvars
 
-# Read Proxmox password
-vault kv get secrets/proxmox/root
+3. Configure S3 backend:
+   cp s3.backend.config.template s3.backend.config
+   vim s3.backend.config
 
-# Read NetBox token
-vault kv get secrets/proxmox/netbox_api_token
+4. Run deployment:
+   cd ..
+   ./deploy.sh deploy
+   # Script will prompt for Vault configuration if not set
 
-# Get AWS credentials (dynamic)
-vault read aws/proxmox/creds/tofu_state_backup
+5. Ansible inventory is auto-generated from Terraform outputs
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-NPM SERVICE COMMANDS (on container)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACCESSING NPM
+───────────────────────────────────────────────────────────────
+Web Interface:
+  http://<container-ip>:81
 
-# Check service status
-sudo systemctl status npm
-sudo systemctl status openresty
+Default Credentials:
+  Email:    admin@example.com
+  Password: changeme
 
-# Restart services
-sudo systemctl restart npm
-sudo systemctl restart openresty
+⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!
 
-# View logs
-sudo journalctl -u npm -f
-sudo journalctl -u openresty -f
+COMMON COMMANDS
+───────────────────────────────────────────────────────────────
+# Get container IP
+cd terraform && tofu output lxc_ip_address
 
-# Check ports
-ss -tlnp | grep -E '80|81|443'
+# SSH to container
+ssh ansible@<container-ip>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DEFAULT CREDENTIALS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Restart NPM services
+sudo systemctl restart npm openresty
 
-Admin UI:    http://<container-ip>:81
-Email:       admin@example.com
-Password:    changeme
+# Check NPM database
+ls -la /data/database.sqlite
 
-⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY AFTER FIRST LOGIN!
+VAULT SECRETS PATHS
+───────────────────────────────────────────────────────────────
+Required in Vault KV (must be created before deployment):
+  secrets/proxmox/credentials   # endpoint, node, password
+  secrets/proxmox/ssh_keys      # root_public, root_private, ansible_public
+  secrets/proxmox/netbox_api_token  # NetBox API token
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PORTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Vault Transit Engine:
+  transit/keys/tofu-state-encryption
 
-Port 80   → HTTP (reverse proxy)
-Port 443  → HTTPS (reverse proxy)
-Port 81   → NPM Admin UI
-Port 22   → SSH (management)
+AWS Dynamic Credentials:
+  aws/proxmox/creds/tofu_state_backup
 
-"
+TROUBLESHOOTING
+───────────────────────────────────────────────────────────────
+# Test Vault connectivity
+vault status
+
+# Verify Vault secrets exist
+vault kv list secrets/proxmox
+
+# Check Transit key
+vault read transit/keys/tofu-state-encryption
+
+# NPM not starting? Check logs
+ssh ansible@<container-ip>
+sudo journalctl -u npm -n 50
+
+# Port 81 not responding?
+sudo systemctl status npm openresty
+sudo ss -tlnp | grep -E ':(81|3000)'
+
+# View deployment logs
+tail -f logs/deployment_*.log
+
+LINKS
+───────────────────────────────────────────────────────────────
+Documentation:  README.md
+Deployment:     DEPLOYMENT.md
+Vault Setup:    ../lxc_vault/README.md
+NPM Docs:       https://nginxproxymanager.com/
+
+EOF

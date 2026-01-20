@@ -54,23 +54,36 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Enable and start OpenResty
+- name: Stop NPM before OpenResty restart
+  ansible.builtin.systemd:
+    name: npm
+    state: stopped
+  ignore_errors: true
+
+- name: Restart OpenResty to apply new configuration
   ansible.builtin.systemd:
     name: openresty
     enabled: true
-    state: started
+    state: restarted
+
+- name: Wait for OpenResty to be ready
+  ansible.builtin.wait_for:
+    port: 80
+    delay: 2
+    timeout: 30
+  ignore_errors: true
 
 - name: Enable and start NPM
   ansible.builtin.systemd:
     name: npm
     enabled: true
-    state: started
+    state: restarted
 
 - name: Wait for NPM to start
   ansible.builtin.wait_for:
     port: 81
     delay: 5
-    timeout: 60
+    timeout: 30
 
 - name: Display NPM access information
   ansible.builtin.debug:

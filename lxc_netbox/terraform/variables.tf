@@ -498,3 +498,73 @@ variable "transit_key_length" {
   type        = number
   default     = 32
 }
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+variable "netbox_url" {
+  description = "NetBox server URL"
+  type        = string
+}
+
+variable "netbox_insecure" {
+  description = "Skip TLS verification for NetBox server (use for self-signed certs)"
+  type        = bool
+  default     = true
+}
+
+variable "netbox_api_token_vault_path" {
+  description = "Vault path to NetBox API token secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "site_name" {
+  description = "NetBox site name for the container"
+  type        = string
+  default     = "site_01"
+}
+
+variable "cluster_name" {
+  description = "NetBox cluster name for the container"
+  type        = string
+  default     = "cluster_01"
+}
+
+variable "device_id" {
+  description = "NetBox device ID for the container"
+  type        = number
+  default     = 1
+}
+
+variable "vrf_name" {
+  description = "NetBox VRF name for the container"
+  type        = string
+  default     = "vrf_01"
+}
+
+variable "tenant_name" {
+  description = "NetBox tenant name for the container"
+  type        = string
+  default     = "tenant_01"
+}
+
+variable "interface_name" {
+  description = "Name of the interface"
+  type        = string
+  default     = "eth0"
+}
+
+variable "disk_name" {
+  description = "Name of the disk"
+  type        = string
+  default     = "disk-01"
+}
+
+variable "disk_description" {
+  description = "Description of the disk"
+  type        = string
+  default     = "Main disk"
+}

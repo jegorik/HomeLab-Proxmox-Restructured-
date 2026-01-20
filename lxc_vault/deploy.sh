@@ -163,6 +163,28 @@ deploy_ansible_only() {
     ansible_deploy || return 1
 }
 
+deploy_terraform_only() {
+    log_header "Terraform Only (No Ansible)"
+    local start_time=$(date +%s)
+
+    check_binaries || return 1
+    check_files || return 1
+    
+    credentials_initialize || return 1
+    terraform_init || return 1
+    terraform_validate || return 1
+    terraform_apply || return 1
+    
+    local duration=$(( $(date +%s) - start_time ))
+    log_header "Terraform Deployment Complete"
+    log_success "Time: $((duration / 60))m $((duration % 60))s"
+    
+    echo ""
+    log_info "Infrastructure deployed. To configure with Ansible:"
+    echo "  ./deploy.sh ansible"
+    echo ""
+}
+
 check_status() {
     log_header "Deployment Status"
     
@@ -204,6 +226,7 @@ show_menu() {
     echo -e "  ${RED}4)${NC} Destroy Infrastructure"
     echo ""
     echo -e "  ${CYAN}5)${NC} Ansible Only"
+    echo -e "  ${BLUE}6)${NC} Terraform Only (no Ansible)"
     echo ""
     echo -e "  ${BOLD}0)${NC} Exit"
     echo ""
@@ -222,6 +245,7 @@ interactive_menu() {
             3) check_status; read -p "Press Enter..." ;;
             4) deploy_destroy; read -p "Press Enter..." ;;
             5) deploy_ansible_only; read -p "Press Enter..." ;;
+            6) deploy_terraform_only; read -p "Press Enter..." ;;
             0) exit 0 ;;
             *) log_error "Invalid option"; sleep 1 ;;
         esac
@@ -241,6 +265,7 @@ show_help() {
     echo "  plan      - Dry-run / plan only"
     echo "  status    - Check deployment status"
     echo "  ansible   - Run Ansible only"
+    echo "  terraform - Terraform only (no Ansible)"
     echo "  help      - Show this help"
     echo ""
     echo "No arguments: Interactive menu"
@@ -264,6 +289,7 @@ main() {
             plan)    deploy_plan ;;
             status)  check_status ;;
             ansible) deploy_ansible_only ;;
+            terraform) deploy_terraform_only ;;
             help|--help|-h) show_help ;;
             *) log_error "Unknown: $1"; show_help; exit 1 ;;
         esac

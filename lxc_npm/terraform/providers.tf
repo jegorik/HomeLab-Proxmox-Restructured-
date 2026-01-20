@@ -79,6 +79,11 @@ ephemeral "vault_kv_secret_v2" "proxmox_api_token" {
   name  = var.proxmox_api_token_vault_path
 }
 
+ephemeral "vault_kv_secret_v2" "netbox_api_token" {
+  mount = var.ephemeral_vault_mount_path
+  name  = var.netbox_api_token_vault_path
+}
+
 ephemeral "vault_kv_secret_v2" "proxmox_root_password" {
   mount = var.ephemeral_vault_mount_path
   name  = var.proxmox_root_password_vault_path
@@ -119,4 +124,16 @@ provider "proxmox" {
 provider "aws" {
   # AWS region for S3 backend and resource deployment
   region = var.aws_region
+}
+
+# -----------------------------------------------------------------------------
+# NetBox Provider Configuration
+# -----------------------------------------------------------------------------
+
+provider "netbox" {
+  server_url = var.netbox_url
+  api_token  = ephemeral.vault_kv_secret_v2.netbox_api_token.data["token"]
+
+  # Skip TLS verification for self-signed certs (e.g. in local Proxmox labs)
+  allow_insecure_https = var.netbox_insecure
 }

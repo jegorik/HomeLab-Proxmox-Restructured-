@@ -112,7 +112,7 @@ resource "proxmox_virtual_environment_container" "netbox" {
   # - For production: Use unprivileged + proper UID mapping, or mount via NFS/CIFS
   #
   # See: https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
-  
+
   # NetBox application directory (persistent across container recreations)
   mount_point {
     volume = var.lxc_netbox_mount_point_volume
@@ -176,10 +176,6 @@ resource "proxmox_virtual_environment_container" "netbox" {
     ]
   }
 }
-
-# -----------------------------------------------------------------------------
-# Netbox Installation and Configuration
-# -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
 # Ansible User Setup

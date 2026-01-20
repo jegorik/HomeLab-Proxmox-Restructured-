@@ -58,7 +58,7 @@ lxc_npm/
 │
 ├── scripts/
 │   ├── common.sh             # Logging utilities
-│   ├── credentials.sh        # Vault secret loading
+│   ├── vault.sh              # Vault authentication & AWS credentials
 │   ├── terraform.sh          # Terraform operations
 │   └── ansible.sh            # Ansible operations
 │

@@ -83,6 +83,18 @@ resource "proxmox_virtual_environment_container" "npm" {
     swap      = var.lxc_swap
   }
 
+  # Bind Mount Configuration for Data Persistence
+  # ---------------------------------------------
+  # NPM stores all user data (SSL certs, database, proxy configs) in /data
+  # This bind mount ensures data survives container recreation.
+  #
+  # IMPORTANT: Requires privileged container (lxc_unprivileged = false)
+  # Host directory must exist before container creation.
+  mount_point {
+    volume = var.lxc_npm_data_mount_volume
+    path   = var.lxc_npm_data_mount_path
+  }
+
   # Network configuration
   network_interface {
     name   = var.lxc_network_interface_name
@@ -108,7 +120,7 @@ resource "proxmox_virtual_environment_container" "npm" {
 
     # User configuration - use SSH key from Vault
     user_account {
-      keys     = [trimspace(data.vault_generic_secret.root_ssh_public_key.data["public_key"])]
+      keys     = [trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])]
       password = random_password.root_password.result
     }
   }
@@ -129,38 +141,107 @@ resource "proxmox_virtual_environment_container" "npm" {
 }
 
 # -----------------------------------------------------------------------------
-# Create Ansible User
+# Ansible User Setup
 # -----------------------------------------------------------------------------
 
-resource "null_resource" "create_ansible_user" {
-  count = var.ansible_user_enabled ? 1 : 0
+# Create Ansible user with SSH access for configuration management
+# This is a prerequisite for Ansible playbooks to work
+resource "terraform_data" "ansible_user_setup" {
+  # Trigger user creation only when container is recreated
+  triggers_replace = [
+    proxmox_virtual_environment_container.npm.id,
+  ]
 
+  # Ensure container is fully created before user setup
   depends_on = [proxmox_virtual_environment_container.npm]
 
+  # Create Ansible user via SSH
   provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      host        = local.container_ip
-      user        = "root"
-      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["private_key"]
-      timeout     = "5m"
+    inline = [<<-EOT
+      #!/bin/bash
+      set -e  # Exit on any error
+
+      echo "=== Setting up Ansible user ==="
+
+      # Wait for container to fully boot
+      echo "Waiting for system to be ready..."
+      sleep 10
+
+      # Update package lists
+      apt-get update -qq
+
+      # Install sudo if not present
+      apt-get install -y -qq sudo
+
+      ${var.ansible_user_enabled ? <<-ANSIBLE_USER
+      echo ""
+      echo "Creating Ansible user: ${var.ansible_user_name}"
+
+      # Create Ansible user if it doesn't exist
+      if ! id -u ${var.ansible_user_name} > /dev/null 2>&1; then
+        useradd -m -s ${var.ansible_user_shell} ${var.ansible_user_name}
+        echo "✓ User '${var.ansible_user_name}' created"
+      else
+        echo "✓ User '${var.ansible_user_name}' already exists"
+      fi
+
+      # Create .ssh directory and set permissions
+      mkdir -p /home/${var.ansible_user_name}/.ssh
+      chmod 700 /home/${var.ansible_user_name}/.ssh
+
+      # Add SSH public key
+      cat > /home/${var.ansible_user_name}/.ssh/authorized_keys <<'ANSIBLE_KEY_EOF'
+${data.vault_generic_secret.ansible_ssh_public_key.data["key"]}
+ANSIBLE_KEY_EOF
+
+      chmod 600 /home/${var.ansible_user_name}/.ssh/authorized_keys
+      chown -R ${var.ansible_user_name}:${var.ansible_user_name} /home/${var.ansible_user_name}/.ssh
+
+      ${var.ansible_user_sudo ? <<-SUDO_CONFIG
+      # Configure sudo access
+      usermod -aG sudo ${var.ansible_user_name}
+      mkdir -p /etc/sudoers.d
+
+      ${length(var.ansible_user_sudo_commands) > 0 ? <<-LIMITED_SUDO
+      # Limited sudo commands
+      cat > /etc/sudoers.d/${var.ansible_user_name} <<'SUDOERS_EOF'
+# Ansible user sudo configuration - managed by Terraform
+${var.ansible_user_name} ALL=(ALL) NOPASSWD: ${join(", ", var.ansible_user_sudo_commands)}
+SUDOERS_EOF
+      LIMITED_SUDO
+      : <<-FULL_SUDO
+      # Full sudo access without password
+      cat > /etc/sudoers.d/${var.ansible_user_name} <<'SUDOERS_EOF'
+# Ansible user sudo configuration - managed by Terraform
+${var.ansible_user_name} ALL=(ALL) NOPASSWD:ALL
+SUDOERS_EOF
+      FULL_SUDO
     }
 
-    inline = [
-      # Create ansible user
-      "useradd -m -s ${var.ansible_user_shell} ${var.ansible_user_name} || true",
+      chmod 440 /etc/sudoers.d/${var.ansible_user_name}
+      visudo -c -f /etc/sudoers.d/${var.ansible_user_name}
+      echo "✓ Sudo access configured"
+      SUDO_CONFIG
+  : "# Sudo access not enabled"}
 
-      # Configure sudo access
-      var.ansible_user_sudo ? "echo '${var.ansible_user_name} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${var.ansible_user_name}" : "true",
+      # Add to additional groups
+      ${length(var.ansible_user_groups) > 0 ? "usermod -aG ${join(",", var.ansible_user_groups)} ${var.ansible_user_name}" : ""}
 
-      # Setup SSH directory
-      "mkdir -p /home/${var.ansible_user_name}/.ssh",
-      "echo '${trimspace(data.vault_generic_secret.ansible_ssh_public_key.data["public_key"])}' > /home/${var.ansible_user_name}/.ssh/authorized_keys",
+      echo ""
+      echo "✓ Ansible user '${var.ansible_user_name}' setup complete"
+      echo "SSH access: ssh ${var.ansible_user_name}@${local.container_ip}"
+      ANSIBLE_USER
+: "# Ansible user creation disabled"}
+    EOT
+]
 
-      # Set permissions
-      "chown -R ${var.ansible_user_name}:${var.ansible_user_name} /home/${var.ansible_user_name}/.ssh",
-      "chmod 700 /home/${var.ansible_user_name}/.ssh",
-      "chmod 600 /home/${var.ansible_user_name}/.ssh/authorized_keys"
-    ]
-  }
+# SSH connection configuration
+connection {
+  type        = "ssh"
+  user        = "root"
+  private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+  host        = local.container_ip
+  timeout     = "5m"
+}
+}
 }

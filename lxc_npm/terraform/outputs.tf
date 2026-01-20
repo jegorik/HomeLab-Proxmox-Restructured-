@@ -27,6 +27,7 @@ output "lxc_ip_address" {
 output "lxc_node" {
   description = "Proxmox node where container is deployed"
   value       = data.vault_generic_secret.proxmox_node_name.data["node_name"]
+  sensitive   = true
 }
 
 # -----------------------------------------------------------------------------
@@ -90,7 +91,6 @@ output "deployment_summary" {
     ╚══════════════════════════════════════════════════════╝
     
     Container:  ${var.lxc_hostname} (VMID: ${proxmox_virtual_environment_container.npm.vm_id})
-    Node:       ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
     IP:         ${local.container_ip}
     
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

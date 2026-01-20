@@ -91,11 +91,6 @@ variable "root_ssh_private_key_path" {
   type        = string
 }
 
-variable "ansible_ssh_public_key_path" {
-  description = "Vault path to SSH public key for Ansible user"
-  type        = string
-}
-
 # -----------------------------------------------------------------------------
 # AWS Configuration (for S3 Backend State Storage)
 # -----------------------------------------------------------------------------
@@ -233,6 +228,24 @@ variable "lxc_down_delay" {
 }
 
 # -----------------------------------------------------------------------------
+# LXC Bind Mount Configuration (Data Persistence)
+# -----------------------------------------------------------------------------
+# Bind mounts allow persistent storage that survives container recreation.
+# IMPORTANT: Bind mounts REQUIRE privileged containers (lxc_unprivileged = false)
+
+variable "lxc_npm_data_mount_volume" {
+  description = "Host path for NPM data directory (SSL certs, database, configs)"
+  type        = string
+  default     = "/rpool/data/npm-data"
+}
+
+variable "lxc_npm_data_mount_path" {
+  description = "Container path for NPM data directory"
+  type        = string
+  default     = "/data"
+}
+
+# -----------------------------------------------------------------------------
 # LXC Container Template Variables
 # -----------------------------------------------------------------------------
 
@@ -343,10 +356,35 @@ variable "ansible_user_name" {
   }
 }
 
+variable "ansible_ssh_public_key_path" {
+  description = "Path to SSH public key file for Ansible user (separate from root key recommended)"
+  type        = string
+  default     = "~/.ssh/ansible_rsa.pub"
+}
+
 variable "ansible_user_sudo" {
   description = "Grant Ansible user passwordless sudo access (NOPASSWD:ALL)"
   type        = bool
   default     = true
+}
+
+variable "ansible_user_sudo_commands" {
+  description = "Specific sudo commands allowed for Ansible user (empty list = ALL commands if sudo enabled)"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cmd in var.ansible_user_sudo_commands : can(regex("^/", cmd))
+    ])
+    error_message = "Sudo commands must be absolute paths (start with /)."
+  }
+}
+
+variable "ansible_user_groups" {
+  description = "Additional groups for Ansible user (sudo group added automatically if ansible_user_sudo=true)"
+  type        = list(string)
+  default     = []
 }
 
 variable "ansible_user_shell" {
@@ -462,3 +500,74 @@ variable "transit_key_length" {
   type        = number
   default     = 32
 }
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+variable "netbox_url" {
+  description = "NetBox server URL"
+  type        = string
+}
+
+variable "netbox_insecure" {
+  description = "Skip TLS verification for NetBox server (use for self-signed certs)"
+  type        = bool
+  default     = true
+}
+
+variable "netbox_api_token_vault_path" {
+  description = "Vault path to NetBox API token secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "site_name" {
+  description = "NetBox site name for the container"
+  type        = string
+  default     = "site_01"
+}
+
+variable "cluster_name" {
+  description = "NetBox cluster name for the container"
+  type        = string
+  default     = "cluster_01"
+}
+
+variable "device_id" {
+  description = "NetBox device ID for the container"
+  type        = number
+  default     = 1
+}
+
+variable "vrf_name" {
+  description = "NetBox VRF name for the container"
+  type        = string
+  default     = "vrf_01"
+}
+
+variable "tenant_name" {
+  description = "NetBox tenant name for the container"
+  type        = string
+  default     = "tenant_01"
+}
+
+variable "interface_name" {
+  description = "Name of the interface"
+  type        = string
+  default     = "eth0"
+}
+
+variable "disk_name" {
+  description = "Name of the disk"
+  type        = string
+  default     = "disk-01"
+}
+
+variable "disk_description" {
+  description = "Description of the disk"
+  type        = string
+  default     = "Main disk"
+}
+

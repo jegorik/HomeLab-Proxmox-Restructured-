@@ -197,22 +197,27 @@ resource "netbox_platform" "all" {
 
 data "netbox_cluster" "cluster_01" {
   name = var.cluster_name
+  depends_on = [ netbox_cluster.all ]
 }
 
 data "netbox_device_type" "device_type_01" {
   model = var.device_type_model
+  depends_on = [ netbox_device_type.all ]
 }
 
 data "netbox_device_role" "device_role_01" {
   name = var.device_role_name
+  depends_on = [ netbox_device_role.all ]
 }
 
 data "netbox_site" "site_01" {
   name = var.site_name
+  depends_on = [ netbox_site.all ]
 }
 
 data "netbox_tenant" "tenant_01" {
   name = var.tenant_name
+  depends_on = [ netbox_tenant.all ]
 }
 
 

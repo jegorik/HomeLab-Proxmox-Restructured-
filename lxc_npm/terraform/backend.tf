@@ -38,6 +38,11 @@ terraform {
       source  = "hashicorp/null"
       version = ">= 3.2.0"
     }
+
+    netbox = {
+      source  = "e-breuninger/netbox"
+      version = "5.0.1"
+    }
   }
 
   # ---------------------------------------------------------------------------

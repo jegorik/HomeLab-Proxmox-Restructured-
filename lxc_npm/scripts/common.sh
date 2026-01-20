@@ -57,6 +57,32 @@ check_command() {
     fi
 }
 
+# Wait for port to be open
+wait_for_port() {
+    local host=$1
+    local port=$2
+    local timeout=${3:-60}
+
+    log_info "Waiting for ${host}:${port}..."
+
+    # Use python to check connection
+    local python_cmd="import socket, sys; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); result = s.connect_ex(('$host', $port)); sys.exit(result)"
+
+    local start_ts=$(date +%s)
+    while true; do
+        if python3 -c "$python_cmd" 2>/dev/null; then
+             log_success "Port ${port} is open"
+             return 0
+        fi
+
+        if [[ $(( $(date +%s) - start_ts )) -gt $timeout ]]; then
+            log_error "Timeout waiting for ${host}:${port}"
+            return 1
+        fi
+        sleep 1
+    done
+}
+
 # Get IaC tool (tofu or terraform)
 get_iac_tool() {
     if command -v tofu &>/dev/null; then

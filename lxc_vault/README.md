@@ -257,6 +257,7 @@ See [terraform/README.md](terraform/README.md) for detailed configuration.
 This project has **no dependencies** and should be deployed first in your HomeLab infrastructure. Other projects that depend on this:
 
 - **lxc_netbox**: Requires Vault for secrets management and state encryption
+- **lxc_npm**: Requires Vault for secrets management and state encryption
 - **Future projects**: Will integrate with Vault for centralized secrets management
 
 After deploying this project:

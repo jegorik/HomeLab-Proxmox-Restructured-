@@ -135,6 +135,11 @@ data "vault_generic_secret" "ansible_ssh_public_key" {
   path = var.ansible_ssh_public_key_path
 }
 
+ephemeral "vault_kv_secret_v2" "netbox_api_token" {
+  mount = var.ephemeral_vault_mount_path
+  name  = var.netbox_api_token_vault_path
+}
+
 # Retrieve Proxmox API token from Vault
 ephemeral "vault_kv_secret_v2" "proxmox_api_token" {
   mount = var.ephemeral_vault_mount_path
@@ -192,3 +197,14 @@ provider "aws" {
   # profile = var.aws_profile
 }
 
+# -----------------------------------------------------------------------------
+# NetBox Provider Configuration
+# -----------------------------------------------------------------------------
+
+provider "netbox" {
+  server_url = var.netbox_url
+  api_token  = ephemeral.vault_kv_secret_v2.netbox_api_token.data["token"]
+
+  # Skip TLS verification for self-signed certs (e.g. in local Proxmox labs)
+  allow_insecure_https = var.netbox_insecure
+}
