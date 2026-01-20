@@ -132,7 +132,7 @@ credentials_authenticate() {
     read -s VAULT_PASSWORD
     echo ""
 
-    if ! vault login -method=userpass username="${VAULT_USERNAME}" password="${VAULT_PASSWORD}" -token-only &>/dev/null; then
+    if ! echo "${VAULT_PASSWORD}" | vault login -method=userpass username="${VAULT_USERNAME}" password=- -token-only &>/dev/null; then
         log_error "Authentication failed"
         return 1
     fi
