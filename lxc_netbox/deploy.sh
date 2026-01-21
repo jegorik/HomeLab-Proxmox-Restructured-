@@ -196,6 +196,12 @@ deploy_terraform_only() {
 check_status() {
     log_header "Deployment Status"
     
+    # Initialize Vault for state decryption
+    vault_initialize || {
+        log_warning "Vault auth failed - cannot check encrypted state"
+        return 1
+    }
+    
     cd "${TERRAFORM_DIR}" || return 1
     local iac_tool
     iac_tool=$(get_iac_tool) || return 1
