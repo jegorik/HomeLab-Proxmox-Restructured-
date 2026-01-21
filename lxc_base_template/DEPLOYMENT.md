@@ -1,6 +1,6 @@
 # LXC Base Template - Deployment Guide
 
-Step-by-step guide for deploying LXC containers using this template.
+Step-by-step guide for deploying LXC containers using this Golden Template.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ pip install ansible
 
 ## Step 1: Configure Vault Secrets
 
-Store required secrets in your Vault instance:
+Store required secrets in your Vault instance (paths can be customized in `variables.tf`):
 
 ```bash
 # Set Vault address
@@ -59,17 +59,28 @@ vim terraform/terraform.tfvars
 | Variable | Description | Example |
 | ---------- | ------------- | --------- |
 | `vault_address` | Vault server URL | `https://vault.example.com:8200` |
-| `pve_api_url` | Proxmox API URL | `https://192.168.1.100:8006/api2/json` |
-| `netbox_url` | NetBox server URL | `https://netbox.example.com` |
-| `container_id` | LXC VMID | `200` |
-| `container_hostname` | Hostname | `my-container` |
-| `network_ip` | IP with CIDR | `192.168.1.200/24` |
-| `network_gateway` | Gateway IP | `192.168.1.1` |
-| `ssh_public_key` | SSH public key | `ssh-ed25519 AAAA...` |
+| `lxc_id` | LXC VMID | `106` |
+| `lxc_hostname` | Hostname | `base-template` |
+| `lxc_ip_address` | IP with CIDR | `192.168.1.50/24` |
+| `lxc_disk_storage` | Storage Pool | `local-lvm` |
+| `ansible_ssh_public_key_path` | SSH Public Key | `~/.ssh/ansible.pub` |
 
 ---
 
-## Step 3: Deploy
+## Step 3: Configure State Backend (Recommended)
+
+To use S3 backend for state storage:
+
+```bash
+cp terraform/s3.backend.config.template terraform/s3.backend.config
+vim terraform/s3.backend.config
+```
+
+Then `deploy.sh` will automatically detect and use it.
+
+---
+
+## Step 4: Deploy
 
 ### Interactive Mode
 
@@ -89,14 +100,14 @@ vim terraform/terraform.tfvars
 
 ---
 
-## Step 4: Verify Deployment
+## Step 5: Verify Deployment
 
 ```bash
 # Check status
 ./deploy.sh status
 
 # SSH into container
-ssh ansible@192.168.1.200
+ssh ansible@192.168.1.50
 
 # View in NetBox
 # Open: https://netbox.example.com/virtualization/virtual-machines/
@@ -123,7 +134,7 @@ vault token lookup
 vault kv get secret/proxmox/root
 
 # Verify API URL is correct
-curl -k ${PVE_API_URL}/version
+# Check `proxmox_endpoint_vault_path` variable
 ```
 
 ### Ansible Connectivity Failed
@@ -151,9 +162,9 @@ ssh-keygen -R <container-ip>
 Edit `terraform/terraform.tfvars`:
 
 ```hcl
-container_memory    = 4096  # MB
-container_cores     = 4
-container_disk_size = "20G"
+lxc_memory    = 4096  # MB
+lxc_cpu_cores = 4
+lxc_disk_size = 20    # GB
 ```
 
 ---
