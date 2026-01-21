@@ -6,24 +6,24 @@
 # Container Information
 # -----------------------------------------------------------------------------
 
-output "container_id" {
+output "lxc_id" {
   description = "LXC container VMID"
   value       = proxmox_virtual_environment_container.lxc.vm_id
 }
 
-output "container_hostname" {
+output "lxc_hostname" {
   description = "Container hostname"
-  value       = var.container_hostname
+  value       = var.lxc_hostname
 }
 
-output "container_ip" {
+output "lxc_ip_address" {
   description = "Container IP address (without CIDR)"
-  value       = split("/", var.network_ip)[0]
+  value       = split("/", var.lxc_ip_address)[0]
 }
 
-output "container_ip_cidr" {
+output "lxc_ip_cidr" {
   description = "Container IP address (with CIDR)"
-  value       = var.network_ip
+  value       = var.lxc_ip_address
 }
 
 # -----------------------------------------------------------------------------
@@ -32,7 +32,7 @@ output "container_ip_cidr" {
 
 output "ssh_user" {
   description = "SSH user for Ansible"
-  value       = var.ssh_user
+  value       = var.ansible_user_name
 }
 
 output "ssh_port" {
@@ -42,7 +42,7 @@ output "ssh_port" {
 
 output "ssh_command" {
   description = "SSH command to access the container"
-  value       = "ssh ${var.ssh_user}@${split("/", var.network_ip)[0]}"
+  value       = "ssh ${var.ansible_user_name}@${split("/", var.lxc_ip_address)[0]}"
 }
 
 # -----------------------------------------------------------------------------
@@ -71,11 +71,11 @@ output "deployment_summary" {
     ║              LXC Container Deployed                  ║
     ╚══════════════════════════════════════════════════════╝
     
-    Container:  ${var.container_hostname} (VMID: ${proxmox_virtual_environment_container.lxc.vm_id})
-    Node:       ${var.pve_target_node}
-    IP:         ${split("/", var.network_ip)[0]}
+    Container:  ${var.lxc_hostname} (VMID: ${proxmox_virtual_environment_container.lxc.vm_id})
+    Node:       ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
+    IP:         ${split("/", var.lxc_ip_address)[0]}
     
-    SSH:        ssh ${var.ssh_user}@${split("/", var.network_ip)[0]}
+    SSH:        ssh ${var.ansible_user_name}@${split("/", var.lxc_ip_address)[0]}
     
     NetBox:     ${var.netbox_url}/virtualization/virtual-machines/${netbox_virtual_machine.lxc.id}/
     

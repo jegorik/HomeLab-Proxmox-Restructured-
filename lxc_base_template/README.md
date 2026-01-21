@@ -1,94 +1,125 @@
 # LXC Base Template
 
-Template for deploying LXC containers on Proxmox with HashiCorp Vault and NetBox integration.
+(Golden Template: Foundation for new LXC projects)
+
+Template for deploying standard LXC containers on Proxmox with HashiCorp Vault, NetBox integration, and S3 state storage.
 
 ## Features
 
-- **Vault Integration** – Secrets (Proxmox password, NetBox API token) fetched from Vault
-- **NetBox Registration** – Container auto-registered with IP and VM metadata
-- **Modular Architecture** – Reusable scripts and Ansible roles
-- **Security Hardened** – SSH key-only auth, UFW firewall, no root login
-
-## Quick Start
-
-```bash
-# 1. Configure terraform.tfvars
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-vim terraform/terraform.tfvars
-
-# 2. Set Vault environment (or will be prompted)
-export VAULT_ADDR="https://vault.example.com:8200"
-export VAULT_TOKEN="hvs.xxxxx"
-
-# 3. Deploy
-./deploy.sh deploy
-```
+- **Golden Template** – Standardized structure used by `lxc_npm`, `lxc_netbox`, etc.
+- **Vault Integration** – Secrets (Proxmox password, NetBox API token) fetched from Vault (KV v2).
+- **NetBox Registration** – Container auto-registered with IP, VM metadata, and resources.
+- **S3 State Backend** – Remote state storage with Vault Transit encryption support.
+- **Modular Architecture** – Reusable scripts in `scripts/` directory.
+- **Security Hardened** – SSH key-only auth, non-root Ansible user, unprivileged container by default.
 
 ## Directory Structure
 
-```
+```text
 lxc_base_template/
-├── deploy.sh                 # Main orchestrator
+├── deploy.sh                 # Main orchestrator (Interactive Menu)
 ├── QUICKREF.sh               # Quick reference commands
 ├── README.md                 # This file
-├── DEPLOYMENT.md             # Step-by-step guide
+├── DEPLOYMENT.md             # Detailed deployment guide
 │
-├── scripts/
-│   ├── common.sh             # Logging utilities
-│   ├── credentials.sh        # Vault secret loading
-│   ├── terraform.sh          # Terraform operations
-│   └── ansible.sh            # Ansible operations
+├── scripts/                  # Modular scripts
+│   ├── common.sh             # Logging and utilities
+│   ├── vault.sh              # Vault authentication & secrets
+│   ├── terraform.sh          # Terraform/OpenTofu wrappers
+│   └── ansible.sh            # Ansible inventory & execution
 │
-├── terraform/
+├── terraform/                # Infrastructure as Code
 │   ├── main.tf               # LXC container resource
-│   ├── variables.tf          # Configuration variables
-│   ├── providers.tf          # Vault + Proxmox + NetBox
-│   ├── netbox.tf             # NetBox registration
+│   ├── variables.tf          # Configuration variables (lxc_*)
+│   ├── providers.tf          # Vault + Proxmox + NetBox providers
+│   ├── netbox.tf             # NetBox registration resources
 │   ├── outputs.tf            # Deployment outputs
-│   └── backend.tf            # State backend
+│   ├── backend.tf            # State backend configuration
+│   └── terraform.tfvars.example # Example configuration
 │
-└── ansible/
+└── ansible/                  # Configuration Management
     ├── site.yml              # Main playbook
-    └── roles/base/           # Base configuration role
+    └── roles/                
+        └── base/             # Base system configuration
 ```
 
-## Prerequisites
+## Quick Start (Creating a New Project)
 
-- OpenTofu or Terraform >= 1.0
-- Ansible >= 2.10
-- HashiCorp Vault (running and unsealed)
-- NetBox instance
-- Proxmox VE
+1. **Clone/Copy** this template to a new directory:
 
-## Vault Secrets Setup
+   ```bash
+   cp -r lxc_base_template lxc_new_project
+   cd lxc_new_project
+   ```
 
-Store secrets in Vault before deployment:
+2. **Configure Variables**:
 
-```bash
-# Proxmox credentials
-vault kv put secret/proxmox/root password="your-pve-password"
+   ```bash
+   cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+   vim terraform/terraform.tfvars
+   ```
 
-# NetBox API token
-vault kv put secret/netbox/api api_token="your-netbox-token"
-```
+   *Edit `lxc_hostname`, `lxc_id` (VMID), `lxc_ip_address`, and Vault paths.*
 
-## Commands
+3. **Configure S3 Backend (Optional but Recommended)**:
+
+   ```bash
+   cp terraform/s3.backend.config.template terraform/s3.backend.config
+   # Edit bucket and key details
+   ```
+
+   *If skipping this, state will be stored locally in `terraform/terraform.tfstate`.*
+
+4. **Deploy**:
+
+   ```bash
+   ./deploy.sh deploy
+   ```
+
+   *Follow the interactive prompts to authenticate with Vault.*
+
+## Configuration Reference
+
+### Key Variables (`terraform.tfvars`)
+
+| Variable | Description | Default |
+| ---------- | ------------- | --------- |
+| `lxc_id` | Proxmox VMID | `106` |
+| `lxc_hostname` | Container hostname | `base-template` |
+| `lxc_ip_address` | IPv4/CIDR (e.g., `192.168.1.50/24`) | `dhcp` |
+| `lxc_disk_storage` | Storage pool | `local-lvm` |
+| `lxc_disk_size` | Disk size (GB) | `8` |
+| `lxc_memory` | RAM (MB) | `512` |
+| `lxc_cpu_cores` | CPU Cores | `1` |
+
+### Vault Secrets
+
+The template expects the following secrets in Vault (paths configurable in `variables.tf`):
+
+- `secret/proxmox/root` (password)
+- `secret/netbox/api` (token)
+- `ssh/root_public_key`
+- `ssh/root_private_key` (for Ansible connection)
+
+## Deployment Commands
 
 | Command | Description |
-|---------|-------------|
-| `./deploy.sh` | Interactive menu |
-| `./deploy.sh deploy` | Full deployment |
-| `./deploy.sh plan` | Dry-run |
-| `./deploy.sh destroy` | Destroy infrastructure |
-| `./deploy.sh ansible` | Run Ansible only |
-| `./deploy.sh status` | Check status |
+| --------- | ------------- |
+| `./deploy.sh` | Open Interactive Menu |
+| `./deploy.sh deploy` | Full Deployment (Vault -> Terraform -> Ansible) |
+| `./deploy.sh plan` | Terraform Plan (Dry-run) |
+| `./deploy.sh terraform` | Terraform Apply Only (No Ansible) |
+| `./deploy.sh ansible` | Ansible Playbook Only |
+| `./deploy.sh status` | Check Deployment Status |
+| `./deploy.sh destroy` | Destroy Infrastructure |
 
-## Creating New Containers
+## Requirements
 
-1. Copy this template to a new directory
-2. Customize `terraform.tfvars`
-3. Add application-specific Ansible roles
-4. Run `./deploy.sh deploy`
+- **Proxmox VE** 8.x
+- **HashiCorp Vault** (Unsealed)
+- **NetBox** (Optional, but enabled by default)
+- **OpenTofu** or **Terraform** >= 1.0
+- **Ansible** >= 2.15
 
 ## License
 

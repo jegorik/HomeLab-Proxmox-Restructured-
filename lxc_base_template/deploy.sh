@@ -2,14 +2,15 @@
 # =============================================================================
 # LXC Base Template - Deployment Script
 # =============================================================================
-# Deploys LXC containers with Vault and NetBox integration
+# Simplified deployment using modular scripts
 #
 # Usage:
 #   ./deploy.sh              # Interactive menu
 #   ./deploy.sh deploy       # Full deployment
 #   ./deploy.sh destroy      # Destroy infrastructure
 #   ./deploy.sh plan         # Dry-run
-#   ./deploy.sh ansible      # Run Ansible only
+#   ./deploy.sh ansible      # Run Ansible only (requires VAULT_TOKEN)
+#   ./deploy.sh terraform    # Terraform only (no Ansible)
 #   ./deploy.sh status       # Check status
 # =============================================================================
 
@@ -30,7 +31,7 @@ LOG_FILE="${LOGS_DIR}/deployment_$(date +%Y%m%d_%H%M%S).log"
 
 # Source modules
 source "${SCRIPTS_DIR}/common.sh"
-source "${SCRIPTS_DIR}/credentials.sh"
+source "${SCRIPTS_DIR}/vault.sh"
 source "${SCRIPTS_DIR}/terraform.sh"
 source "${SCRIPTS_DIR}/ansible.sh"
 
@@ -45,6 +46,7 @@ check_binaries() {
     check_command "tofu" || check_command "terraform" || ok=false
     check_command "ansible" "pip install ansible" || ok=false
     check_command "ansible-playbook" || ok=false
+    check_command "vault" "apt install vault" || ok=false
     check_command "jq" "apt install jq" || ok=false
     check_command "ssh" || ok=false
     
@@ -60,7 +62,7 @@ check_files() {
         [[ -f "${TERRAFORM_DIR}/${f}" ]] && log_success "Found: ${f}" || { log_error "Missing: ${f}"; ok=false; }
     done
     
-    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars (using terraform.tfvars.example as reference)"
+    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars"
     
     return $([[ "${ok}" == true ]])
 }
@@ -76,22 +78,39 @@ deploy_full() {
     check_binaries || return 1
     check_files || return 1
     
-    credentials_initialize || return 1
+    vault_initialize || return 1
     terraform_init || return 1
     terraform_validate || return 1
     terraform_apply || return 1
     
     ansible_create_inventory || return 1
-    ansible_wait_for_connection || return 1
+    
+    # Get IP to wait for boot
+    local container_ip
+    container_ip=$(terraform_get_output "lxc_ip_address" 2>/dev/null)
+    container_ip="${container_ip%%/*}"
+
+    if [[ -z "${container_ip}" ]]; then
+        log_error "Could not get container IP from Terraform"
+        return 1
+    fi
+
+    wait_for_port "${container_ip}" 22 300 || return 1
+
+    # Retry connectivity test
+    local retry=0
+    while [[ ${retry} -lt 3 ]]; do
+        ansible_test && break
+        retry=$((retry + 1))
+        [[ ${retry} -lt 3 ]] && { log_warning "Retry ${retry}/3..."; sleep 10; }
+    done
+    [[ ${retry} -eq 3 ]] && { log_error "Connectivity failed after 3 retries"; return 1; }
     
     ansible_deploy || return 1
     
     local duration=$(( $(date +%s) - start_time ))
     log_header "Deployment Complete"
     log_success "Time: $((duration / 60))m $((duration % 60))s"
-    
-    # Show outputs
-    terraform_output deployment_summary 2>/dev/null || true
 }
 
 deploy_plan() {
@@ -99,7 +118,7 @@ deploy_plan() {
     
     check_binaries || return 1
     check_files || return 1
-    credentials_initialize || return 1
+    vault_initialize || return 1
     terraform_init || return 1
     terraform_validate || return 1
     terraform_plan || return 1
@@ -111,7 +130,7 @@ deploy_destroy() {
     log_header "Destroy Infrastructure"
     
     check_binaries || return 1
-    credentials_initialize || return 1
+    vault_initialize || return 1
     terraform_destroy || return 1
     
     # Cleanup
@@ -121,10 +140,25 @@ deploy_destroy() {
 deploy_ansible_only() {
     log_header "Ansible Only"
     
-    if [[ ! -f "${ANSIBLE_DIR}/inventory.yml" ]]; then
-        log_warning "inventory.yml not found"
-        log_info "Creating inventory from Terraform outputs..."
-        ansible_create_inventory || return 1
+    # Check for VAULT_TOKEN
+    if [[ -z "${VAULT_TOKEN:-}" ]]; then
+        log_warning "VAULT_TOKEN not set"
+        log_info ""
+        log_info "For standalone Ansible execution, set VAULT_TOKEN first:"
+        log_info "  export VAULT_TOKEN=\$(vault print token)"
+        log_info "  ./deploy.sh ansible"
+        log_info ""
+        log_info "Or run full deployment which handles authentication:"
+        log_info "  ./deploy.sh deploy"
+        log_info ""
+        
+        if confirm "Authenticate to Vault now?"; then
+            vault_check_configuration || return 1
+            vault_check_connectivity || return 1
+            vault_authenticate || return 1
+        else
+            return 1
+        fi
     fi
     
     ansible_test || return 1
@@ -138,7 +172,7 @@ deploy_terraform_only() {
     check_binaries || return 1
     check_files || return 1
     
-    credentials_initialize || return 1
+    vault_initialize || return 1
     terraform_init || return 1
     terraform_validate || return 1
     terraform_apply || return 1
@@ -156,9 +190,9 @@ deploy_terraform_only() {
 check_status() {
     log_header "Deployment Status"
     
-    # Initialize credentials for state decryption
-    credentials_initialize || {
-        log_warning "Credentials init failed - cannot check encrypted state"
+    # Initialize Vault for state decryption
+    vault_initialize || {
+        log_warning "Vault auth failed - cannot check encrypted state"
         return 1
     }
     
@@ -177,7 +211,7 @@ check_status() {
     if [[ -f "${ANSIBLE_DIR}/inventory.yml" ]]; then
         log_success "Ansible inventory exists"
         cd "${ANSIBLE_DIR}"
-        ansible all -m ping -i inventory.yml &>/dev/null && log_success "Container reachable" || log_warning "Container not reachable"
+        ansible container -m ping -i inventory.yml &>/dev/null && log_success "Container reachable" || log_warning "Container not reachable"
     fi
 }
 
@@ -189,8 +223,8 @@ show_menu() {
     clear
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════╗"
-    echo "║         LXC Base Template - Deployment               ║"
-    echo "║         Vault + NetBox Integration                   ║"
+    echo "║       LXC Base Template - Deployment                 ║"
+    echo "║       OpenTofu/Terraform + Ansible + Vault           ║"
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo ""
@@ -199,7 +233,7 @@ show_menu() {
     echo -e "  ${YELLOW}3)${NC} Check Status"
     echo -e "  ${RED}4)${NC} Destroy Infrastructure"
     echo ""
-    echo -e "  ${CYAN}5)${NC} Ansible Only"
+    echo -e "  ${CYAN}5)${NC} Ansible Only (requires VAULT_TOKEN)"
     echo -e "  ${BLUE}6)${NC} Terraform Only (no Ansible)"
     echo ""
     echo -e "  ${BOLD}0)${NC} Exit"
@@ -234,7 +268,7 @@ show_help() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  deploy    - Full deployment (Terraform + Ansible)"
+    echo "  deploy    - Full deployment (Vault + Terraform + Ansible)"
     echo "  destroy   - Destroy all infrastructure"
     echo "  plan      - Dry-run / plan only"
     echo "  status    - Check deployment status"
@@ -243,6 +277,10 @@ show_help() {
     echo "  help      - Show this help"
     echo ""
     echo "No arguments: Interactive menu"
+    echo ""
+    echo "Standalone Ansible execution:"
+    echo "  export VAULT_TOKEN=\$(vault print token)"
+    echo "  $0 ansible"
     echo ""
 }
 
@@ -272,4 +310,6 @@ main() {
     log_info "Completed at $(date)"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
