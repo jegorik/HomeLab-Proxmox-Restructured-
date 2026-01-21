@@ -95,6 +95,11 @@ resource "proxmox_virtual_environment_container" "npm" {
     path   = var.lxc_npm_data_mount_path
   }
 
+  mount_point {
+    volume = var.lxc_npm_letsencrypt_mount_volume
+    path   = var.lxc_npm_letsencrypt_mount_path
+  }
+
   # Network configuration
   network_interface {
     name   = var.lxc_network_interface_name
