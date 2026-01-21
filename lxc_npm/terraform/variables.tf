@@ -245,6 +245,18 @@ variable "lxc_npm_data_mount_path" {
   default     = "/data"
 }
 
+variable "lxc_npm_letsencrypt_mount_volume" {
+  description = "Host path for Let's Encrypt data (SSL certificates)"
+  type        = string
+  default     = "/rpool/data/npm-letsencrypt"
+}
+
+variable "lxc_npm_letsencrypt_mount_path" {
+  description = "Container path for Let's Encrypt data"
+  type        = string
+  default     = "/etc/letsencrypt"
+}
+
 # -----------------------------------------------------------------------------
 # LXC Container Template Variables
 # -----------------------------------------------------------------------------

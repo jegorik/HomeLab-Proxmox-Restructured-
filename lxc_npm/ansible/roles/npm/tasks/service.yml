@@ -6,20 +6,20 @@
 - name: Configure OpenResty nginx.conf for root user
   ansible.builtin.replace:
     path: /usr/local/openresty/nginx/conf/nginx.conf
-    regexp: 'user npm'
-    replace: 'user root'
+    regexp: "user npm"
+    replace: "user root"
 
 - name: Disable pid in nginx.conf
-  ansible.builtin.lineinfile:
+  ansible.builtin.replace:
     path: /usr/local/openresty/nginx/conf/nginx.conf
-    regexp: '^pid'
-    line: '#pid'
+    regexp: '^(pid\s+.*)$'
+    replace: '#\1'
 
 - name: Update logrotate for root
   ansible.builtin.replace:
     path: /etc/logrotate.d/nginx-proxy-manager
     regexp: '^\s*su npm npm'
-    replace: '    #su npm npm'
+    replace: "    #su npm npm"
 
 - name: Create NPM systemd service
   ansible.builtin.copy:
@@ -40,7 +40,7 @@
 
       [Install]
       WantedBy=multi-user.target
-    mode: '0644'
+    mode: "0644"
   notify:
     - Enable npm
 
@@ -91,11 +91,11 @@
       ╔══════════════════════════════════════════════════════╗
       ║       Nginx Proxy Manager Installed Successfully     ║
       ╚══════════════════════════════════════════════════════╝
-      
+
       Admin UI: http://{{ ansible_default_ipv4.address }}:81
-      
+
       Default Login:
         Email:    admin@example.com
         Password: changeme
-      
+
       ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!
