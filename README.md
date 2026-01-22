@@ -8,14 +8,14 @@ Infrastructure as Code (IaC) repository for automated deployment of services in 
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Projects](#projects)
-- [Deployment Order](#deployment-order)
-- [Getting Started](#getting-started)
-- [Common Prerequisites](#common-prerequisites)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Projects](#-projects)
+- [Deployment Order](#-deployment-order)
+- [Getting Started](#-getting-started)
+- [Common Prerequisites](#-common-prerequisites)
+- [Project Structure](#-project-structure)
+- [Contributing](#-contributing)
 
 ## 🔍 Overview
 
@@ -57,6 +57,8 @@ graph TB
         NPM[lxc_npm<br/>Nginx Proxy Manager<br/>:80/81/443]
         NPM1[OpenResty]
         NPM2[SQLite]
+        PBS[lxc_PBS<br/>Proxmox Backup Server<br/>:8007]
+        PBS1[Bind Mounts]
     end
     
     subgraph "State Management"
@@ -71,12 +73,14 @@ graph TB
     A -->|Provision| E
     A -->|Provision| F
     A -->|Provision| NPM
+    A -->|Provision| PBS
     A -->|State| G
     G -->|Encrypted| H
     
     B -->|Configure| E
     B -->|Configure| F
     B -->|Configure| NPM
+    B -->|Configure| PBS
     
     C -->|Automate| A
     C -->|Automate| B
@@ -84,6 +88,7 @@ graph TB
     E --> E1
     E -->|Secrets & Encryption| F
     E -->|Secrets & Encryption| NPM
+    E -->|Secrets & Encryption| PBS
     
     F --> F1
     F --> F2
@@ -92,14 +97,18 @@ graph TB
     NPM --> NPM1
     NPM --> NPM2
     
+    PBS --> PBS1
+    
     D -->|Network| E
     D -->|Network| F
     D -->|Network| NPM
+    D -->|Network| PBS
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
     style F fill:#0066cc,color:#fff
     style NPM fill:#1abc9c,color:#fff
+    style PBS fill:#e67e22,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -259,7 +268,36 @@ sequenceDiagram
 
 ---
 
-### 6. **Future Projects**
+### 6. **lxc_PBS** - Proxmox Backup Server
+
+**Purpose**: Enterprise backup solution for Proxmox VE and other systems
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- Proxmox Backup Server from official repositories
+- Data persistence via bind mounts (config and datastore)
+- Full Vault integration for secrets management
+- Vault Transit engine for state encryption
+- Privileged container for bind mount support
+- Web UI on port 8007
+
+**Documentation**: See [lxc_PBS/README.md](lxc_PBS/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- Host paths for bind mounts must exist
+
+---
+
+### 7. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -299,6 +337,13 @@ Additional services will be added following the same patterns and deployment ord
    ./deploy.sh deploy
    ```
 
+3. **lxc_PBS** - Deploy Proxmox Backup Server (requires Vault)
+
+   ```bash
+   cd lxc_PBS
+   ./deploy.sh deploy
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -313,6 +358,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_vault** | None | N/A (foundation) |
 | **lxc_netbox** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_npm** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **lxc_PBS** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
@@ -506,7 +552,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 20, 2026
+**Last Updated**: January 22, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

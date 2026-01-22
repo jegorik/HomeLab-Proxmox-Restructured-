@@ -1,0 +1,11 @@
+- name: Restart proxmox-backup
+  ansible.builtin.service:
+    name: proxmox-backup
+    state: restarted
+    enabled: true
+
+- name: Restart proxmox-backup-proxy
+  ansible.builtin.service:
+    name: proxmox-backup-proxy
+    state: restarted
+    enabled: true
