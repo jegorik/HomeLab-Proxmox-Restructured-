@@ -103,7 +103,7 @@ terraform_destroy() {
     read -r confirmation
     [[ "${confirmation}" != "destroy" ]] && { log_info "Cancelled"; return 1; }
 
-    if ${iac_tool} destroy -auto-approve -var="vault_password=${TF_VAR_vault_password:-dummy}" | tee -a "${LOG_FILE}"; then
+    if ${iac_tool} destroy -auto-approve | tee -a "${LOG_FILE}"; then
         log_success "Destroy complete"
         return 0
     else
