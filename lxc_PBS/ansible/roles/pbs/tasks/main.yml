@@ -1,0 +1,70 @@
+---
+# =============================================================================
+# Proxmox Backup Server Role - Main Tasks
+# =============================================================================
+
+- name: Add Proxmox Backup Server GPG key
+  ansible.builtin.get_url:
+    url: https://enterprise.proxmox.com/debian/proxmox-release-trixie.gpg
+    dest: /etc/apt/trusted.gpg.d/proxmox-release-trixie.gpg
+    mode: "0644"
+    force: true
+  tags: [pbs, install]
+
+- name: Add Proxmox Backup Server repository
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.proxmox.com/debian/pbs trixie pbs-no-subscription"
+    state: present
+    filename: pbs-no-subscription
+  tags: [pbs, install]
+
+- name: Remove Proxmox Enterprise repository
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/pbs-enterprise.list
+    - /etc/apt/sources.list.d/pbs-enterprise.sources
+  tags: [pbs, install]
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  tags: [pbs, install]
+
+- name: Install Proxmox Backup Server packages
+  ansible.builtin.apt:
+    name:
+      - proxmox-backup-server
+      - proxmox-backup-client
+      - proxmox-backup-docs
+    state: present
+  notify:
+    - Restart proxmox-backup
+    - Restart proxmox-backup-proxy
+  tags: [pbs, install]
+
+- name: Ensure correct permissions for PBS configuration
+  ansible.builtin.file:
+    path: /etc/proxmox-backup
+    state: directory
+    owner: backup
+    group: backup
+    mode: "0700"
+  notify:
+    - Restart proxmox-backup
+    - Restart proxmox-backup-proxy
+  tags: [pbs, install]
+
+- name: Ensure systemd-timesyncd is installed and running
+  ansible.builtin.apt:
+    name: systemd-timesyncd
+    state: present
+  tags: [pbs, system]
+
+- name: Start systemd-timesyncd
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    state: started
+    enabled: true
+  tags: [pbs, system]

@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# LXC Base Template - Main Ansible Playbook
+# =============================================================================
+# Configures the base LXC container with essential packages and settings
+
+- name: Configure LXC Container
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Override these in group_vars or host_vars as needed
+    base_packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - apt-transport-https
+      - python3
+      - python3-pip
+      - vim
+      - htop
+      - tree
+      - jq
+
+    timezone: "UTC"
+    locale: "en_US.UTF-8"
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: pbs
+      tags: [pbs, backup]
