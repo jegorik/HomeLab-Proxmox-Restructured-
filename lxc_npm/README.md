@@ -13,7 +13,7 @@ Automated deployment of Nginx Proxy Manager in a Proxmox LXC container with Hash
 ## Ports
 
 | Port | Service | Description |
-|------|---------|-------------|
+| ------ | --------- | ------------- |
 | 80 | HTTP | Reverse proxy HTTP traffic |
 | 443 | HTTPS | Reverse proxy HTTPS/SSL traffic |
 | 81 | Admin UI | NPM management interface |
@@ -49,7 +49,7 @@ After deployment, access the admin UI at `http://<container-ip>:81`:
 
 ## Directory Structure
 
-```
+```text
 lxc_npm/
 ├── deploy.sh                 # Main orchestrator
 ├── QUICKREF.sh               # Quick reference commands
@@ -105,7 +105,7 @@ vault kv put secrets/aws/tofu access_key="..." secret_key="..."
 ## Commands
 
 | Command | Description |
-|---------|-------------|
+| --------- | ------------- |
 | `./deploy.sh` | Interactive menu |
 | `./deploy.sh deploy` | Full deployment |
 | `./deploy.sh plan` | Dry-run |
@@ -116,7 +116,7 @@ vault kv put secrets/aws/tofu access_key="..." secret_key="..."
 ## Resource Requirements
 
 | Resource | Minimum | Recommended |
-|----------|---------|-------------|
+| --------- | --------- | ------------- |
 | CPU Cores | 1 | 2 |
 | RAM | 1 GB | 2 GB |
 | Disk | 4 GB | 8 GB |
