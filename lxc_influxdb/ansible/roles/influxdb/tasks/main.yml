@@ -1,0 +1,138 @@
+---
+# =============================================================================
+# InfluxDB Role - Main Tasks
+# =============================================================================
+# Installs InfluxDB 2.x and performs initial setup
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# GPG Key and Repository Setup
+# -----------------------------------------------------------------------------
+
+- name: Download InfluxData GPG key
+  ansible.builtin.get_url:
+    url: https://repos.influxdata.com/influxdata-archive.key
+    dest: /tmp/influxdata-archive.key
+    mode: "0644"
+
+- name: Verify InfluxData key fingerprint
+  ansible.builtin.command: >
+    gpg --show-keys --with-fingerprint --with-colons /tmp/influxdata-archive.key
+  register: influx_key_info
+  changed_when: false
+
+- name: Fail if fingerprint does not match
+  ansible.builtin.fail:
+    msg: "InfluxData GPG key fingerprint mismatch! Expected: {{ influxdb_gpg_fingerprint }}"
+  when: influxdb_gpg_fingerprint not in influx_key_info.stdout
+
+- name: Remove potentially conflicting legacy key
+  ansible.builtin.file:
+    path: /etc/apt/trusted.gpg.d/influxdata-archive.gpg
+    state: absent
+
+- name: Convert and install InfluxData key
+  ansible.builtin.command:
+    cmd: "gpg --dearmor -o /usr/share/keyrings/influxdata-archive.gpg /tmp/influxdata-archive.key"
+  args:
+    creates: /usr/share/keyrings/influxdata-archive.gpg
+
+- name: Add InfluxData APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/influxdata-archive.gpg] https://repos.influxdata.com/debian stable main"
+    state: present
+    filename: influxdata
+
+# -----------------------------------------------------------------------------
+# InfluxDB Installation
+# -----------------------------------------------------------------------------
+
+- name: Update APT cache
+  ansible.builtin.apt:
+    update_cache: true
+  tags: [influxdb, install]
+
+- name: Install InfluxDB packages
+  ansible.builtin.apt:
+    name:
+      - influxdb2
+      - influxdb2-cli
+    state: present
+  notify: Restart influxdb service
+  tags: [influxdb, install]
+
+# Ensure data directories exist with correct ownership
+# This is critical for bind mount persistence
+- name: Ensure InfluxDB data directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: influxdb
+    group: influxdb
+    mode: "0755"
+    recurse: true
+  loop:
+    - /var/lib/influxdb
+  tags: [influxdb, install]
+
+- name: Ensure influxdb service is enabled and running
+  ansible.builtin.service:
+    name: influxdb
+    state: started
+    enabled: true
+  register: influxdb_service
+  tags: [influxdb, install]
+
+- name: Wait for InfluxDB service to stabilize
+  ansible.builtin.pause:
+    seconds: 5
+  when: influxdb_service.changed
+  tags: [influxdb, install]
+
+# -----------------------------------------------------------------------------
+# InfluxDB Initial Setup
+# -----------------------------------------------------------------------------
+# Performs initial setup only if not already configured.
+# Uses bind-mounted data directory for persistence across container recreation.
+
+- name: Wait for InfluxDB to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:8086/health"
+    method: GET
+    status_code: 200
+  register: influxdb_health
+  until: influxdb_health.status == 200
+  retries: 30
+  delay: 2
+  tags: [influxdb, setup]
+
+- name: Check if InfluxDB is already set up
+  ansible.builtin.uri:
+    url: "http://localhost:8086/api/v2/setup"
+    method: GET
+    status_code: [200, 201]
+  register: influxdb_setup_status
+  tags: [influxdb, setup]
+
+- name: Run InfluxDB initial setup
+  ansible.builtin.command: >
+    influx setup
+    --username "{{ influxdb_admin_user }}"
+    --password "{{ influxdb_admin_password }}"
+    --org "{{ influxdb_org }}"
+    --bucket "{{ influxdb_bucket }}"
+    --retention "{{ influxdb_retention }}"
+    --force
+  register: influx_setup_result
+  when: influxdb_setup_status.json.allowed | default(true)
+  changed_when: influx_setup_result.rc == 0
+  no_log: true
+  tags: [influxdb, setup]
+
+- name: Display InfluxDB setup result
+  ansible.builtin.debug:
+    msg: "InfluxDB initial setup completed successfully"
+  when: influx_setup_result.changed | default(false)
+  tags: [influxdb, setup]

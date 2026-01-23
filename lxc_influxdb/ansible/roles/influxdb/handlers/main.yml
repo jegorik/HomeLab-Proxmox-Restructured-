@@ -1,0 +1,10 @@
+---
+# =============================================================================
+# InfluxDB Role - Handlers
+# =============================================================================
+
+- name: Restart influxdb service
+  ansible.builtin.service:
+    name: influxdb
+    state: restarted
+    enabled: true

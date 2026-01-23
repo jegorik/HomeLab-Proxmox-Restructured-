@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Terraform/OpenTofu Functions for LXC PBS Deployment
+# Terraform/OpenTofu Functions for LXC InfluxDB
 # =============================================================================
 
 # Prevent multiple sourcing
