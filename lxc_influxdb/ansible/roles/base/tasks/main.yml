@@ -1,0 +1,95 @@
+---
+# =============================================================================
+# Base Role - Main Tasks
+# =============================================================================
+
+- name: Cleanup conflicting InfluxDB key and source (fix APT error)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/trusted.gpg.d/influxdata-archive.gpg
+    - /etc/apt/sources.list.d/influxdata.list
+  tags: [packages, always]
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [packages]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: safe
+  tags: [packages]
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  tags: [packages]
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  tags: [system]
+
+- name: Generate locale
+  community.general.locale_gen:
+    name: "{{ locale }}"
+    state: present
+  tags: [system]
+
+- name: Configure SSH - Disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Configure SSH - Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Configure SSH - Enable pubkey authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PubkeyAuthentication"
+    line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: enable_firewall
+  tags: [firewall, security]
+
+- name: Allow SSH through firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.split('/')[0] }}"
+    proto: "{{ item.split('/')[1] | default('tcp') }}"
+  loop: "{{ firewall_allowed_ports }}"
+  when: enable_firewall
+  tags: [firewall, security]
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: enable_firewall
+  tags: [firewall, security]
+
+- name: Clean apt cache
+  ansible.builtin.apt:
+    autoclean: true
+    autoremove: true
+  tags: [cleanup]

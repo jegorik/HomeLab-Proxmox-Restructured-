@@ -59,6 +59,8 @@ graph TB
         NPM2[SQLite]
         PBS[lxc_PBS<br/>Proxmox Backup Server<br/>:8007]
         PBS1[Bind Mounts]
+        INFLUX[lxc_influxdb<br/>InfluxDB 2.x<br/>:8086]
+        INFLUX1[Bind Mounts]
     end
     
     subgraph "State Management"
@@ -74,6 +76,7 @@ graph TB
     A -->|Provision| F
     A -->|Provision| NPM
     A -->|Provision| PBS
+    A -->|Provision| INFLUX
     A -->|State| G
     G -->|Encrypted| H
     
@@ -81,6 +84,7 @@ graph TB
     B -->|Configure| F
     B -->|Configure| NPM
     B -->|Configure| PBS
+    B -->|Configure| INFLUX
     
     C -->|Automate| A
     C -->|Automate| B
@@ -99,16 +103,20 @@ graph TB
     
     PBS --> PBS1
     
+    INFLUX --> INFLUX1
+    
     D -->|Network| E
     D -->|Network| F
     D -->|Network| NPM
     D -->|Network| PBS
+    D -->|Network| INFLUX
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
     style F fill:#0066cc,color:#fff
     style NPM fill:#1abc9c,color:#fff
     style PBS fill:#e67e22,color:#fff
+    style INFLUX fill:#9b59b6,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -297,7 +305,37 @@ sequenceDiagram
 
 ---
 
-### 7. **Future Projects**
+### 7. **lxc_influxdb** - InfluxDB Time-Series Database
+
+**Purpose**: Time-series database for metrics, monitoring, and IoT data
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- InfluxDB 2.x with built-in UI and Flux query language
+- Data persistence via bind mounts (BoltDB and Engine)
+- Automated initial setup (admin user, org, bucket)
+- Full Vault integration for secrets management
+- Vault Transit engine for state encryption
+- Privileged container for bind mount support
+- Web UI and API on port 8086
+
+**Documentation**: See [lxc_influxdb/README.md](lxc_influxdb/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- Host paths for bind mounts must exist
+
+---
+
+### 8. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -344,6 +382,13 @@ Additional services will be added following the same patterns and deployment ord
    ./deploy.sh deploy
    ```
 
+4. **lxc_influxdb** - Deploy InfluxDB (requires Vault)
+
+   ```bash
+   cd lxc_influxdb
+   ./deploy.sh deploy
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -359,6 +404,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_netbox** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_npm** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_PBS** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **lxc_influxdb** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 

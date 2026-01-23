@@ -1,0 +1,94 @@
+# =============================================================================
+# LXC InfluxDB - Example terraform.tfvars
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars to version control!
+
+# -----------------------------------------------------------------------------
+# Vault Configuration
+# -----------------------------------------------------------------------------
+
+vault_address = "https://vault.example.com:8200"
+# vault_token = ""  # Leave empty to use VAULT_TOKEN env var
+
+vault_pve_secret_path            = "proxmox/root"
+vault_netbox_secret_path         = "netbox/api"
+proxmox_api_token_vault_path     = "proxmox/api_token"
+proxmox_endpoint_vault_path      = "proxmox/endpoint"
+proxmox_node_name_vault_path     = "proxmox/node_name"
+proxmox_user_name_vault_path     = "proxmox/username"
+proxmox_root_name_vault_path     = "proxmox/root_username"
+proxmox_root_password_vault_path = "proxmox/root_password"
+s3_bucket_name_vault_path        = "aws/s3_bucket"
+root_ssh_public_key_path         = "ssh/root_public_key"
+root_ssh_private_key_path        = "ssh/root_private_key"
+
+# -----------------------------------------------------------------------------
+# AWS Configuration
+# -----------------------------------------------------------------------------
+
+aws_region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+netbox_url = "https://netbox.example.com"
+# netbox_api_token = ""  # Leave empty to fetch from Vault
+
+site_name    = "site_01"
+cluster_name = "cluster_01"
+vrf_name     = "vrf_01"
+tenant_name  = "tenant_01"
+
+# -----------------------------------------------------------------------------
+# LXC Container Configuration
+# -----------------------------------------------------------------------------
+
+lxc_id          = 200
+lxc_hostname    = "example-container"
+lxc_description = "Example LXC container deployed with lxc_base_template"
+lxc_template_file = "debian-13-standard_13.1-2_amd64.tar.zst"
+
+lxc_start_on_boot = true
+lxc_started       = true
+lxc_unprivileged  = true
+
+# -----------------------------------------------------------------------------
+# Hardware Resources
+# -----------------------------------------------------------------------------
+
+lxc_memory    = 2048  # MB
+lxc_swap      = 512   # MB
+lxc_cpu_cores = 2
+lxc_disk_size = 10     # GB
+lxc_disk_storage = "local-lvm"
+
+# -----------------------------------------------------------------------------
+# Data Persistence (Bind Mounts)
+# -----------------------------------------------------------------------------
+
+lxc_influxdb_data_mount_volume = "/rpool/datastore/influxdb"
+lxc_influxdb_data_mount_path   = "/var/lib/influxdb"
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+
+lxc_network_bridge  = "vmbr0"
+lxc_ip_address      = "192.168.1.200/24"
+lxc_gateway         = "192.168.1.1"
+lxc_dns_servers     = "8.8.8.8"
+
+# -----------------------------------------------------------------------------
+# Ansible User
+# -----------------------------------------------------------------------------
+
+ansible_user_name     = "ansible"
+ansible_ssh_public_key_path = "~/.ssh/ansible_rsa.pub"
+
+# -----------------------------------------------------------------------------
+# Tags
+# -----------------------------------------------------------------------------
+
+lxc_tags = ["lxc", "template", "example"]

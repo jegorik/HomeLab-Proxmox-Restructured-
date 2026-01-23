@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for LXC PBS Deployment
+# Vault Functions for LXC InfluxDB
 # =============================================================================
 
 # Prevent multiple sourcing

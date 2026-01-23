@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Ansible Functions for LXC PBS Deployment
+# Ansible Functions for LXC InfluxDB
 # =============================================================================
 
 # Prevent multiple sourcing

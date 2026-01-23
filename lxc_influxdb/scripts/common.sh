@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Common Functions and Variables for LXC PBS Deployment
+# Common Functions and Variables for LXC InfluxDB
 # =============================================================================
 
 # Prevent multiple sourcing
