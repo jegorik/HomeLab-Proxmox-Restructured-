@@ -57,9 +57,9 @@ if ! vault token lookup &>/dev/null; then
     read -s VAULT_PASSWORD
     echo ""
 
-    VAULT_TOKEN=$(vault login -method=userpass \
+    VAULT_TOKEN=$(echo "${VAULT_PASSWORD}" | vault login -method=userpass \
         username="${VAULT_USERNAME}" \
-        password="${VAULT_PASSWORD}" \
+        password=- \
         -token-only 2>&1)
 
     if [ $? -ne 0 ]; then
