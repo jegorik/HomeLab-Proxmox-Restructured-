@@ -668,7 +668,8 @@ lxc_netbox/
 │   ├── common.sh                     # Logging, colors, utilities
 │   ├── vault.sh                      # Vault authentication & AWS credentials
 │   ├── terraform.sh                  # Terraform/OpenTofu operations
-│   └── ansible.sh                    # Ansible inventory & deployment
+│   ├── ansible.sh                    # Ansible inventory & deployment
+│   └── setup_ansible_user.sh         # Ansible user bootstrapping
 │
 ├── logs/                             # Deployment logs
 │   └── README.md                     # Log management guide

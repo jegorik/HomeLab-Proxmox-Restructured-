@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for NPM Deployment
+# Vault Functions for LXC Base Template
 # =============================================================================
 
 # Prevent multiple sourcing
 [[ -n "${_VAULT_SH_LOADED:-}" ]] && return 0
 _VAULT_SH_LOADED=1
 
-# AWS role for dynamic credentials
-AWS_ROLE="${AWS_ROLE:-tofu_state_backup}"
 
 # Read variable from terraform.tfvars
 credentials_read_tfvars() {
@@ -25,6 +23,11 @@ credentials_read_tfvars() {
     fi
     echo "${default_value}"
 }
+
+# AWS role for dynamic credentials (prioritize terraform.tfvars)
+AWS_ROLE_FROM_VAR=$(credentials_read_tfvars "aws_role")
+AWS_ROLE="${AWS_ROLE:-${AWS_ROLE_FROM_VAR}}"
+AWS_ROLE="${AWS_ROLE:-tofu_state_backup}"
 
 # Check and prompt for Vault configuration
 vault_check_configuration() {
