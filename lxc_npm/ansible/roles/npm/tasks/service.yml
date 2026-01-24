@@ -58,7 +58,7 @@
   ansible.builtin.systemd:
     name: npm
     state: stopped
-  ignore_errors: true
+  failed_when: false # It's okay if NPM is not running yet or already stopped
 
 - name: Restart OpenResty to apply new configuration
   ansible.builtin.systemd:
@@ -71,7 +71,8 @@
     port: 80
     delay: 2
     timeout: 30
-  ignore_errors: true
+  register: npm_wait_result
+  failed_when: npm_wait_result.failed and (npm_wait_result.msg is not defined or 'timeout' not in npm_wait_result.msg)
 
 - name: Enable and start NPM
   ansible.builtin.systemd:

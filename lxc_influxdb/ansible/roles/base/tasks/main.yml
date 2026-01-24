@@ -29,14 +29,14 @@
     state: present
   tags: [packages]
 
-- name: Set timezone
+- name: Set base_timezone
   community.general.timezone:
-    name: "{{ timezone }}"
+    name: "{{ base_timezone }}"
   tags: [system]
 
-- name: Generate locale
+- name: Generate base_locale
   community.general.locale_gen:
-    name: "{{ locale }}"
+    name: "{{ base_locale }}"
     state: present
   tags: [system]
 
@@ -44,7 +44,7 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: "^#?PermitRootLogin"
-    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    line: "PermitRootLogin {{ base_ssh_permit_root_login }}"
   notify: Restart sshd
   tags: [ssh, security]
 
@@ -52,7 +52,7 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: "^#?PasswordAuthentication"
-    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    line: "PasswordAuthentication {{ base_ssh_password_authentication }}"
   notify: Restart sshd
   tags: [ssh, security]
 
@@ -60,7 +60,7 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: "^#?PubkeyAuthentication"
-    line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}"
+    line: "PubkeyAuthentication {{ base_ssh_pubkey_authentication }}"
   notify: Restart sshd
   tags: [ssh, security]
 
@@ -68,7 +68,7 @@
   ansible.builtin.apt:
     name: ufw
     state: present
-  when: enable_firewall
+  when: base_enable_firewall
   tags: [firewall, security]
 
 - name: Allow SSH through firewall
@@ -76,8 +76,8 @@
     rule: allow
     port: "{{ item.split('/')[0] }}"
     proto: "{{ item.split('/')[1] | default('tcp') }}"
-  loop: "{{ firewall_allowed_ports }}"
-  when: enable_firewall
+  loop: "{{ base_firewall_allowed_ports }}"
+  when: base_enable_firewall
   tags: [firewall, security]
 
 - name: Enable ufw
@@ -85,7 +85,7 @@
     state: enabled
     policy: deny
     direction: incoming
-  when: enable_firewall
+  when: base_enable_firewall
   tags: [firewall, security]
 
 - name: Clean apt cache

@@ -20,13 +20,13 @@
 - name: Verify InfluxData key fingerprint
   ansible.builtin.command: >
     gpg --show-keys --with-fingerprint --with-colons /tmp/influxdata-archive.key
-  register: influx_key_info
+  register: influxdb_key_info
   changed_when: false
 
 - name: Fail if fingerprint does not match
   ansible.builtin.fail:
     msg: "InfluxData GPG key fingerprint mismatch! Expected: {{ influxdb_gpg_fingerprint }}"
-  when: influxdb_gpg_fingerprint not in influx_key_info.stdout
+  when: influxdb_gpg_fingerprint not in influxdb_key_info.stdout
 
 - name: Remove potentially conflicting legacy key
   ansible.builtin.file:
@@ -125,14 +125,14 @@
     --bucket "{{ influxdb_bucket }}"
     --retention "{{ influxdb_retention }}"
     --force
-  register: influx_setup_result
+  register: influxdb_setup_result
   when: influxdb_setup_status.json.allowed | default(true)
-  changed_when: influx_setup_result.rc == 0
+  changed_when: influxdb_setup_result.rc == 0
   no_log: true
   tags: [influxdb, setup]
 
 - name: Display InfluxDB setup result
   ansible.builtin.debug:
     msg: "InfluxDB initial setup completed successfully"
-  when: influx_setup_result.changed | default(false)
+  when: influxdb_setup_result.changed | default(false)
   tags: [influxdb, setup]

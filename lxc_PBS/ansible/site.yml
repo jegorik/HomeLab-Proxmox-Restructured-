@@ -24,8 +24,8 @@
       - tree
       - jq
 
-    timezone: "UTC"
-    locale: "en_US.UTF-8"
+    base_timezone: "UTC"
+    base_locale: "en_US.UTF-8"
 
   roles:
     - role: base

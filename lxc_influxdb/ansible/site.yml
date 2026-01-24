@@ -8,7 +8,7 @@
   hosts: all
   become: true
   gather_facts: true
-  
+
   vars:
     # Override these in group_vars or host_vars as needed
     base_packages:
@@ -23,10 +23,10 @@
       - htop
       - tree
       - jq
-    
-    timezone: "UTC"
-    locale: "en_US.UTF-8"
-  
+
+    base_timezone: "UTC"
+    base_locale: "en_US.UTF-8"
+
   roles:
     - role: base
       tags: [base, always]
