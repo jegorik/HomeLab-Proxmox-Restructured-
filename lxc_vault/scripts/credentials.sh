@@ -34,8 +34,7 @@ credentials_check_file_security() {
     if [[ "${perms}" != "600" ]]; then
         log_warning "${description} has insecure permissions: ${perms}"
         log_info "Fixing permissions to 600..."
-        chmod 600 "${file}"
-        if [[ $? -eq 0 ]]; then
+        if chmod 600 "${file}"; then
             log_success "Permissions fixed for ${file}"
         else
             log_error "Failed to fix permissions for ${file}"
@@ -73,7 +72,7 @@ credentials_load_pve_password() {
     log_warning "PVE password file not found: ${PVE_PASSWORD_FILE}"
     log_info "You can create it with: echo 'your-password' > ${PVE_PASSWORD_FILE} && chmod 600 ${PVE_PASSWORD_FILE}"
     echo -n "Enter Proxmox root@pam password: "
-    read -rs TF_VAR_pve_root_password
+    read -r -s TF_VAR_pve_root_password
     echo ""
 
     if [[ -z "${TF_VAR_pve_root_password}" ]]; then
@@ -147,7 +146,7 @@ credentials_check_aws() {
     
     if [[ -n "${aws_key}" ]]; then
         echo -n "Enter AWS Secret Access Key: "
-        read -rs aws_secret
+        read -r -s aws_secret
         echo ""
         
         if [[ -n "${aws_secret}" ]]; then

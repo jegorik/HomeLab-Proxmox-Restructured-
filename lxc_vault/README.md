@@ -646,7 +646,8 @@ lxc_vault/
 │   ├── common.sh                     # Logging, colors, utilities
 │   ├── credentials.sh                # Local credentials (PVE password, AWS)
 │   ├── terraform.sh                  # Terraform/OpenTofu operations
-│   └── ansible.sh                    # Ansible inventory & deployment
+│   ├── ansible.sh                    # Ansible inventory & deployment
+│   └── setup_ansible_user.sh         # Ansible user bootstrapping
 │
 ├── terraform/                        # Infrastructure provisioning
 │   ├── README.md                     # Terraform documentation

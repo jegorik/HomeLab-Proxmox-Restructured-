@@ -60,7 +60,8 @@ lxc_npm/
 │   ├── common.sh             # Logging utilities
 │   ├── vault.sh              # Vault authentication & AWS credentials
 │   ├── terraform.sh          # Terraform operations
-│   └── ansible.sh            # Ansible operations
+│   ├── ansible.sh            # Ansible operations
+│   └── setup_ansible_user.sh # Ansible user bootstrapping
 │
 ├── terraform/
 │   ├── main.tf               # LXC container resource
