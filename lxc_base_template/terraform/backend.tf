@@ -9,11 +9,11 @@
 # -----------------------------------------------------------------------------
 # State is stored locally. Good for development, not for teams.
 
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-}
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }
 
 # -----------------------------------------------------------------------------
 # Option 2: S3 Backend (Recommended for Production)
@@ -21,6 +21,6 @@ terraform {
 # Uncomment and configure s3.backend.config file
 # Then run: terraform init -backend-config=s3.backend.config
 
-# terraform {
-#   backend "s3" {}
-# }
+terraform {
+  backend "s3" {}
+}
