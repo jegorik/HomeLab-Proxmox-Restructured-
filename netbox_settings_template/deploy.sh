@@ -27,8 +27,11 @@ mkdir -p "${LOGS_DIR}"
 LOG_FILE="${LOGS_DIR}/deployment_$(date +%Y%m%d_%H%M%S).log"
 
 # Source modules
+# shellcheck source=scripts/common.sh
 source "${SCRIPTS_DIR}/common.sh"
+# shellcheck source=scripts/vault.sh
 source "${SCRIPTS_DIR}/vault.sh"
+# shellcheck source=scripts/terraform.sh
 source "${SCRIPTS_DIR}/terraform.sh"
 
 # -----------------------------------------------------------------------------
@@ -44,7 +47,7 @@ check_binaries() {
     check_command "jq" "apt install jq" || ok=false
     
     [[ "${ok}" == true ]] && log_success "All binaries found"
-    return $([[ "${ok}" == true ]])
+    [[ "${ok}" == true ]]
 }
 
 check_files() {
@@ -52,13 +55,26 @@ check_files() {
     local ok=true
     
     for f in main.tf variables.tf providers.tf backend.tf encryption.tf; do
-        [[ -f "${TERRAFORM_DIR}/${f}" ]] && log_success "Found: ${f}" || { log_error "Missing: ${f}"; ok=false; }
+        if [[ -f "${TERRAFORM_DIR}/${f}" ]]; then
+            log_success "Found: ${f}"
+        else
+            log_error "Missing: ${f}"
+            ok=false
+        fi
     done
     
-    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars"
-    [[ -f "${TERRAFORM_DIR}/s3.backend.config" ]] && log_success "Found: s3.backend.config" || log_warning "Missing: s3.backend.config"
+    if [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]]; then
+        log_success "Found: terraform.tfvars"
+    else
+        log_warning "Missing: terraform.tfvars"
+    fi
+    if [[ -f "${TERRAFORM_DIR}/s3.backend.config" ]]; then
+        log_success "Found: s3.backend.config"
+    else
+        log_warning "Missing: s3.backend.config"
+    fi
     
-    return $([[ "${ok}" == true ]])
+    [[ "${ok}" == true ]]
 }
 
 # -----------------------------------------------------------------------------
@@ -67,7 +83,8 @@ check_files() {
 
 deploy_full() {
     log_header "Full NetBox Settings Deployment"
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
 
     check_binaries || return 1
     check_files || return 1
@@ -155,10 +172,10 @@ interactive_menu() {
         echo ""
         
         case ${choice} in
-            1) deploy_full; read -p "Press Enter..." ;;
-            2) deploy_plan; read -p "Press Enter..." ;;
-            3) check_status; read -p "Press Enter..." ;;
-            4) deploy_destroy; read -p "Press Enter..." ;;
+            1) deploy_full; read -r -p "Press Enter..." ;;
+            2) deploy_plan; read -r -p "Press Enter..." ;;
+            3) check_status; read -r -p "Press Enter..." ;;
+            4) deploy_destroy; read -r -p "Press Enter..." ;;
             0) exit 0 ;;
             *) log_error "Invalid option"; sleep 1 ;;
         esac

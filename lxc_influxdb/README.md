@@ -30,7 +30,8 @@ lxc_influxdb/
 │   ├── common.sh             # Logging and utilities
 │   ├── vault.sh              # Vault authentication & secrets
 │   ├── terraform.sh          # Terraform/OpenTofu wrappers
-│   └── ansible.sh            # Ansible inventory & execution
+│   ├── ansible.sh            # Ansible inventory & execution
+│   └── setup_ansible_user.sh # Ansible user bootstrapping
 │
 ├── terraform/                # Infrastructure as Code
 │   ├── main.tf               # LXC container resource with bind mounts

@@ -93,12 +93,13 @@ vault_authenticate() {
         display_name=$(vault token lookup -format=json | jq -r '.data.display_name')
         ttl=$(vault token lookup -format=json | jq -r '.data.ttl')
         log_success "Already authenticated as ${display_name} (TTL: ${ttl}s)"
-        export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+        VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+        export VAULT_TOKEN
         
         # Get password for TF provider if not set
         if [[ -z "${TF_VAR_vault_password:-}" ]]; then
             echo -n "Enter Vault password for TF provider (${VAULT_USERNAME}): "
-            read -s VAULT_PASSWORD
+            read -r -s VAULT_PASSWORD
             echo ""
             export TF_VAR_vault_password="${VAULT_PASSWORD}"
         fi
@@ -107,7 +108,7 @@ vault_authenticate() {
 
     log_info "Logging in as ${VAULT_USERNAME}..."
     echo -n "Enter Vault password: "
-    read -s VAULT_PASSWORD
+    read -r -s VAULT_PASSWORD
     echo ""
 
     if ! echo "${VAULT_PASSWORD}" | vault login -method=userpass username="${VAULT_USERNAME}" password=- -token-only &>/dev/null; then
@@ -115,7 +116,8 @@ vault_authenticate() {
         return 1
     fi
 
-    export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+    VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+    export VAULT_TOKEN
     export TF_VAR_vault_password="${VAULT_PASSWORD}"
     log_success "Authenticated successfully"
     return 0
@@ -128,18 +130,20 @@ vault_generate_aws_credentials() {
     unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN
     
     local creds
-    creds=$(vault read -format=json aws/proxmox/creds/${AWS_ROLE} 2>&1)
-    
-    if [[ $? -ne 0 ]]; then
+    if ! creds=$(vault read -format=json aws/proxmox/creds/"${AWS_ROLE}" 2>&1); then
         log_error "Failed to generate AWS credentials"
         log_error "${creds}"
         return 1
     fi
-
-    export AWS_ACCESS_KEY_ID=$(echo "${creds}" | jq -r '.data.access_key')
-    export AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | jq -r '.data.secret_key')
-    export LEASE_DURATION=$(echo "${creds}" | jq -r '.lease_duration')
-    export LEASE_ID=$(echo "${creds}" | jq -r '.lease_id')
+    
+    AWS_ACCESS_KEY_ID=$(echo "${creds}" | jq -r '.data.access_key')
+    AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | jq -r '.data.secret_key')
+    LEASE_DURATION=$(echo "${creds}" | jq -r '.lease_duration')
+    LEASE_ID=$(echo "${creds}" | jq -r '.lease_id')
+    export AWS_ACCESS_KEY_ID
+    export AWS_SECRET_ACCESS_KEY
+    export LEASE_DURATION
+    export LEASE_ID
 
     if [[ -z "${AWS_ACCESS_KEY_ID}" || "${AWS_ACCESS_KEY_ID}" == "null" ]]; then
         log_error "Failed to extract AWS credentials"

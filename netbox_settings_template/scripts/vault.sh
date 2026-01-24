@@ -2,19 +2,41 @@
 # =============================================================================
 # Vault Functions for NetBox Settings Template
 # =============================================================================
-# Handles Vault authentication and AWS dynamic credentials generation
 
 # Prevent multiple sourcing
 [[ -n "${_VAULT_SH_LOADED:-}" ]] && return 0
 _VAULT_SH_LOADED=1
 
-# AWS role for dynamic credentials
+# Read variable from terraform.tfvars
+credentials_read_tfvars() {
+    local var_name="$1"
+    local default_value="${2:-}"
+    
+    if [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]]; then
+        local value
+        value=$(grep -E "^${var_name}\\s*=" "${TERRAFORM_DIR}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\([^"]*\)".*/\1/' | tr -d ' ')
+        if [[ -n "${value}" ]]; then
+            echo "${value}"
+            return 0
+        fi
+    fi
+    echo "${default_value}"
+}
+
+# AWS role for dynamic credentials (prioritize terraform.tfvars)
+AWS_ROLE_FROM_VAR=$(credentials_read_tfvars "aws_role")
+AWS_ROLE="${AWS_ROLE:-${AWS_ROLE_FROM_VAR}}"
 AWS_ROLE="${AWS_ROLE:-tofu_state_backup}"
 
-# -----------------------------------------------------------------------------
 # Check and prompt for Vault configuration
-# -----------------------------------------------------------------------------
 vault_check_configuration() {
+    log_info "Configuring Vault connection..."
+
+    # Check VAULT_ADDR: environment -> tfvars -> prompt
+    if [[ -z "${VAULT_ADDR:-}" ]]; then
+        VAULT_ADDR=$(credentials_read_tfvars "vault_address")
+    fi
+    
     if [[ -z "${VAULT_ADDR:-}" ]]; then
         log_warning "VAULT_ADDR not set"
         echo -n "Enter Vault address: "
@@ -24,6 +46,11 @@ vault_check_configuration() {
     export VAULT_ADDR
     log_success "VAULT_ADDR=${VAULT_ADDR}"
 
+    # Check VAULT_USERNAME: environment -> tfvars -> prompt
+    if [[ -z "${VAULT_USERNAME:-}" ]]; then
+        VAULT_USERNAME=$(credentials_read_tfvars "vault_username")
+    fi
+    
     if [[ -z "${VAULT_USERNAME:-}" ]]; then
         log_warning "VAULT_USERNAME not set"
         echo -n "Enter Vault username: "
@@ -32,12 +59,11 @@ vault_check_configuration() {
     fi
     export VAULT_USERNAME
     log_success "VAULT_USERNAME=${VAULT_USERNAME}"
+    
     return 0
 }
 
-# -----------------------------------------------------------------------------
 # Check Vault connectivity
-# -----------------------------------------------------------------------------
 vault_check_connectivity() {
     log_info "Checking Vault connectivity..."
     
@@ -57,9 +83,7 @@ vault_check_connectivity() {
     return 0
 }
 
-# -----------------------------------------------------------------------------
 # Authenticate with Vault
-# -----------------------------------------------------------------------------
 vault_authenticate() {
     log_info "Checking Vault authentication..."
     
@@ -68,12 +92,14 @@ vault_authenticate() {
         display_name=$(vault token lookup -format=json | jq -r '.data.display_name')
         ttl=$(vault token lookup -format=json | jq -r '.data.ttl')
         log_success "Already authenticated as ${display_name} (TTL: ${ttl}s)"
-        export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+        local vault_token
+        vault_token=$(vault token lookup -format=json | jq -r '.data.id')
+        export VAULT_TOKEN="${vault_token}"
         
         # Get password for TF provider if not set
         if [[ -z "${TF_VAR_vault_password:-}" ]]; then
             echo -n "Enter Vault password for TF provider (${VAULT_USERNAME}): "
-            read -s VAULT_PASSWORD
+            read -r -s VAULT_PASSWORD
             echo ""
             export TF_VAR_vault_password="${VAULT_PASSWORD}"
         fi
@@ -82,7 +108,7 @@ vault_authenticate() {
 
     log_info "Logging in as ${VAULT_USERNAME}..."
     echo -n "Enter Vault password: "
-    read -s VAULT_PASSWORD
+    read -r -s VAULT_PASSWORD
     echo ""
 
     if ! echo "${VAULT_PASSWORD}" | vault login -method=userpass username="${VAULT_USERNAME}" password=- -token-only &>/dev/null; then
@@ -90,64 +116,66 @@ vault_authenticate() {
         return 1
     fi
 
-    export VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+    local vault_token
+        vault_token=$(vault token lookup -format=json | jq -r '.data.id')
+        export VAULT_TOKEN="${vault_token}"
     export TF_VAR_vault_password="${VAULT_PASSWORD}"
     log_success "Authenticated successfully"
     return 0
 }
 
-# -----------------------------------------------------------------------------
-# Generate dynamic AWS credentials from Vault
-# -----------------------------------------------------------------------------
+# Generate dynamic AWS credentials
 vault_generate_aws_credentials() {
-    log_info "Generating AWS credentials from Vault (role: ${AWS_ROLE})..."
+    log_info "Generating AWS credentials from Vault..."
     
     unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN
     
-    local creds
-    creds=$(vault read -format=json aws/proxmox/creds/${AWS_ROLE} 2>&1)
-    
-    if [[ $? -ne 0 ]]; then
+    if ! creds=$(vault read -format=json aws/proxmox/creds/"${AWS_ROLE}" 2>&1); then
         log_error "Failed to generate AWS credentials"
         log_error "${creds}"
         return 1
     fi
 
-    export AWS_ACCESS_KEY_ID=$(echo "${creds}" | jq -r '.data.access_key')
-    export AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | jq -r '.data.secret_key')
-    local lease_duration=$(echo "${creds}" | jq -r '.lease_duration')
+    local access_key
+    access_key=$(echo "${creds}" | jq -r '.data.access_key')
+    export AWS_ACCESS_KEY_ID="${access_key}"
+    local secret_key
+    secret_key=$(echo "${creds}" | jq -r '.data.secret_key')
+    export AWS_SECRET_ACCESS_KEY="${secret_key}"
+    local lease_duration
+    lease_duration=$(echo "${creds}" | jq -r '.lease_duration')
+    export LEASE_DURATION="${lease_duration}"
+    local lease_id
+    lease_id=$(echo "${creds}" | jq -r '.lease_id')
+    export LEASE_ID="${lease_id}"
 
     if [[ -z "${AWS_ACCESS_KEY_ID}" || "${AWS_ACCESS_KEY_ID}" == "null" ]]; then
         log_error "Failed to extract AWS credentials"
         return 1
     fi
 
-    log_success "AWS credentials generated (TTL: $((lease_duration / 3600))h)"
+    log_success "AWS credentials generated (TTL: $((LEASE_DURATION / 3600))h)"
     log_info "Waiting 10s for IAM propagation..."
     sleep 10
     log_success "AWS credentials ready"
     return 0
 }
 
-# -----------------------------------------------------------------------------
 # Verify Transit engine
-# -----------------------------------------------------------------------------
 vault_verify_transit() {
     log_info "Verifying Vault Transit engine..."
-    local key="${TRANSIT_KEY_NAME:-tofu-state-encryption}"
-    local path="${TRANSIT_ENGINE_PATH:-transit}"
+    local key="${transit_key_name:-tofu-state-encryption}"
+    local path="${transit_engine_path:-transit}"
     
     if vault read "${path}/keys/${key}" &>/dev/null; then
         log_success "Transit key '${key}' found"
     else
-        log_warning "Transit key '${key}' not found - will be created if needed"
+        log_info "Transit key will be created by Terraform"
     fi
     return 0
 }
 
-# -----------------------------------------------------------------------------
 # Master initialization function
-# -----------------------------------------------------------------------------
 vault_initialize() {
     log_header "Vault Authentication"
 

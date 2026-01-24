@@ -30,9 +30,13 @@ mkdir -p "${LOGS_DIR}"
 LOG_FILE="${LOGS_DIR}/deployment_$(date +%Y%m%d_%H%M%S).log"
 
 # Source modules
+# shellcheck source=scripts/common.sh
 source "${SCRIPTS_DIR}/common.sh"
+# shellcheck source=scripts/vault.sh
 source "${SCRIPTS_DIR}/vault.sh"
+# shellcheck source=scripts/terraform.sh
 source "${SCRIPTS_DIR}/terraform.sh"
+# shellcheck source=scripts/ansible.sh
 source "${SCRIPTS_DIR}/ansible.sh"
 
 # -----------------------------------------------------------------------------
@@ -51,7 +55,7 @@ check_binaries() {
     check_command "ssh" || ok=false
     
     [[ "${ok}" == true ]] && log_success "All binaries found"
-    return $([[ "${ok}" == true ]])
+    [[ "${ok}" == true ]]
 }
 
 check_files() {
@@ -59,12 +63,21 @@ check_files() {
     local ok=true
     
     for f in main.tf variables.tf providers.tf backend.tf; do
-        [[ -f "${TERRAFORM_DIR}/${f}" ]] && log_success "Found: ${f}" || { log_error "Missing: ${f}"; ok=false; }
+        if [[ -f "${TERRAFORM_DIR}/${f}" ]]; then
+            log_success "Found: ${f}"
+        else
+            log_error "Missing: ${f}"
+            ok=false
+        fi
     done
     
-    [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]] && log_success "Found: terraform.tfvars" || log_warning "Missing: terraform.tfvars"
+    if [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]]; then
+        log_success "Found: terraform.tfvars"
+    else
+        log_warning "Missing: terraform.tfvars"
+    fi
     
-    return $([[ "${ok}" == true ]])
+    [[ "${ok}" == true ]]
 }
 
 # -----------------------------------------------------------------------------
@@ -73,7 +86,8 @@ check_files() {
 
 deploy_full() {
     log_header "Full Infrastructure Deployment"
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
 
     check_binaries || return 1
     check_files || return 1
@@ -114,7 +128,7 @@ deploy_full() {
     
     echo ""
     log_info "Next steps:"
-    echo "  1. Access NetBox: http://<container-ip>"
+    echo "  1. Access NetBox: http://${container_ip}:8300"
     echo "  2. Get admin password: vault kv get secrets/proxmox/netbox"
     echo ""
 }
@@ -173,7 +187,8 @@ deploy_ansible_only() {
 
 deploy_terraform_only() {
     log_header "Terraform Only (No Ansible)"
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
 
     check_binaries || return 1
     check_files || return 1
@@ -217,7 +232,11 @@ check_status() {
     if [[ -f "${ANSIBLE_DIR}/inventory.yml" ]]; then
         log_success "Ansible inventory exists"
         cd "${ANSIBLE_DIR}"
-        ansible netbox -m ping -i inventory.yml &>/dev/null && log_success "Container reachable" || log_warning "Container not reachable"
+        if ansible container -m ping -i inventory.yml &>/dev/null; then
+            log_success "Container reachable"
+        else
+            log_warning "Container not reachable"
+        fi
     fi
 }
 
@@ -254,12 +273,12 @@ interactive_menu() {
         echo ""
         
         case ${choice} in
-            1) deploy_full; read -p "Press Enter..." ;;
-            2) deploy_plan; read -p "Press Enter..." ;;
-            3) check_status; read -p "Press Enter..." ;;
-            4) deploy_destroy; read -p "Press Enter..." ;;
-            5) deploy_ansible_only; read -p "Press Enter..." ;;
-            6) deploy_terraform_only; read -p "Press Enter..." ;;
+            1) deploy_full; read -r -p "Press Enter..." ;;
+            2) deploy_plan; read -r -p "Press Enter..." ;;
+            3) check_status; read -r -p "Press Enter..." ;;
+            4) deploy_destroy; read -r -p "Press Enter..." ;;
+            5) deploy_ansible_only; read -r -p "Press Enter..." ;;
+            6) deploy_terraform_only; read -r -p "Press Enter..." ;;
             0) exit 0 ;;
             *) log_error "Invalid option"; sleep 1 ;;
         esac
