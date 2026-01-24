@@ -72,7 +72,6 @@ output "deployment_summary" {
     ╚══════════════════════════════════════════════════════╝
     
     Container:  ${var.lxc_hostname} (VMID: ${proxmox_virtual_environment_container.lxc.vm_id})
-    Node:       ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
     IP:         ${split("/", var.lxc_ip_address)[0]}
     
     SSH:        ssh ${var.ansible_user_name}@${split("/", var.lxc_ip_address)[0]}
