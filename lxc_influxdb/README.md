@@ -62,7 +62,7 @@ lxc_influxdb/
 | `lxc_disk_size` | Disk size (GB) | `8` |
 | `lxc_memory` | RAM (MB) | `512` |
 | `lxc_cpu_cores` | CPU Cores | `2` |
-| `lxc_unprivileged` | Unprivileged container | `false` (required for bind mounts) |
+| `lxc_unprivileged` | Unprivileged container | `true` (recommended for security) |
 
 ### InfluxDB Data Persistence (Bind Mount)
 
@@ -144,7 +144,7 @@ The project expects the following secrets in Vault (paths configurable in `varia
 - **Ansible** >= 2.15
 
 > [!IMPORTANT]
-> InfluxDB bind mounts require a **privileged container** (`lxc_unprivileged = false`).
+> InfluxDB uses bind mounts for data persistence. This works best with **privileged containers** (`lxc_unprivileged = false`) or unprivileged containers with proper ID mapping on the host. Default is `true` (unprivileged).
 
 ## Ports
 
