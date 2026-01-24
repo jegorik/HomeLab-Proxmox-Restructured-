@@ -15,8 +15,8 @@
 
 - name: Create Certbot virtual environment
   ansible.builtin.command:
-    cmd: python3 -m venv {{ certbot_venv }}
-    creates: "{{ certbot_venv }}/bin/python"
+    cmd: python3 -m venv {{ npm_certbot_venv }}
+    creates: "{{ npm_certbot_venv }}/bin/python"
 
 - name: Upgrade pip in Certbot venv
   ansible.builtin.pip:
@@ -24,8 +24,8 @@
       - pip
       - setuptools
       - wheel
-    state: latest
-    virtualenv: "{{ certbot_venv }}"
+    state: present
+    virtualenv: "{{ npm_certbot_venv }}"
 
 - name: Install Certbot
   ansible.builtin.pip:
@@ -33,10 +33,10 @@
       - certbot
       - certbot-dns-cloudflare
     state: present
-    virtualenv: "{{ certbot_venv }}"
+    virtualenv: "{{ npm_certbot_venv }}"
 
 - name: Create Certbot symlink
   ansible.builtin.file:
-    src: "{{ certbot_venv }}/bin/certbot"
+    src: "{{ npm_certbot_venv }}/bin/certbot"
     dest: /usr/local/bin/certbot
     state: link

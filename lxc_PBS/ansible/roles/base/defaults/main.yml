@@ -19,16 +19,16 @@ base_packages:
   - jq
 
 # System configuration
-timezone: "UTC"
-locale: "en_US.UTF-8"
+base_timezone: "UTC"
+base_locale: "en_US.UTF-8"
 
 # SSH hardening
-ssh_permit_root_login: "no"
-ssh_password_authentication: "no"
-ssh_pubkey_authentication: "yes"
+base_ssh_permit_root_login: "no"
+base_ssh_password_authentication: "no"
+base_ssh_pubkey_authentication: "yes"
 
 # Firewall (ufw)
-enable_firewall: true
-firewall_allowed_ports:
+base_enable_firewall: true
+base_firewall_allowed_ports:
   - "22/tcp"
   - "8007/tcp"

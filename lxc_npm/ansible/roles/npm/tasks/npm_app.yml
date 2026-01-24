@@ -186,17 +186,17 @@
 
 - name: Build frontend
   ansible.builtin.shell: |
-    export NODE_OPTIONS="{{ node_options }}"
+    export NODE_OPTIONS="{{ npm_node_options }}"
     cd {{ npm_install_dir }}/frontend
-    yarn install --network-timeout {{ yarn_network_timeout }}
-    yarn locale-compile
+    yarn install --network-timeout {{ npm_yarn_network_timeout }}
+    yarn base_locale-compile
     yarn build
     cp -r {{ npm_install_dir }}/frontend/dist/* {{ npm_app_dir }}/frontend/
     cp -r {{ npm_install_dir }}/frontend/public/images/* {{ npm_app_dir }}/frontend/images/
   args:
     creates: "{{ npm_app_dir }}/frontend/index.html"
   environment:
-    NODE_OPTIONS: "{{ node_options }}"
+    NODE_OPTIONS: "{{ npm_node_options }}"
 
 - name: Create production config
   ansible.builtin.copy:
@@ -224,6 +224,6 @@
 - name: Install backend dependencies
   ansible.builtin.shell: |
     cd {{ npm_app_dir }}
-    yarn install --network-timeout {{ yarn_network_timeout }}
+    yarn install --network-timeout {{ npm_yarn_network_timeout }}
   args:
     creates: "{{ npm_app_dir }}/node_modules"

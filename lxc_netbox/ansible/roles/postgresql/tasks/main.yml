@@ -108,7 +108,7 @@
       log_line_prefix = '%m [%p] %q%u@%d '
       log_timezone = 'Etc/UTC'
       datestyle = 'iso, mdy'
-      timezone = 'Etc/UTC'
+      base_timezone = 'Etc/UTC'
       lc_messages = 'C.UTF-8'
       lc_monetary = 'C.UTF-8'
       lc_numeric = 'C.UTF-8'

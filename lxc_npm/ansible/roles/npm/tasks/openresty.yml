@@ -3,10 +3,15 @@
 # NPM Role - OpenResty Installation
 # =============================================================================
 
-- name: Add OpenResty GPG key
-  ansible.builtin.shell: |
-    curl -fsSL "https://openresty.org/package/pubkey.gpg" | gpg --dearmor -o /etc/apt/trusted.gpg.d/openresty.gpg
-  args:
+- name: Download OpenResty GPG key
+  ansible.builtin.get_url:
+    url: https://openresty.org/package/pubkey.gpg
+    dest: /tmp/openresty.gpg.key
+    mode: "0644"
+
+- name: Dearmor OpenResty GPG key
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /etc/apt/trusted.gpg.d/openresty.gpg /tmp/openresty.gpg.key
     creates: /etc/apt/trusted.gpg.d/openresty.gpg
 
 - name: Add OpenResty repository
@@ -18,7 +23,7 @@
       Suites: bookworm
       Components: openresty
       Signed-By: /etc/apt/trusted.gpg.d/openresty.gpg
-    mode: '0644'
+    mode: "0644"
 
 - name: Update apt cache after adding OpenResty repo
   ansible.builtin.apt:
