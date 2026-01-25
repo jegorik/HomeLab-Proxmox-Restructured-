@@ -91,7 +91,7 @@ provider "proxmox" {
 
   # API token in format: user@realm!token_id=secret
   username = var.pve_root_user
-  password = var.pve_root_password
+  password = trimspace(file(pathexpand(var.pve_root_password)))
 
   # Skip TLS verification (set to false in production with valid certs)
   insecure = var.connection_insecure

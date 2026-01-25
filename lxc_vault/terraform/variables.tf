@@ -347,6 +347,18 @@ variable "ssh_private_key_path" {
   default     = "~/.ssh/id_rsa"
 }
 
+variable "service_user_uid" {
+  description = "UID of the service user inside the container (mapped to host 100000+UID)"
+  type        = number
+  default     = 100
+}
+
+variable "service_user_gid" {
+  description = "GID of the service user inside the container (mapped to host 100000+GID)"
+  type        = number
+  default     = 100
+}
+
 # -----------------------------------------------------------------------------
 # Ansible User Configuration Variables
 # -----------------------------------------------------------------------------

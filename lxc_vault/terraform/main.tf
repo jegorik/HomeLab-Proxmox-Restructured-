@@ -250,3 +250,51 @@ resource "terraform_data" "ansible_user_setup" {
 # SSH connection configuration
 # This block is not functional in terraform_data resources but left for reference
 # or if using null_resource (though terraform_data is preferred)
+
+# -----------------------------------------------------------------------------
+# Host Bind Mount Permission Fix
+# -----------------------------------------------------------------------------
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts
+resource "terraform_data" "fix_bind_mount_permissions" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_mount_point_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions.sh"
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", var.proxmox_endpoint)[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions.sh",
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_mount_point_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", var.proxmox_endpoint)[0]
+      timeout     = "2m"
+    }
+  }
+}
+

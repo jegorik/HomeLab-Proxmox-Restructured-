@@ -32,7 +32,7 @@ The `deploy.sh` script is a modular automation tool that handles the complete li
 The script will check for these during pre-flight validation:
 
 | Software | Purpose | Installation |
-|----------|---------|-------------|
+| ---------- | --------- | ------------- |
 | **OpenTofu** or **Terraform** | Infrastructure provisioning | `brew install opentofu` or download from [opentofu.org](https://opentofu.org) |
 | **Ansible** | Configuration management | `pip install ansible` |
 | **SSH Client** | Remote access | Pre-installed on most systems |
@@ -44,10 +44,12 @@ The script will check for these during pre-flight validation:
 
 1. **Proxmox VE 8.x+** installed and accessible
 2. **LXC Template** downloaded:
+
    ```bash
    pveam update
    pveam download local debian-13-standard_13.1-2_amd64.tar.zst
    ```
+
 3. **Network Bridge** configured (usually `vmbr0`)
 
 ### SSH Keys
@@ -65,6 +67,7 @@ ssh-keygen -t ed25519 -C "ansible@vault" -f ~/.ssh/ansible
 ### Configuration Files
 
 1. **Terraform Variables**:
+
    ```bash
    cd terraform
    cp terraform.tfvars.example terraform.tfvars
@@ -72,12 +75,14 @@ ssh-keygen -t ed25519 -C "ansible@vault" -f ~/.ssh/ansible
    ```
 
 2. **S3 Backend** (optional, recommended for production):
+
    ```bash
    cp s3.backend.config.template s3.backend.config
    vim s3.backend.config  # Add AWS credentials
    ```
 
 3. **State Encryption Passphrase**:
+
    ```bash
    openssl rand -base64 32 > ~/.ssh/state_passphrase
    chmod 600 ~/.ssh/state_passphrase
@@ -96,6 +101,7 @@ cd /path/to/lxc_vault
 ```
 
 The interactive menu provides these options:
+
 1. **Deploy Infrastructure** - Full deployment (Terraform + Ansible)
 2. **Dry-Run / Plan** - Preview changes without applying
 3. **Check Status** - View current deployment status
@@ -129,6 +135,7 @@ Run validation without making any changes:
 ```
 
 This will verify:
+
 - Required binaries are installed
 - Project structure is correct
 - Configuration files exist
@@ -146,6 +153,7 @@ Preview what will be created without applying changes:
 ```
 
 This runs:
+
 1. All pre-flight checks
 2. Terraform initialization
 3. Terraform validation
@@ -162,6 +170,7 @@ Deploy complete infrastructure and configure Vault:
 ```
 
 **Workflow:**
+
 1. ✅ Pre-flight checks (binaries, files, SSH keys)
 2. ✅ Environment variable validation (prompts for missing values)
 3. ✅ Terraform initialization (S3 backend or local state)
@@ -184,6 +193,7 @@ View information about deployed infrastructure:
 ```
 
 This shows:
+
 - Terraform state information
 - Container IP address
 - Vault URL
@@ -200,6 +210,7 @@ Remove all deployed resources:
 ```
 
 **Safety Features:**
+
 - Initial confirmation prompt
 - Requires typing "destroy" to confirm
 - Lists what will be removed
@@ -216,6 +227,7 @@ Run only Terraform without Ansible:
 ```
 
 Use this when:
+
 - You want to provision infrastructure manually configure later
 - Testing Terraform changes
 - Debugging Terraform issues
@@ -229,6 +241,7 @@ Run only Ansible without Terraform:
 ```
 
 Use this when:
+
 - Infrastructure is already deployed
 - Re-running configuration management
 - Testing Ansible playbook changes
@@ -282,7 +295,7 @@ If credentials are not found, the script will prompt:
 ### Required Variables
 
 | Variable | File Location | Environment Variable | Required |
-|----------|---------------|---------------------|----------|
+| ---------- | --------------- | --------------------- | ---------- |
 | Proxmox password | `~/.ssh/pve_root_password` | `TF_VAR_pve_root_password` | ✅ Yes |
 | Proxmox endpoint | `terraform.tfvars` | `TF_VAR_proxmox_endpoint` | Optional* |
 | State passphrase | `~/.ssh/state_passphrase` | `TF_VAR_passphrase` | Optional** |
@@ -308,6 +321,7 @@ The script will automatically detect and use S3 backend.
 #### Using Local State (Not Recommended)
 
 If `s3.backend.config` is not found:
+
 - Script will warn about local state usage
 - State will be stored in `terraform/terraform.tfstate`
 - **Warning**: Local state is not recommended for production
@@ -339,6 +353,7 @@ grep -E "ERROR|WARNING" logs/*.log
 **Error**: `Missing required command: tofu`
 
 **Solution**:
+
 ```bash
 # Install OpenTofu
 wget https://github.com/opentofu/opentofu/releases/download/v1.8.0/tofu_1.8.0_linux_amd64.zip
@@ -351,6 +366,7 @@ sudo mv tofu /usr/local/bin/
 **Error**: `Terraform initialization failed`
 
 **Solution**:
+
 ```bash
 # Check AWS credentials (if using S3 backend)
 aws sts get-caller-identity
@@ -365,12 +381,14 @@ mv terraform/s3.backend.config terraform/s3.backend.config.disabled
 **Error**: `Ansible connectivity test failed after 3 retries`
 
 **Possible Causes**:
+
 - Container not fully booted (wait longer)
 - SSH key not configured correctly
 - Wrong IP address in inventory
 - Firewall blocking SSH
 
 **Solution**:
+
 ```bash
 # Check container status in Proxmox
 pvesh get /nodes/pve/lxc/200/status/current
@@ -389,6 +407,7 @@ ssh -i ~/.ssh/ansible ansible@<container-ip>
 **Cause**: The script expects the Terraform output `lxc_ip_address` or `vault_ip_address`.
 
 **Solution**:
+
 ```bash
 # Verify Terraform outputs exist
 cd terraform
@@ -427,6 +446,7 @@ ansible-playbook site.yml
 **Error**: `Permission denied: ./deploy.sh`
 
 **Solution**:
+
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
@@ -437,6 +457,7 @@ chmod +x deploy.sh
 **Error**: `terraform.tfvars not found`
 
 **Solution**:
+
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
@@ -444,6 +465,7 @@ vim terraform.tfvars  # Edit with your values
 ```
 
 Or use environment variables:
+
 ```bash
 export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
 export TF_VAR_pve_root_password="your-password"
@@ -456,6 +478,7 @@ export TF_VAR_proxmox_node="pve"
 **Error**: `State encryption passphrase file not found`
 
 **Solution**:
+
 ```bash
 # Generate new passphrase
 openssl rand -base64 32 > ~/.ssh/state_passphrase
@@ -616,18 +639,21 @@ find "${LOGS_DIR}" -name "*.log" -mtime +30 -delete
 For production deployments:
 
 1. **Use dedicated automation password**:
+
    ```bash
    # Don't use your interactive root password
    # Create separate automation password in Proxmox
    ```
 
 2. **Restrict password file permissions**:
+
    ```bash
    chmod 400 ~/.ssh/pve_root_password
    chown root:root ~/.ssh/pve_root_password
    ```
 
 3. **Use AWS Secrets Manager** for credentials:
+
    ```bash
    # Store in AWS Secrets Manager
    export TF_VAR_pve_root_password=$(aws secretsmanager get-secret-value \
@@ -635,12 +661,14 @@ For production deployments:
    ```
 
 4. **Enable audit logging**:
+
    ```bash
    # The script logs everything to logs/ directory
    # Configure log shipping to SIEM
    ```
 
 5. **Rotate credentials regularly**:
+
    ```bash
    # Update password every 90 days
    # Update script or add reminder:
@@ -671,6 +699,7 @@ If you encounter issues:
 The deployment script is located at: `deploy.sh`
 
 To update:
+
 ```bash
 # Make changes
 vim deploy.sh
@@ -683,4 +712,3 @@ vim deploy.sh
 ```
 
 **Important**: Always test changes in a development environment before production!
-
