@@ -8,7 +8,8 @@ Automated deployment of Nginx Proxy Manager in a Proxmox LXC container with Hash
 - **Vault Integration** – Secrets (Proxmox password, NetBox API token) fetched from Vault
 - **NetBox Registration** – Container auto-registered with IP and VM metadata
 - **S3 State Backend** – Remote state storage with Vault Transit encryption
-- **Security Hardened** – SSH key-only auth, UFW firewall, no root login
+- **Security Hardened** – SSH key-only auth, UFW firewall, no root login, **Unprivileged Container**
+- **Data Persistence** – Bind mounts for `/data` and `/etc/letsencrypt` with automated permission fix
 
 ## Ports
 

@@ -583,3 +583,14 @@ variable "disk_description" {
   default     = "Main disk"
 }
 
+variable "service_user_uid" {
+  description = "UID of the service user inside the container (for permission fix script)"
+  type        = number
+  default     = 0 # Default to root for NPM as it runs as root
+}
+
+variable "service_user_gid" {
+  description = "GID of the service user inside the container (for permission fix script)"
+  type        = number
+  default     = 0 # Default to root for NPM as it runs as root
+}

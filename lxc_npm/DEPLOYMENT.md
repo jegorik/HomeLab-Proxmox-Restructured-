@@ -25,7 +25,21 @@ vault kv put secrets/proxmox/netbox_api_token token="your-token"
 
 # Verify Transit engine (for state encryption)
 vault secrets list | grep transit
+
+# Verify Transit engine (for state encryption)
+vault secrets list | grep transit
 ```
+
+## Step 1.5: Host Permissions (Unprivileged Mode)
+
+This container runs in **Unprivileged Mode** (UID 100000). The deployment script automatically fixes bind mount permissions using `fix_bind_mount_permissions.sh`.
+
+- **Script Location**: `scripts/fix_bind_mount_permissions.sh` (injected from base template)
+- **Target UIDs**: Mapped to `100000` (root) and `100900` (service user) on host
+- **Target Directories**: `/data` (application data), `/etc/letsencrypt` (SSL certs)
+
+> [!NOTE]
+> Ensure the Proxmox host allows the SSH user to execute `chmod`/`chown` on the bind mount directories, or run as root.
 
 ## Step 2: Configure Terraform Variables
 
@@ -43,7 +57,7 @@ vim terraform.tfvars
 Key variables to configure:
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+| ---------- | ------------- | --------- |
 | `container_hostname` | Container name | `npm` |
 | `container_id` | Proxmox VM ID | `110` |
 | `network_ip` | Static IP | `192.168.1.110/24` |
@@ -80,7 +94,8 @@ Select option `1) deploy` from the menu.
 ## Step 5: Post-Deployment
 
 1. **Access Admin UI**
-   ```
+
+   ```text
    http://<container-ip>:81
    ```
 
@@ -138,7 +153,7 @@ sudo cp /data/database.sqlite /data/database.sqlite.backup
 Ensure these ports are open:
 
 | Port | Direction | Purpose |
-|------|-----------|---------|
+| ------ | ----------- | --------- |
 | 80 | Inbound | HTTP traffic |
 | 443 | Inbound | HTTPS traffic |
 | 81 | Inbound | Admin UI |
