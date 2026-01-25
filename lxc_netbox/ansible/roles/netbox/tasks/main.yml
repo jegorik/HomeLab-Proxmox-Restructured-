@@ -24,23 +24,32 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-  tags: ['install', 'dependencies']
+  tags: ["install", "dependencies"]
+
+- name: Create NetBox group
+  ansible.builtin.group:
+    name: "{{ netbox_group }}"
+    gid: 901
+    state: present
+  tags: ["user"]
 
 - name: Create NetBox system user
   ansible.builtin.user:
     name: "{{ netbox_user }}"
     system: true
+    uid: 901
+    group: "{{ netbox_group }}"
     home: "{{ netbox_install_dir }}"
     shell: /bin/bash
     create_home: false
-  tags: ['user']
+  tags: ["user"]
 
 - name: Ensure parent directory exists
   ansible.builtin.file:
     path: /opt
     state: directory
-    mode: '0755'
-  tags: ['install', 'directory']
+    mode: "0755"
+  tags: ["install", "directory"]
 
 - name: Ensure NetBox installation directory exists with proper ownership
   ansible.builtin.file:
@@ -48,14 +57,14 @@
     state: directory
     owner: "{{ netbox_user }}"
     group: "{{ netbox_group }}"
-    mode: '0755'
-  tags: ['install', 'directory']
+    mode: "0755"
+  tags: ["install", "directory"]
 
 - name: Check if NetBox is already cloned
   ansible.builtin.stat:
     path: "{{ netbox_install_dir }}/.git"
   register: netbox_git_check
-  tags: ['install', 'git']
+  tags: ["install", "git"]
 
 - name: Clone NetBox to temporary directory (fresh installation)
   ansible.builtin.git:
@@ -64,7 +73,7 @@
     version: "{{ netbox_version }}"
     force: true
   when: not netbox_git_check.stat.exists
-  tags: ['install', 'git']
+  tags: ["install", "git"]
 
 - name: Move NetBox files to installation directory
   ansible.builtin.shell: |
@@ -75,7 +84,8 @@
     # Cleanup
     rm -rf /tmp/netbox-clone
   when: not netbox_git_check.stat.exists
-  tags: ['install', 'git']
+  changed_when: true
+  tags: ["install", "git"]
 
 - name: Update NetBox repository (existing installation from bind mount)
   ansible.builtin.git:
@@ -86,7 +96,7 @@
   become: true
   become_user: "{{ netbox_user }}"
   when: netbox_git_check.stat.exists
-  tags: ['install', 'git', 'update']
+  tags: ["install", "git", "update"]
 
 - name: Set ownership of NetBox directory (ensure all files owned by netbox user)
   ansible.builtin.file:
@@ -94,7 +104,7 @@
     owner: "{{ netbox_user }}"
     group: "{{ netbox_group }}"
     recurse: true
-  tags: ['install', 'permissions']
+  tags: ["install", "permissions"]
 
 - name: Create Python virtual environment
   ansible.builtin.command:
@@ -102,16 +112,16 @@
     creates: "{{ netbox_install_dir }}/venv/bin/activate"
   become: true
   become_user: "{{ netbox_user }}"
-  tags: ['install', 'venv']
+  tags: ["install", "venv"]
 
 - name: Upgrade pip in virtual environment
   ansible.builtin.pip:
     name: pip
-    state: latest
+    state: present
     virtualenv: "{{ netbox_install_dir }}/venv"
   become: true
   become_user: "{{ netbox_user }}"
-  tags: ['install', 'venv']
+  tags: ["install", "venv"]
 
 - name: Install NetBox Python requirements
   ansible.builtin.pip:
@@ -119,7 +129,7 @@
     virtualenv: "{{ netbox_install_dir }}/venv"
   become: true
   become_user: "{{ netbox_user }}"
-  tags: ['install', 'dependencies']
+  tags: ["install", "dependencies"]
 
 - name: Check if SECRET_KEY exists in Vault
   ansible.builtin.uri:
@@ -129,49 +139,57 @@
       X-Vault-Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
     status_code: [200, 404]
     return_content: true
-  register: vault_secret_key_check
+  register: netbox_vault_secret_key_check
   no_log: true
-  tags: ['vault', 'secrets']
+  tags: ["vault", "secrets"]
 
 - name: Retrieve SECRET_KEY from Vault if it exists
   ansible.builtin.set_fact:
-    netbox_secret_key: "{{ vault_secret_key_check.json.data.data.secret_key }}"
+    netbox_secret_key: "{{ netbox_vault_secret_key_check.json.data.data.secret_key }}"
   no_log: true
   when:
-    - vault_secret_key_check.status == 200
-    - vault_secret_key_check.json is defined
-    - vault_secret_key_check.json.data is defined
-    - vault_secret_key_check.json.data.data is defined
-    - vault_secret_key_check.json.data.data.secret_key is defined
-  tags: ['vault', 'secrets']
+    - netbox_vault_secret_key_check.status == 200
+    - netbox_vault_secret_key_check.json is defined
+    - netbox_vault_secret_key_check.json.data is defined
+    - netbox_vault_secret_key_check.json.data.data is defined
+    - netbox_vault_secret_key_check.json.data.data.secret_key is defined
+  tags: ["vault", "secrets"]
 
 - name: Generate SECRET_KEY if not exists
   ansible.builtin.set_fact:
     netbox_secret_key: "{{ lookup('password', '/dev/null chars=ascii_letters,digits,punctuation length=50') }}"
   no_log: true
   when: netbox_secret_key is not defined
-  tags: ['vault', 'secrets']
+  tags: ["vault", "secrets"]
 
 - name: Store SECRET_KEY in Vault
+  tags: ["vault", "secrets"]
+  when: >-
+    netbox_vault_secret_key_check.status == 404 or
+    (netbox_vault_secret_key_check.status == 200 and
+     netbox_vault_secret_key_check.json is defined and
+     netbox_vault_secret_key_check.json.data is defined and
+     netbox_vault_secret_key_check.json.data.data is defined and
+     netbox_vault_secret_key_check.json.data.data.secret_key is not defined)
   block:
     - name: Get existing Vault data if it exists
       ansible.builtin.set_fact:
-        existing_vault_data: "{{ vault_secret_key_check.json.data.data }}"
+        netbox_existing_vault_data: "{{ netbox_vault_secret_key_check.json.data.data }}"
       when:
-        - vault_secret_key_check.status == 200
-        - vault_secret_key_check.json is defined
-        - vault_secret_key_check.json.data is defined
-        - vault_secret_key_check.json.data.data is defined
-        - vault_secret_key_check.json.data.data | type_debug == 'dict'
+        - netbox_vault_secret_key_check.status == 200
+        - netbox_vault_secret_key_check.json is defined
+        - netbox_vault_secret_key_check.json.data is defined
+        - netbox_vault_secret_key_check.json.data.data is defined
+        - netbox_vault_secret_key_check.json.data.data | type_debug == 'dict'
 
     - name: Initialize empty vault data if none exists
       ansible.builtin.set_fact:
-        existing_vault_data: {}
-      when: existing_vault_data is not defined
+        netbox_existing_vault_data: {}
+      when: netbox_existing_vault_data is not defined
 
     - name: Merge SECRET_KEY with existing data
       ansible.builtin.set_fact:
-        vault_data_to_save: "{{ existing_vault_data | combine({'secret_key': netbox_secret_key}) }}"
+        netbox_vault_data_to_save: "{{ netbox_existing_vault_data | combine({'secret_key': netbox_secret_key}) }}"
       no_log: true
 
     - name: Store SECRET_KEY in Vault
@@ -182,16 +200,13 @@
           X-Vault-Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
         body_format: json
         body:
-          data: "{{ vault_data_to_save }}"
+          data: "{{ netbox_vault_data_to_save }}"
         status_code: [200, 204]
       no_log: true
   rescue:
     - name: Failed to save SECRET_KEY to Vault
       ansible.builtin.debug:
         msg: "WARNING: Failed to save SECRET_KEY to Vault, but continuing with generated key"
-  when:
-    - vault_secret_key_check.status == 404 or (vault_secret_key_check.status == 200 and vault_secret_key_check.json is defined and vault_secret_key_check.json.data is defined and vault_secret_key_check.json.data.data is defined and vault_secret_key_check.json.data.data.secret_key is not defined)
-  tags: ['vault', 'secrets']
 
 - name: Retrieve database password from Vault for configuration
   ansible.builtin.uri:
@@ -201,21 +216,21 @@
       X-Vault-Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
     return_content: true
     status_code: [200, 404]
-  register: vault_secrets
+  register: netbox_vault_secrets
   no_log: true
-  tags: ['vault', 'secrets']
+  tags: ["vault", "secrets"]
 
 - name: Set database password from Vault if available
   ansible.builtin.set_fact:
-    netbox_db_password: "{{ vault_secrets.json.data.data.db_password }}"
+    netbox_db_password: "{{ netbox_vault_secrets.json.data.data.db_password }}"
   no_log: true
   when:
-    - vault_secrets.status == 200
-    - vault_secrets.json is defined
-    - vault_secrets.json.data is defined
-    - vault_secrets.json.data.data is defined
-    - vault_secrets.json.data.data.db_password is defined
-  tags: ['vault', 'secrets']
+    - netbox_vault_secrets.status == 200
+    - netbox_vault_secrets.json is defined
+    - netbox_vault_secrets.json.data is defined
+    - netbox_vault_secrets.json.data.data is defined
+    - netbox_vault_secrets.json.data.data.db_password is defined
+  tags: ["vault", "secrets"]
 
 - name: Create NetBox configuration from template
   ansible.builtin.template:
@@ -223,9 +238,9 @@
     dest: "{{ netbox_install_dir }}/netbox/netbox/configuration.py"
     owner: "{{ netbox_user }}"
     group: "{{ netbox_group }}"
-    mode: '0640'
+    mode: "0640"
   notify: restart netbox services
-  tags: ['configuration']
+  tags: ["configuration"]
 
 - name: Run NetBox database migrations
   ansible.builtin.command:
@@ -234,9 +249,9 @@
   become_user: "{{ netbox_user }}"
   environment:
     PYTHONPATH: "{{ netbox_install_dir }}/netbox"
-  register: migrate_result
-  changed_when: "'No migrations to apply' not in migrate_result.stdout"
-  tags: ['database', 'migration']
+  register: netbox_migrate_result
+  changed_when: "'No migrations to apply' not in netbox_migrate_result.stdout"
+  tags: ["database", "migration"]
 
 - name: Collect NetBox static files
   ansible.builtin.command:
@@ -245,10 +260,10 @@
   become_user: "{{ netbox_user }}"
   environment:
     PYTHONPATH: "{{ netbox_install_dir }}/netbox"
-  register: collectstatic_result
-  changed_when: "'0 static files copied' not in collectstatic_result.stdout"
-  tags: ['static']
+  register: netbox_collectstatic_result
+  changed_when: "'0 static files copied' not in netbox_collectstatic_result.stdout"
+  tags: ["static"]
 
 - name: Configure Gunicorn
   ansible.builtin.include_tasks: gunicorn.yml
-  tags: ['gunicorn', 'configuration']
+  tags: ["gunicorn", "configuration"]

@@ -63,6 +63,17 @@ ssh root@<proxmox-host>
 mkdir -p /rpool/datastore/influxdb
 ```
 
+### Host Permissions (Unprivileged Mode)
+
+This container runs in **Unprivileged Mode** (UID 100000). The deployment script automatically fixes bind mount permissions using `fix_bind_mount_permissions.sh`.
+
+- **Script Location**: `scripts/fix_bind_mount_permissions.sh` (injected from base template)
+- **Target UIDs**: Mapped to `100000` (root) and `100900` (influxdb user) on host
+- **Target Directories**: `/rpool/datastore/influxdb`
+
+> [!NOTE]
+> Ensure the Proxmox host allows the SSH user to execute `chmod`/`chown` on the bind mount directories, or run as root.
+
 ## Step-by-Step Deployment
 
 ### 1. Configure Terraform Variables
@@ -155,7 +166,7 @@ mkdir -p /rpool/datastore/influxdb
 
 **Cause**: Permission issues with bind mounts.
 
-**Solution**: Ensure container is privileged (`lxc_unprivileged = false`).
+**Solution**: Verify host directory permissions. The deployment script should automatically set ownership to `100900:100900` (unprivileged `influxdb` user). Check logs if `fix_bind_mount_permissions.sh` failed.
 
 ### Initial Setup Already Done
 

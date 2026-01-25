@@ -288,7 +288,7 @@ sequenceDiagram
 - Data persistence via bind mounts (config and datastore)
 - Full Vault integration for secrets management
 - Vault Transit engine for state encryption
-- Privileged container for bind mount support
+- **Unprivileged container** with proper UID/GID mapping for bind mounts
 - Web UI on port 8007
 
 **Documentation**: See [lxc_PBS/README.md](lxc_PBS/README.md)
@@ -318,7 +318,7 @@ sequenceDiagram
 - Automated initial setup (admin user, org, bucket)
 - Full Vault integration for secrets management
 - Vault Transit engine for state encryption
-- Privileged container for bind mount support
+- **Unprivileged container** with proper UID/GID mapping for bind mounts
 - Web UI and API on port 8086
 
 **Documentation**: See [lxc_influxdb/README.md](lxc_influxdb/README.md)
@@ -552,6 +552,39 @@ All projects include:
 4. **Limit access** - Use least privilege principles for all credentials
 5. **Audit logs** - Review deployment logs regularly
 
+### Unprivileged Containers & UID Mapping
+
+All LXC containers in this project run in **unprivileged mode** for enhanced security. This requires understanding UID/GID mapping:
+
+#### How UID Mapping Works
+
+| Inside Container | On Proxmox Host |
+|------------------|-----------------|
+| root (UID 0) | 100000 |
+| UID 100 | 100100 |
+| UID 900 | 100900 |
+
+**Formula**: `Host UID = 100000 + Container UID`
+
+#### Bind Mount Permissions
+
+For bind-mounted data directories, **set ownership on the Proxmox host** using mapped UIDs:
+
+```bash
+# Example: PostgreSQL (UID 105 inside container)
+chown -R 100105:100109 /rpool/datastore/netbox-db
+
+# Example: Redis (UID 900 inside container)
+chown -R 100900:100900 /rpool/datastore/netbox-redis
+
+# Example: Service user UID 901
+chown -R 100901:100901 /rpool/datastore/myservice
+```
+
+#### Automated Permission Fix
+
+Each project includes a `fix_bind_mount_permissions.sh` script (from `lxc_base_template`) that Terraform executes automatically to set proper ownership on bind mount directories.
+
 ### Per-Project Security
 
 - **lxc_vault**: Protect unseal keys, use auto-unseal in production
@@ -598,7 +631,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 22, 2026
+**Last Updated**: January 25, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

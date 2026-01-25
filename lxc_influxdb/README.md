@@ -15,7 +15,7 @@ Project for deploying InfluxDB 2.x time-series database in a Proxmox LXC contain
 - **Vault Integration** – Secrets (Proxmox credentials, SSH keys) fetched from HashiCorp Vault.
 - **NetBox Registration** – Container auto-registered with IP, VM metadata, and resources.
 - **S3 State Backend** – Remote state storage with Vault Transit encryption.
-- **Security Hardened** – SSH key-only auth, non-root Ansible user, UFW firewall enabled.
+- **Security Hardened** – SSH key-only auth, non-root Ansible user, UFW firewall enabled, **Unprivileged Container**.
 
 ## Directory Structure
 
@@ -62,7 +62,7 @@ lxc_influxdb/
 | `lxc_disk_size` | Disk size (GB) | `8` |
 | `lxc_memory` | RAM (MB) | `512` |
 | `lxc_cpu_cores` | CPU Cores | `2` |
-| `lxc_unprivileged` | Unprivileged container | `false` (required for bind mounts) |
+| `lxc_unprivileged` | Unprivileged container | `true` (Security recommended) |
 
 ### InfluxDB Data Persistence (Bind Mount)
 

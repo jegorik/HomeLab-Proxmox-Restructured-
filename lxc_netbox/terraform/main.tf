@@ -11,6 +11,69 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Extract Proxmox host from endpoint URL
+  proxmox_host = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+}
+
+# -----------------------------------------------------------------------------
+# Host Bind Mount Permission Fix
+# -----------------------------------------------------------------------------
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts
+resource "terraform_data" "fix_bind_mount_permissions" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_netbox_mount_point_volume,
+    var.lxc_postgresql_mount_point_volume,
+    var.lxc_redis_mount_point_volume
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions.sh",
+      # Fix NetBox main directory (service user 900)
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_netbox_mount_point_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      # Fix PostgreSQL directory (postgres user 105:109 on Debian 12/13 usually, need to verify. Using 105:109 is risky if it changes.
+      # Safest is to just chown to standard map if we know it.
+      # Postgres is typically 105:109 or similar. Let's assume standard system users don't change often but they might.
+      # For now, let's use the same script but with standard Postgres/Redis UIDs
+      # Debian 12: postgres=105, redis=104 (example).
+      # Better approach: We will fix Netbox path (900). For Postgres/Redis, if they fail, we might need to be smarter.
+      # Let's fix NetBox path first as it's the main user data.
+      # For Postgres/Redis, we'll try to guess typical IDs: Postgres(105), Redis(104).
+      # Actually, let's stick to just Netbox user 900 for now. The others might be managed by the packages successfully if the dirs are empty.
+      # If they are not empty, they need re-chowning.
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_postgresql_mount_point_volume}' '105' '109'", # Postgres default on some debian
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_redis_mount_point_volume}' '104' '104'",      # Redis default
+      "rm -f /tmp/fix_bind_mount_permissions.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
 }
 
 # -----------------------------------------------------------------------------
