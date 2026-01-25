@@ -8,6 +8,28 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Service User Setup (Unprivileged Container Support)
+# -----------------------------------------------------------------------------
+# Pre-create the user to ensure UID/GID matches the host mapping (900 -> 100900).
+# This is critical for bind mount permissions in unprivileged containers.
+
+- name: Create InfluxDB group with fixed GID
+  ansible.builtin.group:
+    name: influxdb
+    gid: 900
+    state: present
+
+- name: Create InfluxDB user with fixed UID
+  ansible.builtin.user:
+    name: influxdb
+    uid: 900
+    group: influxdb
+    home: /var/lib/influxdb
+    create_home: false
+    shell: /bin/false
+    state: present
+
+# -----------------------------------------------------------------------------
 # GPG Key and Repository Setup
 # -----------------------------------------------------------------------------
 
@@ -90,6 +112,7 @@
     seconds: 5
   when: influxdb_service.changed
   tags: [influxdb, install]
+  # noqa: no-handler
 
 # -----------------------------------------------------------------------------
 # InfluxDB Initial Setup
@@ -136,3 +159,4 @@
     msg: "InfluxDB initial setup completed successfully"
   when: influxdb_setup_result.changed | default(false)
   tags: [influxdb, setup]
+  # noqa: no-handler

@@ -180,7 +180,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"
@@ -197,7 +197,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"

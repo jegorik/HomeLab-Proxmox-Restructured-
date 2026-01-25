@@ -16,6 +16,57 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Extract Proxmox host from endpoint URL
+  proxmox_host = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+}
+
+# -----------------------------------------------------------------------------
+# Host Bind Mount Permission Fix
+# -----------------------------------------------------------------------------
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts
+resource "terraform_data" "fix_bind_mount_permissions" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_influxdb_data_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions.sh",
+      # Fix /var/lib/influxdb mount
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_influxdb_data_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -160,7 +211,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"
@@ -177,7 +228,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"
