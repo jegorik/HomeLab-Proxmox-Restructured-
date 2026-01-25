@@ -8,6 +8,16 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Pre-flight Checks
+# -----------------------------------------------------------------------------
+
+- name: Verify InfluxDB admin password is defined
+  ansible.builtin.fail:
+    msg: "influxdb_admin_password must be defined in inventory or extra vars!"
+  when: influxdb_admin_password is not defined or influxdb_admin_password | length == 0
+  tags: [influxdb, setup, preflight]
+
+# -----------------------------------------------------------------------------
 # GPG Key and Repository Setup
 # -----------------------------------------------------------------------------
 

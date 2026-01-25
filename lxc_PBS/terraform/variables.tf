@@ -330,9 +330,9 @@ variable "lxc_dns_servers" {
 # -----------------------------------------------------------------------------
 
 variable "lxc_unprivileged" {
-  description = "Run as unprivileged container (recommended for security)"
+  description = "Run as unprivileged container (recommended for security). Note: If using bind mounts without ID mapping, set to false (privileged). Unprivileged with ID mapping is preferred for production."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "lxc_start_on_boot" {
