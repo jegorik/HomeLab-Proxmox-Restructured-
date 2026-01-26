@@ -62,7 +62,7 @@ lxc_influxdb/
 | `lxc_disk_size` | Disk size (GB) | `8` |
 | `lxc_memory` | RAM (MB) | `512` |
 | `lxc_cpu_cores` | CPU Cores | `2` |
-| `lxc_unprivileged` | Unprivileged container | `true` (Security recommended) |
+| `lxc_unprivileged` | Unprivileged container | `true` (recommended for security) |
 
 ### InfluxDB Data Persistence (Bind Mount)
 
@@ -170,6 +170,9 @@ The project expects the following secrets in Vault (paths configurable in `varia
 - **NetBox** (Optional, but enabled by default)
 - **OpenTofu** or **Terraform** >= 1.0
 - **Ansible** >= 2.15
+
+> [!IMPORTANT]
+> InfluxDB uses bind mounts for data persistence. This works best with **privileged containers** (`lxc_unprivileged = false`) or unprivileged containers with proper ID mapping on the host. Default is `true` (unprivileged).
 
 ## Ports
 
