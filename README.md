@@ -61,6 +61,8 @@ graph TB
         PBS1[Bind Mounts]
         INFLUX[lxc_influxdb<br/>InfluxDB 2.x<br/>:8086]
         INFLUX1[Bind Mounts]
+        GRAFANA[lxc_grafana<br/>Grafana OSS<br/>:3000]
+        GRAFANA1[Bind Mounts]
     end
     
     subgraph "State Management"
@@ -77,6 +79,7 @@ graph TB
     A -->|Provision| NPM
     A -->|Provision| PBS
     A -->|Provision| INFLUX
+    A -->|Provision| GRAFANA
     A -->|State| G
     G -->|Encrypted| H
     
@@ -85,6 +88,7 @@ graph TB
     B -->|Configure| NPM
     B -->|Configure| PBS
     B -->|Configure| INFLUX
+    B -->|Configure| GRAFANA
     
     C -->|Automate| A
     C -->|Automate| B
@@ -93,6 +97,8 @@ graph TB
     E -->|Secrets & Encryption| F
     E -->|Secrets & Encryption| NPM
     E -->|Secrets & Encryption| PBS
+    E -->|Secrets & Encryption| INFLUX
+    E -->|Secrets & Encryption| GRAFANA
     
     F --> F1
     F --> F2
@@ -104,12 +110,16 @@ graph TB
     PBS --> PBS1
     
     INFLUX --> INFLUX1
+    INFLUX -->|Data Source| GRAFANA
+    
+    GRAFANA --> GRAFANA1
     
     D -->|Network| E
     D -->|Network| F
     D -->|Network| NPM
     D -->|Network| PBS
     D -->|Network| INFLUX
+    D -->|Network| GRAFANA
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
@@ -117,6 +127,7 @@ graph TB
     style NPM fill:#1abc9c,color:#fff
     style PBS fill:#e67e22,color:#fff
     style INFLUX fill:#9b59b6,color:#fff
+    style GRAFANA fill:#ff6b6b,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -416,6 +427,15 @@ Additional services will be added following the same patterns and deployment ord
 
    ```bash
    cd lxc_influxdb
+   export INFLUXDB_ADMIN_PASSWORD="your-password"
+   ./deploy.sh deploy
+   ```
+
+5. **lxc_grafana** - Deploy Grafana (requires Vault, optional: InfluxDB)
+
+   ```bash
+   cd lxc_grafana
+   export GRAFANA_ADMIN_PASSWORD="your-password"
    ./deploy.sh deploy
    ```
 
@@ -435,6 +455,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_npm** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_PBS** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_influxdb** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **lxc_grafana** | lxc_vault, (optional) lxc_influxdb | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
