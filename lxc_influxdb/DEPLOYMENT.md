@@ -100,7 +100,24 @@ lxc_gateway    = "192.168.0.1"
 lxc_influxdb_data_mount_volume = "/rpool/datastore/influxdb"
 ```
 
-### 2. Configure S3 Backend (Optional)
+### 2. Provide InfluxDB Admin Password
+
+The InfluxDB admin password is required for initial setup. You can provide it in two ways:
+
+**Option 1: Environment Variable** (Recommended for automation)
+
+```bash
+export INFLUXDB_ADMIN_PASSWORD="your-secure-password-here"
+```
+
+**Option 2: Interactive Prompt** (Recommended for manual deployment)
+
+The deployment script will prompt you securely (input hidden) if the environment variable is not set.
+
+> [!TIP]
+> For production deployments, consider storing the password in a password manager and setting the environment variable just before deployment.
+
+### 3. Configure S3 Backend (Optional)
 
 ```bash
 cp terraform/s3.backend.config.template terraform/s3.backend.config
@@ -126,7 +143,7 @@ The script will:
 ### 4. Access InfluxDB
 
 - **Web UI**: `http://<container-ip>:8086`
-- **Default Credentials**: `admin` / `changeme123!` (change immediately!)
+- **Default Credentials**: `admin` / `generated from inventory or extra vars`
 
 ## Post-Deployment
 

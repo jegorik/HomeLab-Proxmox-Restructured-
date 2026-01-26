@@ -78,10 +78,33 @@ ansible_deploy() {
         log_warning "VAULT_TOKEN not set - Vault lookups may fail"
     fi
 
+    # InfluxDB admin password handling
+    # Check if password is provided via environment variable
+    if [[ -z "${INFLUXDB_ADMIN_PASSWORD:-}" ]]; then
+        log_info "InfluxDB admin password not set in environment"
+        log_info "Please enter the InfluxDB admin password (input will be hidden)"
+        
+        # Read password securely (hidden input)
+        read -s -p -r "InfluxDB admin password: " INFLUXDB_ADMIN_PASSWORD
+        echo  # Newline after hidden input
+        
+        # Validate password is not empty
+        if [[ -z "${INFLUXDB_ADMIN_PASSWORD}" ]]; then
+            log_error "Password cannot be empty"
+            log_info "Set INFLUXDB_ADMIN_PASSWORD environment variable or provide it when prompted"
+            return 1
+        fi
+        
+        log_success "Password received"
+    else
+        log_info "Using INFLUXDB_ADMIN_PASSWORD from environment"
+    fi
+
     log_info "Running: ansible-playbook -i inventory.yml site.yml"
 
-    # Export VAULT_TOKEN so Ansible can access it via environment
+    # Export variables so Ansible can access them via environment
     export VAULT_TOKEN
+    export INFLUXDB_ADMIN_PASSWORD
     
     if ansible-playbook -i inventory.yml site.yml | tee -a "${LOG_FILE}"; then
         log_success "Playbook complete"

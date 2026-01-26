@@ -559,27 +559,56 @@ All LXC containers in this project run in **unprivileged mode** for enhanced sec
 #### How UID Mapping Works
 
 | Inside Container | On Proxmox Host |
-|------------------|-----------------|
+| ------------------ | ----------------- |
 | root (UID 0) | 100000 |
+| UID 34 | 100034 |
 | UID 100 | 100100 |
 | UID 900 | 100900 |
 
 **Formula**: `Host UID = 100000 + Container UID`
 
+#### Service User Mappings by Project
+
+| Project | Service User | Container UID/GID | Host UID/GID | Bind Mount Path |
+| --------- | -------------- | ------------------- | -------------- | ----------------- |
+| lxc_vault | vault | 900 | 100900 | `/var/lib/vault/data` |
+| lxc_influxdb | influxdb | 900 | 100900 | `/var/lib/influxdb` |
+| lxc_netbox | netbox | 900 | 100900 | N/A (PostgreSQL/Redis use different UIDs) |
+| lxc_PBS | backup | 34 | 100034 | `/etc/proxmox-backup`, `/mnt/pbs-backups` |
+| lxc_npm | npm | 900 | 100900 | `/data`, `/etc/letsencrypt` |
+
 #### Bind Mount Permissions
 
-For bind-mounted data directories, **set ownership on the Proxmox host** using mapped UIDs:
-
 ```bash
-# Example: PostgreSQL (UID 105 inside container)
-chown -R 100105:100109 /rpool/datastore/netbox-db
+# Vault (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/vault
 
-# Example: Redis (UID 900 inside container)
-chown -R 100900:100900 /rpool/datastore/netbox-redis
+# InfluxDB (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/influxdb
 
-# Example: Service user UID 901
-chown -R 100901:100901 /rpool/datastore/myservice
+# PBS (UID 34 → 100034)
+chown -R 100034:100034 /rpool/data/pbs-config
+chown -R 100034:100034 /backup-store/pbs-backups
+
+# NPM (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/npm-data
+chown -R 100900:100900 /rpool/data/npm-ssl
+
+# NetBox PostgreSQL (UID 105 → 100105, GID 109 → 100109)
+chown -R 100105:100109 /rpool/data/netbox-db
+
+# NetBox Redis (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/netbox-redis
 ```
+
+#### Troubleshooting Permission Issues
+
+If you encounter permission errors:
+
+1. Check the service user UID inside the container: `id <username>`
+2. Calculate the host UID: `container_uid + 100000`
+3. Fix host permissions: `chown -R <host_uid>:<host_gid> /path/to/bind/mount`
+4. Restart the service inside the container
 
 #### Automated Permission Fix
 

@@ -76,10 +76,38 @@ lxc_influxdb/
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `influxdb_admin_user` | `admin` | Initial admin username |
-| `influxdb_admin_password` | `changeme123!` | Initial admin password |
+| `influxdb_admin_password` | **REQUIRED** | Initial admin password - see below for how to provide |
 | `influxdb_org` | `homelab` | Initial organization |
 | `influxdb_bucket` | `default` | Initial bucket |
 | `influxdb_retention` | `0` | Retention (0 = infinite) |
+
+#### Providing the Admin Password
+
+The InfluxDB admin password can be provided in three ways (in order of precedence):
+
+1. **Environment Variable** (Recommended for automation):
+
+   ```bash
+   export INFLUXDB_ADMIN_PASSWORD="your-secure-password"
+   ./deploy.sh deploy
+   ```
+
+2. **Interactive Prompt** (Recommended for manual deployment):
+
+   ```bash
+   ./deploy.sh deploy
+   # Script will prompt for password securely (input hidden)
+   ```
+
+3. **Ansible Extra Vars** (Alternative method):
+
+   ```bash
+   cd ansible
+   ansible-playbook -i inventory.yml site.yml -e "influxdb_admin_password=your-password"
+   ```
+
+> [!WARNING]
+> Never hardcode the password in files or commit it to version control!
 
 ### Vault Secrets
 
@@ -142,9 +170,6 @@ The project expects the following secrets in Vault (paths configurable in `varia
 - **NetBox** (Optional, but enabled by default)
 - **OpenTofu** or **Terraform** >= 1.0
 - **Ansible** >= 2.15
-
-> [!IMPORTANT]
-> InfluxDB bind mounts require a **privileged container** (`lxc_unprivileged = false`).
 
 ## Ports
 

@@ -8,6 +8,28 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Preflight Checks
+# -----------------------------------------------------------------------------
+# Validate required secrets are provided before proceeding
+
+- name: Set InfluxDB admin password from environment if not provided
+  ansible.builtin.set_fact:
+    influxdb_admin_password: "{{ lookup('env', 'INFLUXDB_ADMIN_PASSWORD') }}"
+  when: influxdb_admin_password is not defined
+  no_log: true
+  tags: [influxdb, setup, preflight]
+
+- name: Verify InfluxDB admin password is defined
+  ansible.builtin.fail:
+    msg: |
+      InfluxDB admin password must be provided via one of:
+      - Environment variable: INFLUXDB_ADMIN_PASSWORD
+      - Ansible inventory variable: influxdb_admin_password
+      - Extra vars: -e influxdb_admin_password=xxx
+  when: influxdb_admin_password is not defined or influxdb_admin_password | length == 0
+  tags: [influxdb, setup, preflight]
+
+# -----------------------------------------------------------------------------
 # Service User Setup (Unprivileged Container Support)
 # -----------------------------------------------------------------------------
 # Pre-create the user to ensure UID/GID matches the host mapping (900 -> 100900).
