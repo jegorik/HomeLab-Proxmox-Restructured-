@@ -533,3 +533,19 @@ variable "disk_description" {
   type        = string
   default     = "Main disk"
 }
+
+# -----------------------------------------------------------------------------
+# Service User Configuration (for Unprivileged Bind Mounts)
+# -----------------------------------------------------------------------------
+
+variable "service_user_uid" {
+  description = "UID of the service user inside the container"
+  type        = number
+  default     = 900
+}
+
+variable "service_user_gid" {
+  description = "GID of the service user inside the container"
+  type        = number
+  default     = 900
+}

@@ -77,7 +77,7 @@ check_files() {
         log_warning "Missing: terraform.tfvars"
     fi
     
-    return "$([[ "${ok}" == true ]])"
+    [[ "${ok}" == true ]]
 }
 
 # -----------------------------------------------------------------------------
@@ -242,7 +242,7 @@ show_menu() {
     clear
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════╗"
-    echo "║       LXC Base Template - Deployment                 ║"
+    echo "║       LXC InfluxDB - Deployment                      ║"
     echo "║       OpenTofu/Terraform + Ansible + Vault           ║"
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"

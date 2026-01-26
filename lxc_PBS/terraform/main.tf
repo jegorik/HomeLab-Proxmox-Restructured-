@@ -90,11 +90,10 @@ resource "proxmox_virtual_environment_container" "pbs" {
   # IMPORTANT: Bind mounts REQUIRE root@pam authentication with password
   # API tokens do NOT work for bind mount operations, even with full permissions.
   #
-  # Privileged vs Unprivileged Containers:
-  # - Bind mounts work best with PRIVILEGED containers (lxc_unprivileged = false)
-  # - Unprivileged containers use UID/GID mapping which can cause permission issues
-  #
-  # See: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
+  # Unprivileged Container UID/GID Mapping:
+  # - Container UID 34 (backup) maps to host UID 100034
+  # - Host bind mount directories must be owned by UID 100034:100034
+  # - See: https://pve.proxmox.com/wiki/Linux_Container#pct_mount_points
 
   mount_point {
     volume = var.lxc_pbs_config_mount_volume
@@ -180,7 +179,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"
@@ -197,7 +196,7 @@ resource "terraform_data" "ansible_user_setup" {
 
     connection {
       type        = "ssh"
-      user        = "root"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
       host        = local.container_ip
       timeout     = "5m"

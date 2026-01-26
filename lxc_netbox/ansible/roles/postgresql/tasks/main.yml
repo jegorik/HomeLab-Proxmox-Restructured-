@@ -9,6 +9,26 @@
 # instead of creating a fresh database cluster.
 # =============================================================================
 
+# --- User Setup (match bind mount UIDs) ---
+
+- name: Create PostgreSQL group
+  ansible.builtin.group:
+    name: postgres
+    gid: 109
+    state: present
+  tags: ["install", "user"]
+
+- name: Create PostgreSQL user
+  ansible.builtin.user:
+    name: postgres
+    uid: 105
+    group: postgres
+    home: /var/lib/postgresql
+    shell: /bin/bash
+    create_home: false
+    state: present
+  tags: ["install", "user"]
+
 # --- Installation ---
 
 - name: Install PostgreSQL server and dependencies
@@ -38,26 +58,26 @@
 - name: Check if PostgreSQL cluster is registered
   ansible.builtin.command:
     cmd: pg_lsclusters -h
-  register: pg_clusters
+  register: postgresql_clusters
   changed_when: false
   tags: ["install"]
 
 - name: Check if main cluster exists
   ansible.builtin.set_fact:
-    cluster_exists: "{{ pg_clusters.stdout | regex_search('17\\s+main') is not none }}"
+    postgresql_cluster_exists: "{{ postgresql_clusters.stdout | regex_search('17\\s+main') is not none }}"
   tags: ["install"]
 
 - name: Check if existing PostgreSQL data exists (bind mount preservation)
   ansible.builtin.stat:
     path: /var/lib/postgresql/{{ postgres_version }}/main/PG_VERSION
-  register: pg_data_exists
+  register: postgresql_data_exists
   tags: ["install"]
 
 - name: Display data detection results
   ansible.builtin.debug:
     msg:
-      - "Cluster registered: {{ cluster_exists }}"
-      - "Existing data found: {{ pg_data_exists.stat.exists | default(false) }}"
+      - "Cluster registered: {{ postgresql_cluster_exists }}"
+      - "Existing data found: {{ postgresql_data_exists.stat.exists | default(false) }}"
   tags: ["install"]
 
 # CRITICAL: Re-register existing cluster from bind mount data (DO NOT DELETE!)
@@ -70,18 +90,18 @@
     group: postgres
     mode: "0755"
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
 
 # Create minimal postgresql.conf if not exists (required for pg_createcluster)
 - name: Check if postgresql.conf exists in data dir
   ansible.builtin.stat:
     path: /var/lib/postgresql/{{ postgres_version }}/main/postgresql.conf
-  register: pg_conf_in_data
+  register: postgresql_conf_in_data
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
 
 # pg_createcluster needs postgresql.conf - create it from postmaster.opts or defaults
@@ -108,18 +128,32 @@
       log_line_prefix = '%m [%p] %q%u@%d '
       log_timezone = 'Etc/UTC'
       datestyle = 'iso, mdy'
-      base_timezone = 'Etc/UTC'
+      timezone = 'Etc/UTC'
       lc_messages = 'C.UTF-8'
       lc_monetary = 'C.UTF-8'
       lc_numeric = 'C.UTF-8'
       lc_time = 'C.UTF-8'
       default_text_search_config = 'pg_catalog.english'
+      huge_pages = off
       EOF
       chown postgres:postgres /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+  args:
+    creates: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
+
+# Enforce huge_pages = off (common fix for LXC)
+- name: Enforce huge_pages = off in postgresql.conf
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+    regexp: '^huge_pages\s*='
+    line: "huge_pages = off"
+    create: false
+  when: postgresql_cluster_exists or postgresql_data_exists.stat.exists | default(false)
+  notify: restart postgresql
+  tags: ["config"]
 
 # Create pg_hba.conf
 - name: Generate pg_hba.conf for existing data
@@ -138,8 +172,8 @@
       host    replication     all             127.0.0.1/32            scram-sha-256
       host    replication     all             ::1/128                 scram-sha-256
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
 
 # Create pg_ident.conf
@@ -152,25 +186,29 @@
     content: |
       # PostgreSQL User Name Maps
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
 
 # Now start cluster directly (skip pg_createcluster which has issues)
 - name: Start existing cluster directly with pg_ctlcluster
   ansible.builtin.command:
     cmd: pg_ctlcluster {{ postgres_version }} main start
-  register: cluster_registered
-  failed_when: false
+  register: postgresql_cluster_registered
+  changed_when: "'server is running' not in postgresql_cluster_registered.stderr and 'server is running' not in postgresql_cluster_registered.stdout"
+  failed_when:
+    - postgresql_cluster_registered.rc != 0
+    - "'server is running' not in postgresql_cluster_registered.stderr"
+    - "'server is running' not in postgresql_cluster_registered.stdout"
   when:
-    - not cluster_exists
-    - pg_data_exists.stat.exists | default(false)
+    - not postgresql_cluster_exists
+    - postgresql_data_exists.stat.exists | default(false)
   tags: ["install"]
 
 - name: Display cluster start result
   ansible.builtin.debug:
-    var: cluster_registered
-  when: cluster_registered is defined
+    var: postgresql_cluster_registered
+  when: postgresql_cluster_registered is defined
   tags: ["install"]
 
 # Only create fresh cluster if NO existing data
@@ -178,15 +216,15 @@
   ansible.builtin.command:
     cmd: pg_createcluster --datadir=/var/lib/postgresql/{{ postgres_version }}/main {{ postgres_version }} main
   when:
-    - not cluster_exists
-    - not (pg_data_exists.stat.exists | default(false))
-  register: cluster_created
+    - not postgresql_cluster_exists
+    - not (postgresql_data_exists.stat.exists | default(false))
+  register: postgresql_cluster_created
   tags: ["install"]
 
 - name: Start newly created cluster
   ansible.builtin.command:
     cmd: pg_ctlcluster {{ postgres_version }} main start
-  when: cluster_created is changed
+  when: postgresql_cluster_created is changed
   tags: ["install"]
 
 # --- Service Management ---
@@ -202,7 +240,7 @@
   ansible.builtin.systemd:
     name: postgresql
     state: restarted
-  when: cluster_created is changed or cluster_registered is changed
+  when: postgresql_cluster_created is changed or (postgresql_cluster_registered is defined and postgresql_cluster_registered is changed)
   tags: ["service"]
 
 # --- Ensure cluster is running ---
@@ -210,47 +248,43 @@
 - name: Check cluster status
   ansible.builtin.command:
     cmd: pg_lsclusters
-  register: cluster_status
+  register: postgresql_cluster_status
   changed_when: false
   tags: ["service"]
 
 - name: Display cluster status
   ansible.builtin.debug:
-    var: cluster_status.stdout_lines
+    var: postgresql_cluster_status.stdout_lines
   tags: ["service"]
 
 - name: Start cluster if down
   ansible.builtin.command:
     cmd: pg_ctlcluster {{ postgres_version }} main start
-  register: start_cluster
-  when: "'down' in cluster_status.stdout"
+  register: postgresql_start_cluster
+  when: "'down' in postgresql_cluster_status.stdout"
+  changed_when: true
+  ignore_errors: true
   tags: ["service"]
 
 - name: Check PostgreSQL logs if start failed
-  ansible.builtin.shell:
-    cmd: tail -30 /var/log/postgresql/postgresql-{{ postgres_version }}-main.log
-  register: pg_logs
+  ansible.builtin.command:
+    cmd: tail -n 50 /var/log/postgresql/postgresql-{{ postgres_version }}-main.log
+  register: postgresql_logs
   changed_when: false
-  when: start_cluster is defined and start_cluster.rc is defined and start_cluster.rc != 0
+  when: postgresql_start_cluster is defined and (postgresql_start_cluster.failed | default(false))
+  ignore_errors: true
   tags: ["service"]
 
 - name: Display PostgreSQL logs on failure
   ansible.builtin.debug:
-    var: pg_logs.stdout_lines
-  when: pg_logs.stdout_lines is defined
+    var: postgresql_logs.stdout_lines
+  when: postgresql_logs is defined and postgresql_logs.stdout_lines is defined
   tags: ["service"]
 
-- name: Verify cluster is now online
-  ansible.builtin.command:
-    cmd: pg_lsclusters
-  register: cluster_final_status
-  changed_when: false
-  tags: ["service"]
-
-- name: Fail if cluster still not online
+- name: Fail if cluster is down
   ansible.builtin.fail:
-    msg: "PostgreSQL cluster failed to start. Check /var/log/postgresql/postgresql-{{ postgres_version }}-main.log"
-  when: "'online' not in cluster_final_status.stdout"
+    msg: "PostgreSQL cluster failed to start. See logs above."
+  when: postgresql_start_cluster is defined and (postgresql_start_cluster.failed | default(false))
   tags: ["service"]
 
 - name: Wait for PostgreSQL to be ready
@@ -272,23 +306,23 @@
     return_content: true
     status_code: [200, 404]
     validate_certs: false
-  register: vault_check
+  register: postgresql_vault_check
   tags: ["vault"]
 
 - name: Use existing password from Vault
   ansible.builtin.set_fact:
-    netbox_db_password: "{{ vault_check.json.data.data.db_password }}"
+    postgresql_db_password: "{{ postgresql_vault_check.json.data.data.db_password }}"
   no_log: true
   when:
-    - vault_check.status == 200
-    - vault_check.json.data.data.db_password is defined
+    - postgresql_vault_check.status == 200
+    - postgresql_vault_check.json.data.data.db_password is defined
   tags: ["vault"]
 
 - name: Generate new password if not in Vault
   ansible.builtin.set_fact:
-    netbox_db_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
+    postgresql_db_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
   no_log: true
-  when: netbox_db_password is not defined
+  when: postgresql_db_password is not defined
   tags: ["vault"]
 
 - name: Store credentials in Vault (if new or missing)
@@ -300,7 +334,7 @@
     body_format: json
     body:
       data:
-        db_password: "{{ netbox_db_password }}"
+        db_password: "{{ postgresql_db_password }}"
         db_user: "{{ netbox_db_user }}"
         db_name: "{{ netbox_db_name }}"
         db_host: localhost
@@ -308,7 +342,7 @@
     status_code: [200, 204]
     validate_certs: false
   no_log: true
-  when: vault_check.status == 404 or vault_check.json.data.data.db_password is not defined
+  when: postgresql_vault_check.status == 404 or postgresql_vault_check.json.data.data.db_password is not defined
   tags: ["vault"]
 
 # --- Database Setup ---
@@ -316,7 +350,7 @@
 - name: Create database user
   community.postgresql.postgresql_user:
     name: "{{ netbox_db_user }}"
-    password: "{{ netbox_db_password }}"
+    password: "{{ postgresql_db_password }}"
     state: present
     encrypted: true
   become: true
@@ -330,7 +364,7 @@
     query: "SELECT 1 FROM pg_database WHERE datname='{{ netbox_db_name }}'"
   become: true
   become_user: postgres
-  register: db_exists
+  register: postgresql_db_exists
   tags: ["database"]
 
 - name: Create database (only if not exists)
@@ -344,7 +378,7 @@
     state: present
   become: true
   become_user: postgres
-  when: db_exists.rowcount == 0
+  when: postgresql_db_exists.rowcount == 0
   tags: ["database"]
 
 - name: Grant privileges to user

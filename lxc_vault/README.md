@@ -173,36 +173,30 @@ This project uses **root@pam** authentication with a password instead of Proxmox
 - **Configuration Reference**: [pct.conf(5)](https://pve.proxmox.com/pve-docs/pct.conf.5.html)
 - **Provider Issues**: [#836](https://github.com/bpg/terraform-provider-proxmox/issues/836), [#450](https://github.com/bpg/terraform-provider-proxmox/issues/450)
 
-### Privileged vs Unprivileged Containers
+### Privileged vs Unprivileged Containers [UPDATED]
 
-This project defaults to a **privileged container** (`lxc_unprivileged = false`) for bind mounts because:
+This project now defaults to an **unprivileged container** (`lxc_unprivileged = true`) for enhanced security.
 
-| Aspect | Privileged Container | Unprivileged Container |
-| ------ | -------------------- | ---------------------- |
+| Aspect | Privileged Container | Unprivileged Container (Default) |
+| ------ | -------------------- | -------------------------------- |
 | **UID Mapping** | Direct (root = root) | Mapped (root = 100000+) |
-| **Bind Mount Permissions** | ✅ Simple | ⚠️ Complex |
+| **Bind Mount Permissions** | ✅ Simple | ⚠️ Managed via helper script |
 | **Security** | ⚠️ Lower | ✅ Higher |
-| **Configuration** | ✅ Easy | ⚠️ Requires host config |
+| **Configuration** | ✅ Easy | ✅ Automated by Terraform |
 
-#### Using Unprivileged Containers (More Secure)
+#### Important: UID/GID 900 Requirement
 
-If you want better security with unprivileged containers:
+To avoid conflicts with the default `users` group (GID 100) in Debian/Alpine images, this project standardizes on **UID/GID 900** for the service user (`vault`).
 
-1. **Set** `lxc_unprivileged = true` in `terraform.tfvars`
-2. **Configure UID/GID mapping** on Proxmox host in `/etc/pve/lxc/<VMID>.conf`:
+- **Terraform**: Sets `service_user_uid = 900`
+- **Ansible**: Creates user/group `vault` with ID 900
+- **Permission Fix**: The deployment script automatically adjusts host directory permissions to `100900:100900` (assuming standard Proxmox 100k offset).
 
-   ```text
-   lxc.idmap: u 0 100000 65536
-   lxc.idmap: g 0 100000 65536
-   ```
+If migrating existing data, you may need to manually update ownership on the host:
 
-3. **Adjust host directory permissions**:
-
-   ```bash
-   chown -R 100000:100000 /rpool/data/vault
-   ```
-
-**Reference**: [Proxmox - Unprivileged LXC Containers](https://pve.proxmox.com/wiki/Unprivileged_LXC_containers)
+```bash
+chown -R 100900:100900 /rpool/datastore/vault
+```
 
 ### Security Best Practices
 
@@ -368,7 +362,7 @@ cd /path/to/HomeLab(Proxmox)/lxc_vault
 The deployment script uses modular components in `scripts/`:
 
 | Script | Purpose |
-|--------|--------|
+| -------- | -------- |
 | `common.sh` | Logging, colors, utility functions |
 | `credentials.sh` | Load local credentials (PVE password, AWS) |
 | `terraform.sh` | Terraform/OpenTofu operations |

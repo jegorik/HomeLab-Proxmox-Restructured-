@@ -57,7 +57,7 @@ lxc_PBS/
 | `lxc_disk_size` | Disk size (GB) | `18` |
 | `lxc_memory` | RAM (MB) | `4096` |
 | `lxc_cpu_cores` | CPU Cores | `4` |
-| `lxc_unprivileged` | Unprivileged container | `false` (required for bind mounts) |
+| `lxc_unprivileged` | Unprivileged container | `true` (security recommended) |
 
 ### PBS-Specific Bind Mounts
 
@@ -67,6 +67,20 @@ lxc_PBS/
 | `lxc_pbs_config_mount_path` | Container path for config | `/etc/proxmox-backup` |
 | `lxc_pbs_datastore_mount_volume` | Host path for backups | `/rpool/data/pbs-backups` |
 | `lxc_pbs_datastore_mount_path` | Container path for backups | `/mnt/datastore` |
+
+> [!IMPORTANT]
+> **Unprivileged Container UID Mapping**
+>
+> PBS runs in unprivileged mode with the `backup` user (UID 34 inside container, mapped to UID 100034 on host).
+>
+> **Host-side bind mount permissions must be set correctly:**
+>
+> ```bash
+> chown -R 100034:100034 /rpool/data/pbs-config
+> chown -R 100034:100034 /rpool/data/pbs-backups
+> ```
+>
+> See the main [README.md](../README.md#unprivileged-containers--uid-mapping) for more details on UID mapping.
 
 ### Vault Secrets
 
@@ -131,8 +145,12 @@ The project expects the following secrets in Vault (paths configurable in `varia
 - **OpenTofu** or **Terraform** >= 1.0
 - **Ansible** >= 2.15
 
-> [!IMPORTANT]
-> PBS requires a **privileged container** (`lxc_unprivileged = false`) for bind mounts to work correctly.
+## Ports
+
+| Port | Protocol | Description |
+| ---- | -------- | ----------- |
+| 22 | TCP | SSH |
+| 8007 | TCP | PBS Web UI |
 
 ## License
 

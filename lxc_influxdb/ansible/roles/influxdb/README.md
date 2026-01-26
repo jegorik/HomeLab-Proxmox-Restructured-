@@ -15,7 +15,7 @@ Installs and configures InfluxDB 2.x time-series database.
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `influxdb_admin_user` | `admin` | Initial admin username |
-| `influxdb_admin_password` | `changeme123!` | Initial admin password (change this!) |
+| `influxdb_admin_password` | **REQUIRED** | Initial admin password (provide via `INFLUXDB_ADMIN_PASSWORD` env var, inventory, or extra vars) |
 | `influxdb_org` | `homelab` | Initial organization name |
 | `influxdb_bucket` | `default` | Initial bucket name |
 | `influxdb_retention` | `0` | Retention policy (0 = infinite) |

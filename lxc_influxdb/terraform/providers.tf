@@ -131,7 +131,7 @@ provider "proxmox" {
 
   # Authentication via username/password (required for bind mounts)
   username = data.vault_generic_secret.proxmox_root.data["username"]
-  password = ephemeral.vault_kv_secret_v2.proxmox_root_password.data["password"]
+  password = trimspace(ephemeral.vault_kv_secret_v2.proxmox_root_password.data["password"])
 
   # Skip TLS verification (set to false in production with valid certs)
   insecure = var.connection_insecure

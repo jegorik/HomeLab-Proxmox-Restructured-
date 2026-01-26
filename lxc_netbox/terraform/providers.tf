@@ -201,10 +201,11 @@ provider "aws" {
 # NetBox Provider Configuration
 # -----------------------------------------------------------------------------
 
-provider "netbox" {
-  server_url = var.netbox_url
-  api_token  = ephemeral.vault_kv_secret_v2.netbox_api_token.data["token"]
+# Uncomment this and apply with terraform after lxc_netbox_template is deployed
+# provider "netbox" {
+#   server_url = var.netbox_url
+#   api_token  = ephemeral.vault_kv_secret_v2.netbox_api_token.data["token"]
 
-  # Skip TLS verification for self-signed certs (e.g. in local Proxmox labs)
-  allow_insecure_https = var.netbox_insecure
-}
+#   # Skip TLS verification for self-signed certs (e.g. in local Proxmox labs)
+#   allow_insecure_https = var.netbox_insecure
+# }

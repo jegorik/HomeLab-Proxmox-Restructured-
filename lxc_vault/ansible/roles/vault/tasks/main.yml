@@ -52,17 +52,41 @@
   ansible.builtin.file:
     path: "{{ vault_keyring_dir }}"
     state: directory
+    mode: "0755"
   tags: ["install", "directory"]
 
-# Add HashiCorp's official GPG key and APT repository
-# This ensures packages are verified and come from official sources
-- name: Add HashiCorp GPG key & HashiCorp repository
-  ansible.builtin.shell: |
-    wget -qO- https://apt.releases.hashicorp.com/gpg | 
-    gpg --dearmor | 
-    tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | 
-    tee /etc/apt/sources.list.d/hashicorp.list
+# Get system architecture securely for repository definition (used in apt_repository)
+- name: Get system architecture
+  ansible.builtin.command: dpkg --print-architecture
+  register: vault_system_architecture
+  changed_when: false
+  check_mode: false
+  tags: ["install", "repository"]
+
+# Download the GPG key to a temporary location
+- name: Download HashiCorp GPG key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /tmp/hashicorp.gpg.asc
+    mode: "0644"
+  tags: ["install", "repository"]
+
+# Dearmor the key to the keyring directory
+# checking for existence in the `creates` argument ensures idempotency
+- name: Dearmor HashiCorp GPG key
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg /tmp/hashicorp.gpg.asc
+    creates: /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  tags: ["install", "repository"]
+
+# Add the repository using the native apt_repository module
+- name: Add HashiCorp repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ vault_system_architecture.stdout }} signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg]
+      https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
+    filename: hashicorp
+    state: present
   tags: ["install", "repository"]
 
 # Install Vault from HashiCorp's official repository
@@ -77,6 +101,7 @@
 - name: Create Vault system group
   ansible.builtin.group:
     name: "{{ vault_group }}"
+    gid: 900
     system: true
     state: present
   tags: ["install", "user"]
@@ -90,6 +115,7 @@
   ansible.builtin.user:
     name: "{{ vault_user }}"
     group: "{{ vault_group }}"
+    uid: 900
     system: true
     home: "{{ vault_config_dir }}"
     shell: /bin/false
@@ -109,17 +135,17 @@
     mode: "{{ item.mode }}"
   loop:
     - {
-        path: "{{ vault_data_dir }}",
-        owner: "{{ vault_user }}",
-        group: "{{ vault_group }}",
-        mode: "0755",
-      }
+      path: "{{ vault_data_dir }}",
+      owner: "{{ vault_user }}",
+      group: "{{ vault_group }}",
+      mode: "0755",
+    }
     - {
-        path: "{{ vault_config_dir }}",
-        owner: "{{ vault_user }}",
-        group: "{{ vault_group }}",
-        mode: "0750",
-      }
+      path: "{{ vault_config_dir }}",
+      owner: "{{ vault_user }}",
+      group: "{{ vault_group }}",
+      mode: "0750",
+    }
   tags: ["install", "user-directories"]
 
 # Deploy Vault configuration from Jinja2 template

@@ -288,7 +288,7 @@ sequenceDiagram
 - Data persistence via bind mounts (config and datastore)
 - Full Vault integration for secrets management
 - Vault Transit engine for state encryption
-- Privileged container for bind mount support
+- **Unprivileged container** with proper UID/GID mapping for bind mounts
 - Web UI on port 8007
 
 **Documentation**: See [lxc_PBS/README.md](lxc_PBS/README.md)
@@ -318,7 +318,7 @@ sequenceDiagram
 - Automated initial setup (admin user, org, bucket)
 - Full Vault integration for secrets management
 - Vault Transit engine for state encryption
-- Privileged container for bind mount support
+- **Unprivileged container** with proper UID/GID mapping for bind mounts
 - Web UI and API on port 8086
 
 **Documentation**: See [lxc_influxdb/README.md](lxc_influxdb/README.md)
@@ -335,7 +335,37 @@ sequenceDiagram
 
 ---
 
-### 8. **Future Projects**
+### 8. **lxc_grafana** - Grafana Observability Platform
+
+**Purpose**: Visualization and observability platform for metrics, logs, and traces
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- Grafana OSS from official APT repository
+- Data persistence via bind mount (`/var/lib/grafana`)
+- InfluxDB integration as default data source
+- **Unprivileged container** with UID 900 → 100900 mapping
+- Vault integration for secrets
+- Web UI on port 3000
+
+**Documentation**: See [lxc_grafana/README.md](lxc_grafana/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- Host paths for bind mounts must exist
+- Optional: lxc_influxdb for time-series data source
+
+---
+
+### 9. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -552,6 +582,71 @@ All projects include:
 4. **Limit access** - Use least privilege principles for all credentials
 5. **Audit logs** - Review deployment logs regularly
 
+### Unprivileged Containers & UID Mapping
+
+All LXC containers in this project run in **unprivileged mode** for enhanced security. This requires understanding UID/GID mapping:
+
+#### How UID Mapping Works
+
+| Inside Container | On Proxmox Host |
+| ------------------ | ----------------- |
+| root (UID 0) | 100000 |
+| UID 34 | 100034 |
+| UID 100 | 100100 |
+| UID 900 | 100900 |
+
+**Formula**: `Host UID = 100000 + Container UID`
+
+#### Service User Mappings by Project
+
+| Project | Service User | Container UID/GID | Host UID/GID | Bind Mount Path |
+| --------- | -------------- | ------------------- | -------------- | ----------------- |
+| lxc_vault | vault | 900 | 100900 | `/var/lib/vault/data` |
+| lxc_influxdb | influxdb | 900 | 100900 | `/var/lib/influxdb` |
+| lxc_netbox | netbox | 900 | 100900 | N/A (PostgreSQL/Redis use different UIDs) |
+| lxc_PBS | backup | 34 | 100034 | `/etc/proxmox-backup`, `/mnt/pbs-backups` |
+| lxc_npm | npm | 900 | 100900 | `/data`, `/etc/letsencrypt` |
+
+#### Bind Mount Permissions
+
+```bash
+# Vault (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/vault
+
+# InfluxDB (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/influxdb
+
+# Grafana (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/grafana
+
+# PBS (UID 34 → 100034)
+chown -R 100034:100034 /rpool/data/pbs-config
+chown -R 100034:100034 /backup-store/pbs-backups
+
+# NPM (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/npm-data
+chown -R 100900:100900 /rpool/data/npm-ssl
+
+# NetBox PostgreSQL (UID 105 → 100105, GID 109 → 100109)
+chown -R 100105:100109 /rpool/data/netbox-db
+
+# NetBox Redis (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/netbox-redis
+```
+
+#### Troubleshooting Permission Issues
+
+If you encounter permission errors:
+
+1. Check the service user UID inside the container: `id <username>`
+2. Calculate the host UID: `container_uid + 100000`
+3. Fix host permissions: `chown -R <host_uid>:<host_gid> /path/to/bind/mount`
+4. Restart the service inside the container
+
+#### Automated Permission Fix
+
+Each project includes a `fix_bind_mount_permissions.sh` script (from `lxc_base_template`) that Terraform executes automatically to set proper ownership on bind mount directories.
+
 ### Per-Project Security
 
 - **lxc_vault**: Protect unseal keys, use auto-unseal in production
@@ -598,7 +693,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 22, 2026
+**Last Updated**: January 25, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

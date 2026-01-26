@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# Grafana Role - Default Variables
+# =============================================================================
+
+# Grafana Admin Configuration
+grafana_admin_user: "admin"
+# grafana_admin_password: ""  # REQUIRED: Must be provided via GRAFANA_ADMIN_PASSWORD env var
+
+# Grafana Server Configuration
+grafana_http_port: 3000
+grafana_domain: "localhost"
+grafana_protocol: "http"
+
+# Grafana Paths (managed by package, don't change unless necessary)
+grafana_data_dir: "/var/lib/grafana"
+grafana_logs_dir: "/var/log/grafana"
+grafana_plugins_dir: "/var/lib/grafana/plugins"

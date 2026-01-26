@@ -68,10 +68,10 @@ terraform {
       source  = "hashicorp/random"
       version = "3.7.2"
     }
-
-    netbox = {
-      source  = "e-breuninger/netbox"
-      version = "5.0.1"
-    }
+# Uncomment this and apply with terraform after lxc_netbox_template is deployed
+    # netbox = {
+    #   source  = "e-breuninger/netbox"
+    #   version = "5.0.1"
+    # }
   }
 }

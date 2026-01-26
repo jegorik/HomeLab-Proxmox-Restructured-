@@ -15,7 +15,7 @@ Project for deploying InfluxDB 2.x time-series database in a Proxmox LXC contain
 - **Vault Integration** – Secrets (Proxmox credentials, SSH keys) fetched from HashiCorp Vault.
 - **NetBox Registration** – Container auto-registered with IP, VM metadata, and resources.
 - **S3 State Backend** – Remote state storage with Vault Transit encryption.
-- **Security Hardened** – SSH key-only auth, non-root Ansible user, UFW firewall enabled.
+- **Security Hardened** – SSH key-only auth, non-root Ansible user, UFW firewall enabled, **Unprivileged Container**.
 
 ## Directory Structure
 
@@ -76,10 +76,38 @@ lxc_influxdb/
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `influxdb_admin_user` | `admin` | Initial admin username |
-| `influxdb_admin_password` | `changeme123!` | Initial admin password |
+| `influxdb_admin_password` | **REQUIRED** | Initial admin password - see below for how to provide |
 | `influxdb_org` | `homelab` | Initial organization |
 | `influxdb_bucket` | `default` | Initial bucket |
 | `influxdb_retention` | `0` | Retention (0 = infinite) |
+
+#### Providing the Admin Password
+
+The InfluxDB admin password can be provided in three ways (in order of precedence):
+
+1. **Environment Variable** (Recommended for automation):
+
+   ```bash
+   export INFLUXDB_ADMIN_PASSWORD="your-secure-password"
+   ./deploy.sh deploy
+   ```
+
+2. **Interactive Prompt** (Recommended for manual deployment):
+
+   ```bash
+   ./deploy.sh deploy
+   # Script will prompt for password securely (input hidden)
+   ```
+
+3. **Ansible Extra Vars** (Alternative method):
+
+   ```bash
+   cd ansible
+   ansible-playbook -i inventory.yml site.yml -e "influxdb_admin_password=your-password"
+   ```
+
+> [!WARNING]
+> Never hardcode the password in files or commit it to version control!
 
 ### Vault Secrets
 

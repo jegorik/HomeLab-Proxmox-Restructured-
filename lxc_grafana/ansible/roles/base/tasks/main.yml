@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# Base Role - Main Tasks
+# =============================================================================
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [packages]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: safe
+  tags: [packages]
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  tags: [packages]
+
+- name: Set base_timezone
+  community.general.timezone:
+    name: "{{ base_timezone }}"
+  tags: [system]
+
+- name: Generate base_locale
+  community.general.locale_gen:
+    name: "{{ base_locale }}"
+    state: present
+  tags: [system]
+
+- name: Configure SSH - Disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: "PermitRootLogin {{ base_ssh_permit_root_login }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Configure SSH - Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: "PasswordAuthentication {{ base_ssh_password_authentication }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Configure SSH - Enable pubkey authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: "PubkeyAuthentication {{ base_ssh_pubkey_authentication }}"
+  notify: Restart sshd
+  tags: [ssh, security]
+
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: base_enable_firewall
+  tags: [firewall, security]
+
+- name: Allow SSH through firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.split('/')[0] }}"
+    proto: "{{ item.split('/')[1] | default('tcp') }}"
+  loop: "{{ base_firewall_allowed_ports }}"
+  when: base_enable_firewall
+  tags: [firewall, security]
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: base_enable_firewall
+  tags: [firewall, security]
+
+- name: Clean apt cache
+  ansible.builtin.apt:
+    autoclean: true
+    autoremove: true
+  tags: [cleanup]

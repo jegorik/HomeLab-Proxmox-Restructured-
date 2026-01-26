@@ -5,59 +5,88 @@
 # Installs and configures Redis cache server for NetBox
 # =============================================================================
 
+# --- User Setup (match bind mount UIDs) ---
+
+- name: Create Redis group
+  ansible.builtin.group:
+    name: redis
+    gid: 900
+    state: present
+  tags: ["install", "user"]
+
+- name: Create Redis user
+  ansible.builtin.user:
+    name: redis
+    uid: 900
+    group: redis
+    home: /var/lib/redis
+    shell: /bin/false
+    create_home: false
+    state: present
+  tags: ["install", "user"]
+
 - name: Install Redis server
   ansible.builtin.apt:
     name:
       - redis-server
-      - python3-redis  # Required for Ansible Redis modules
+      - python3-redis # Required for Ansible Redis modules
     state: present
     update_cache: true
     cache_valid_time: 3600
-  tags: ['install']
+  tags: ["install"]
+
+- name: Ensure Redis data directory has correct ownership
+  ansible.builtin.file:
+    path: /var/lib/redis
+    state: directory
+    owner: redis
+    group: redis
+    recurse: true
+  tags: ["install", "permissions"]
 
 - name: Configure Redis to bind to localhost only
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
     regexp: '^bind\s+'
-    line: 'bind 127.0.0.1 ::1'
+    line: "bind 127.0.0.1 ::1"
     backup: true
   notify: restart redis
-  tags: ['configuration', 'security']
+  tags: ["configuration", "security"]
 
 - name: Configure Redis to use supervised systemd
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
     regexp: '^supervised\s+'
-    line: 'supervised systemd'
+    line: "supervised systemd"
   notify: restart redis
-  tags: ['configuration']
+  tags: ["configuration"]
 
 - name: Set Redis maxmemory policy for caching
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
     regexp: '^maxmemory-policy\s+'
-    line: 'maxmemory-policy allkeys-lru'
+    line: "maxmemory-policy allkeys-lru"
   notify: restart redis
-  tags: ['configuration', 'performance']
+  tags: ["configuration", "performance"]
 
 - name: Set Redis maxmemory limit (256MB)
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
     regexp: '^maxmemory\s+'
-    line: 'maxmemory 256mb'
+    line: "maxmemory 256mb"
   notify: restart redis
-  tags: ['configuration', 'performance']
+  tags: ["configuration", "performance"]
 
 - name: Ensure Redis service is running and enabled
   ansible.builtin.systemd:
     name: redis-server
     state: started
     enabled: true
-  tags: ['service']
+  tags: ["service"]
 
 - name: Verify Redis is responding
   ansible.builtin.command: redis-cli ping
   register: redis_ping
   changed_when: false
   failed_when: redis_ping.stdout != "PONG"
-  tags: ['verification']
+  tags: ["verification"]

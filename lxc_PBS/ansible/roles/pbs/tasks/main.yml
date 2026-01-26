@@ -3,6 +3,34 @@
 # Proxmox Backup Server Role - Main Tasks
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Service User Setup (Unprivileged Container Support)
+# -----------------------------------------------------------------------------
+# Pre-create the backup user to ensure UID/GID matches the host mapping.
+# PBS uses UID/GID 34 for the backup user, which maps to 100034 on the host.
+
+- name: Create backup group with fixed GID
+  ansible.builtin.group:
+    name: backup
+    gid: 34
+    state: present
+  tags: [pbs, install]
+
+- name: Create backup user with fixed UID
+  ansible.builtin.user:
+    name: backup
+    uid: 34
+    group: backup
+    home: /var/lib/proxmox-backup
+    create_home: false
+    shell: /bin/false
+    state: present
+  tags: [pbs, install]
+
+# -----------------------------------------------------------------------------
+# GPG Key and Repository Setup
+# -----------------------------------------------------------------------------
+
 - name: Add Proxmox Backup Server GPG key
   ansible.builtin.get_url:
     url: https://enterprise.proxmox.com/debian/proxmox-release-trixie.gpg
@@ -51,9 +79,22 @@
     owner: backup
     group: backup
     mode: "0700"
+    recurse: true
   notify:
     - Restart proxmox-backup
     - Restart proxmox-backup-proxy
+  tags: [pbs, install]
+
+- name: Ensure bind mount directories have correct ownership
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: backup
+    group: backup
+    mode: "0755"
+    recurse: true
+  loop:
+    - /mnt/pbs-backups
   tags: [pbs, install]
 
 - name: Ensure systemd-timesyncd is installed and running

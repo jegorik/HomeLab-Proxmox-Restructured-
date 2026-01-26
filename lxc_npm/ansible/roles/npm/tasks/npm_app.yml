@@ -56,7 +56,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ npm_install_dir }}"
     - "{{ npm_app_dir }}"
@@ -73,7 +73,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ npm_data_dir }}"
     - "{{ npm_data_dir }}/nginx"
@@ -132,8 +132,8 @@
 - name: Disable daemon in nginx.conf
   ansible.builtin.lineinfile:
     path: "{{ npm_install_dir }}/docker/rootfs/etc/nginx/nginx.conf"
-    regexp: '^daemon'
-    line: '#daemon'
+    regexp: "^daemon"
+    line: "#daemon"
 
 - name: Hide Nginx version
   ansible.builtin.lineinfile:
@@ -173,7 +173,7 @@
 - name: Set cache directory permissions
   ansible.builtin.file:
     path: /var/cache/nginx
-    mode: '0777'
+    mode: "0777"
     recurse: true
 
 - name: Ensure dummy SSL certificate exists
@@ -196,7 +196,7 @@
     export NODE_OPTIONS="{{ npm_node_options }}"
     cd {{ npm_install_dir }}/frontend
     yarn install --network-timeout {{ npm_yarn_network_timeout }}
-    yarn base_locale-compile
+    yarn locale-compile
     yarn build
     cp -r {{ npm_install_dir }}/frontend/dist/* {{ npm_app_dir }}/frontend/
     cp -r {{ npm_install_dir }}/frontend/public/images/* {{ npm_app_dir }}/frontend/images/
@@ -220,7 +220,7 @@
           }
         }
       }
-    mode: '0644'
+    mode: "0644"
     force: false
 
 - name: Remove default config
