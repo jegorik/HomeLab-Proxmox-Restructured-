@@ -29,8 +29,8 @@ if [[ -z "${MOUNT_PATH}" || -z "${TARGET_UID}" ]]; then
     exit 1
 fi
 
-if [[ ! "${MOUNT_PATH}" =~ ^/rpool/datastore/.* ]]; then
-    echo "ERROR: Path must be under /rpool/datastore/ for safety."
+if [[ ! "${MOUNT_PATH}" =~ ^/rpool/(datastore|data)/.* ]]; then
+    echo "ERROR: Path must be under /rpool/datastore/ or /rpool/data/ for safety."
     echo "Received: ${MOUNT_PATH}"
     exit 1
 fi

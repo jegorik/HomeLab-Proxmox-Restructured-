@@ -203,3 +203,136 @@ resource "terraform_data" "ansible_user_setup" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Host Bind Mount Permission Fix
+# -----------------------------------------------------------------------------
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts (Config)
+resource "terraform_data" "fix_bind_mount_permissions_config" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_pbs_config_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions_config.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions_config.sh",
+      "/tmp/fix_bind_mount_permissions_config.sh '${var.lxc_pbs_config_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions_config.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+}
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts (Datastore)
+resource "terraform_data" "fix_bind_mount_permissions_datastore" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_pbs_datastore_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions_datastore.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions_datastore.sh",
+      "/tmp/fix_bind_mount_permissions_datastore.sh '${var.lxc_pbs_datastore_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions_datastore.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+}
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts (S3 Cache)
+resource "terraform_data" "fix_bind_mount_permissions_s3" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_pbs_s3_cache_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions_s3.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions_s3.sh",
+      "/tmp/fix_bind_mount_permissions_s3.sh '${var.lxc_pbs_s3_cache_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions_s3.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+}
