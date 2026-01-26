@@ -1,0 +1,207 @@
+---
+# =============================================================================
+# Grafana Role - Main Tasks
+# =============================================================================
+# Installs Grafana OSS and performs initial configuration
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Preflight Checks
+# -----------------------------------------------------------------------------
+# Validate required secrets are provided before proceeding
+
+- name: Set Grafana admin password from environment if not provided
+  ansible.builtin.set_fact:
+    grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') }}"
+  when: grafana_admin_password is not defined
+  no_log: true
+  tags: [grafana, setup, preflight]
+
+- name: Verify Grafana admin password is defined
+  ansible.builtin.fail:
+    msg: |
+      Grafana admin password must be provided via one of:
+      - Environment variable: GRAFANA_ADMIN_PASSWORD
+      - Ansible inventory variable: grafana_admin_password
+      - Extra vars: -e grafana_admin_password=xxx
+  when: grafana_admin_password is not defined or grafana_admin_password | length == 0
+  tags: [grafana, setup, preflight]
+
+# -----------------------------------------------------------------------------
+# Service User Setup (Unprivileged Container Support)
+# -----------------------------------------------------------------------------
+# Pre-create the user to ensure UID/GID matches the host mapping (900 -> 100900).
+# This is critical for bind mount permissions in unprivileged containers.
+
+- name: Create Grafana group with fixed GID
+  ansible.builtin.group:
+    name: grafana
+    gid: 900
+    state: present
+  tags: [grafana, install]
+
+- name: Create Grafana user with fixed UID
+  ansible.builtin.user:
+    name: grafana
+    uid: 900
+    group: grafana
+    home: /usr/share/grafana
+    create_home: false
+    shell: /bin/false
+    state: present
+  tags: [grafana, install]
+
+# -----------------------------------------------------------------------------
+# GPG Key and Repository Setup
+# -----------------------------------------------------------------------------
+
+- name: Install prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - wget
+      - gnupg
+    state: present
+    update_cache: true
+  tags: [grafana, install]
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  tags: [grafana, install]
+
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: "0644"
+  tags: [grafana, install]
+
+- name: Dearmor and install Grafana GPG key
+  ansible.builtin.shell: |
+    gpg --dearmor < /tmp/grafana.gpg.key > /etc/apt/keyrings/grafana.gpg
+    chmod 644 /etc/apt/keyrings/grafana.gpg
+  args:
+    creates: /etc/apt/keyrings/grafana.gpg
+  tags: [grafana, install]
+
+- name: Remove temporary GPG key file
+  ansible.builtin.file:
+    path: /tmp/grafana.gpg.key
+    state: absent
+  tags: [grafana, install]
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+  tags: [grafana, install]
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  tags: [grafana, install]
+
+# -----------------------------------------------------------------------------
+# Grafana Installation
+# -----------------------------------------------------------------------------
+
+- name: Install Grafana OSS
+  ansible.builtin.apt:
+    name: grafana
+    state: present
+  notify: Restart grafana-server
+  tags: [grafana, install]
+
+# -----------------------------------------------------------------------------
+# Data Directory Permissions
+# -----------------------------------------------------------------------------
+
+- name: Ensure Grafana data directory has correct ownership
+  ansible.builtin.file:
+    path: /var/lib/grafana
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+    recurse: true
+  tags: [grafana, install]
+
+- name: Ensure Grafana log directory exists
+  ansible.builtin.file:
+    path: /var/log/grafana
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+  tags: [grafana, install]
+
+- name: Ensure Grafana plugins directory exists
+  ansible.builtin.file:
+    path: /var/lib/grafana/plugins
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+  tags: [grafana, install]
+
+# -----------------------------------------------------------------------------
+# Grafana Configuration
+# -----------------------------------------------------------------------------
+
+- name: Configure Grafana admin password
+  ansible.builtin.lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?\s*admin_password\s*='
+    line: "admin_password = {{ grafana_admin_password }}"
+    state: present
+    backup: true
+  no_log: true
+  notify: Restart grafana-server
+  tags: [grafana, config]
+
+- name: Set Grafana to listen on all interfaces
+  ansible.builtin.lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?\s*http_addr\s*='
+    line: "http_addr = 0.0.0.0"
+    state: present
+  notify: Restart grafana-server
+  tags: [grafana, config]
+
+- name: Set Grafana HTTP port
+  ansible.builtin.lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?\s*http_port\s*='
+    line: "http_port = {{ grafana_http_port }}"
+    state: present
+  notify: Restart grafana-server
+  tags: [grafana, config]
+
+# -----------------------------------------------------------------------------
+# Service Management
+# -----------------------------------------------------------------------------
+
+- name: Enable and start Grafana service
+  ansible.builtin.service:
+    name: grafana-server
+    state: started
+    enabled: true
+  tags: [grafana, service]
+
+# -----------------------------------------------------------------------------
+# Firewall Configuration
+# -----------------------------------------------------------------------------
+
+- name: Allow Grafana port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ grafana_http_port }}"
+    proto: tcp
+    comment: "Grafana Web UI"
+  tags: [grafana, firewall]

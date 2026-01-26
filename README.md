@@ -335,7 +335,37 @@ sequenceDiagram
 
 ---
 
-### 8. **Future Projects**
+### 8. **lxc_grafana** - Grafana Observability Platform
+
+**Purpose**: Visualization and observability platform for metrics, logs, and traces
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- Grafana OSS from official APT repository
+- Data persistence via bind mount (`/var/lib/grafana`)
+- InfluxDB integration as default data source
+- **Unprivileged container** with UID 900 → 100900 mapping
+- Vault integration for secrets
+- Web UI on port 3000
+
+**Documentation**: See [lxc_grafana/README.md](lxc_grafana/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- Host paths for bind mounts must exist
+- Optional: lxc_influxdb for time-series data source
+
+---
+
+### 9. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -585,6 +615,9 @@ chown -R 100900:100900 /rpool/data/vault
 
 # InfluxDB (UID 900 → 100900)
 chown -R 100900:100900 /rpool/data/influxdb
+
+# Grafana (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/grafana
 
 # PBS (UID 34 → 100034)
 chown -R 100034:100034 /rpool/data/pbs-config

@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# LXC Grafana - Main Ansible Playbook
+# =============================================================================
+# Configures Grafana observability platform in LXC container
+
+- name: Configure Grafana Container
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Override these in group_vars or host_vars as needed
+    base_packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - apt-transport-https
+      - python3
+      - python3-pip
+      - vim
+      - htop
+      - tree
+      - jq
+
+    base_timezone: "UTC"
+    base_locale: "en_US.UTF-8"
+
+  roles:
+    - role: base
+      tags: [base, always]
+    - role: grafana
+      tags: [grafana]
