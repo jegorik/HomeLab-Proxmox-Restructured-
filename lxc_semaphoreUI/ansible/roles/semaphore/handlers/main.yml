@@ -1,0 +1,17 @@
+---
+# =============================================================================
+# Semaphore Role - Handlers
+# =============================================================================
+
+- name: Restart semaphore service
+  ansible.builtin.systemd:
+    name: semaphore
+    state: restarted
+    daemon_reload: true
+  listen: "restart semaphore"
+
+- name: Reload semaphore service
+  ansible.builtin.systemd:
+    name: semaphore
+    state: reloaded
+  listen: "reload semaphore"

@@ -1,0 +1,116 @@
+# =============================================================================
+# LXC Semaphore UI - Example terraform.tfvars
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars to version control!
+
+# -----------------------------------------------------------------------------
+# Vault Configuration
+# -----------------------------------------------------------------------------
+
+vault_address = "https://vault.example.com:8200"
+# vault_token = ""  # Leave empty to use VAULT_TOKEN env var
+vault_username = "tofu_admin"
+
+proxmox_api_token_vault_path     = "proxmox/api_token"
+proxmox_endpoint_vault_path      = "proxmox/endpoint"
+proxmox_node_name_vault_path     = "proxmox/node_name"
+proxmox_user_name_vault_path     = "proxmox/username"
+proxmox_root_name_vault_path     = "proxmox/root_username"
+proxmox_root_password_vault_path = "proxmox/root_password"
+s3_bucket_name_vault_path        = "aws/s3_bucket"
+root_ssh_public_key_path         = "ssh/root_public_key"
+root_ssh_private_key_path        = "ssh/root_private_key"
+netbox_api_token_vault_path      = "netbox/api_token"
+
+
+# -----------------------------------------------------------------------------
+# AWS Configuration
+# -----------------------------------------------------------------------------
+
+aws_region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+netbox_url = "https://netbox.example.com"
+# netbox_api_token = ""  # Leave empty to fetch from Vault
+
+cluster_name    = "PVE-Cluster-01"
+site_name       = "FRA1"
+device_id       = 1
+vrf_name        = "MGMT"
+tenant_name     = "Internal"
+netbox_insecure = true
+
+
+# -----------------------------------------------------------------------------
+# Encryption Configuration
+# -----------------------------------------------------------------------------
+
+transit_key_name    = "tofu-state-encryption"
+transit_engine_path = "transit"
+transit_key_length  = 32
+
+
+# -----------------------------------------------------------------------------
+# LXC Container Configuration
+# -----------------------------------------------------------------------------
+
+lxc_id               = 100
+lxc_hostname         = "semaphore"
+lxc_description      = "Semaphore UI Automation Platform - Managed by OpenTofu"
+lxc_template_file    = "debian-13-standard_13.1-2_amd64.tar.zst"
+lxc_template_storage = "local"
+lxc_startup_order    = 1
+lxc_up_delay         = 10
+lxc_down_delay       = 10
+lxc_start_on_boot    = true
+lxc_started          = true
+lxc_unprivileged     = true 
+
+# -----------------------------------------------------------------------------
+# Hardware Resources
+# -----------------------------------------------------------------------------
+
+lxc_memory       = 2048 # MB
+lxc_swap         = 512  # MB
+lxc_cpu_cores    = 2
+lxc_disk_size    = 20 # GB
+lxc_disk_storage = "local-zfs"
+lxc_semaphore_data_mount_volume = "/rpool/data/semaphore"
+
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+
+lxc_network_bridge = "vmbr0"
+lxc_ip_address     = "192.168.1.100/24"
+lxc_gateway        = "192.168.1.1"
+lxc_dns_servers    = "192.168.1.3"
+
+# -----------------------------------------------------------------------------
+# Ansible User
+# -----------------------------------------------------------------------------
+
+ansible_user_name           = "ansible"
+ansible_ssh_public_key_path = "secrets/ssh/id_ed25519.pub"
+# Ansible user configuration
+ansible_user_enabled = true
+ansible_user_sudo    = true
+ansible_user_shell   = "/bin/bash"
+
+# -----------------------------------------------------------------------------
+# Service User Configuration (Unprivileged Container)
+# -----------------------------------------------------------------------------
+
+service_user_uid = 900
+service_user_gid = 900
+
+# -----------------------------------------------------------------------------
+# Tags
+# -----------------------------------------------------------------------------
+
+lxc_tags = ["lxc", "semaphore", "automation", "tofu-managed"]

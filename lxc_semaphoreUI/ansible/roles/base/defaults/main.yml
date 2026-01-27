@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# Base Role - Default Variables
+# =============================================================================
+
+# Base packages to install
+base_packages:
+  - curl
+  - wget
+  - gnupg
+  - ca-certificates
+  - apt-transport-https
+  - python3
+  - python3-pip
+  - vim
+  - htop
+  - tree
+  - jq
+
+# System configuration
+base_timezone: "UTC"
+base_locale: "en_US.UTF-8"
+
+# SSH hardening
+base_ssh_permit_root_login: "no"
+base_ssh_password_authentication: "no"
+base_ssh_pubkey_authentication: "yes"
+
+# Firewall (ufw)
+base_enable_firewall: true
+base_firewall_allowed_ports:
+  - "22/tcp"
+  - "3000/tcp"

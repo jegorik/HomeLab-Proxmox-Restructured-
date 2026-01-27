@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# Semaphore Role - Default Variables
+# =============================================================================
+
+# Version control
+semaphore_version: "latest"
+semaphore_architecture: "amd64"
+
+# User/Group configuration (matches generic id 900 for unprivileged services)
+semaphore_user: "semaphore"
+semaphore_group: "semaphore"
+semaphore_uid: 900
+semaphore_gid: 900
+
+# Paths
+semaphore_config_dir: "/etc/semaphore"
+semaphore_data_dir: "/var/lib/semaphore"
+semaphore_config_file: "{{ semaphore_config_dir }}/config.json"
+semaphore_db_path: "{{ semaphore_data_dir }}/database.bolt"
+semaphore_playbooks_path: "{{ semaphore_data_dir }}/playbooks"
+semaphore_tmp_path: "{{ semaphore_data_dir }}/tmp"
+
+# Network
+semaphore_host: "0.0.0.0"
+semaphore_port: 3000
+
+# Database
+# Options: bolt, mysql, postgres
+semaphore_db_dialect: "bolt"
+
+# Admin User Setup (Sensitive values passed via extra vars)
+semaphore_admin_enable: true
+semaphore_admin_username: "admin"
+semaphore_admin_name: "System Admin"
+semaphore_admin_email: "admin@localhost"
+# semaphore_admin_password: "" # Must be provided via vault/env
+
+# Application Settings
+semaphore_max_parallel_tasks: 10
+semaphore_email_alert: false
+semaphore_ldap_enable: false

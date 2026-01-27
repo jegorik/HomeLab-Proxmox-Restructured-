@@ -1,0 +1,158 @@
+---
+# =============================================================================
+# Semaphore Role - Main Tasks
+# =============================================================================
+
+- name: Create semaphore group
+  ansible.builtin.group:
+    name: "{{ semaphore_group }}"
+    gid: "{{ semaphore_gid }}"
+    system: true
+    state: present
+
+- name: Create semaphore user
+  ansible.builtin.user:
+    name: "{{ semaphore_user }}"
+    uid: "{{ semaphore_uid }}"
+    group: "{{ semaphore_group }}"
+    home: "{{ semaphore_data_dir }}"
+    create_home: true
+    system: true
+    shell: /bin/bash
+    state: present
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - ansible
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - sudo
+    state: present
+    update_cache: true
+
+- name: Get latest Semaphore release info
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/semaphoreui/semaphore/releases/{{ 'latest' if semaphore_version == 'latest' else 'tags/' + semaphore_version }}"
+    return_content: true
+  register: semaphore_release_info
+  check_mode: false
+
+- name: Determine download URL for amd64 deb package
+  ansible.builtin.set_fact:
+    semaphore_download_url: "{{ item.browser_download_url }}"
+    semaphore_download_version: "{{ semaphore_release_info.json.tag_name }}"
+  loop: "{{ semaphore_release_info.json.assets }}"
+  when:
+    - "'linux_amd64.deb' in item.name"
+    - "'rpm' not in item.name"
+
+- name: Fail if download URL not found
+  ansible.builtin.fail:
+    msg: "Could not find linux_amd64.deb asset in release {{ semaphore_version }}"
+  when: semaphore_download_url is not defined
+
+- name: Download Semaphore .deb package
+  ansible.builtin.get_url:
+    url: "{{ semaphore_download_url }}"
+    dest: "/tmp/semaphore_{{ semaphore_download_version }}_amd64.deb"
+    mode: "0644"
+
+- name: Install Semaphore package
+  ansible.builtin.apt:
+    deb: "/tmp/semaphore_{{ semaphore_download_version }}_amd64.deb"
+    state: present
+
+- name: Create configuration directory
+  ansible.builtin.file:
+    path: "{{ semaphore_config_dir }}"
+    state: directory
+    owner: "root"
+    group: "{{ semaphore_group }}"
+    mode: "0750"
+
+- name: Create data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: "0750"
+  loop:
+    - "{{ semaphore_data_dir }}"
+    - "{{ semaphore_tmp_path }}"
+    - "{{ semaphore_playbooks_path }}"
+
+- name: Generate Semaphore configuration
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ semaphore_config_file }}"
+    owner: "root"
+    group: "{{ semaphore_group }}"
+    mode: "0640"
+  vars:
+    # Generate persistent secrets using password lookup with file storage (local to controller)
+    semaphore_cookie_hash: "{{ lookup('password', 'credentials/cookie_hash chars=ascii_letters,digits length=32') }}"
+    semaphore_cookie_encryption: "{{ lookup('password', 'credentials/cookie_encryption chars=ascii_letters,digits length=32') }}"
+    semaphore_access_key_encryption: "{{ lookup('password', 'credentials/access_key_encryption chars=ascii_letters,digits length=32') }}"
+  notify: Restart semaphore service
+
+- name: Ensure data directory permissions
+  ansible.builtin.file:
+    path: "{{ semaphore_data_dir }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    recurse: true
+  become: true
+
+- name: Run database migrations
+  ansible.builtin.command:
+    cmd: "semaphore migrate --config {{ semaphore_config_file }}"
+  become: true
+  become_user: "{{ semaphore_user }}"
+  register: semaphore_migration_result
+  changed_when: "'migrated' in semaphore_migration_result.stdout"
+
+- name: Check if admin user exists
+  ansible.builtin.command:
+    cmd: "semaphore user get --login {{ semaphore_admin_username }} --config {{ semaphore_config_file }}"
+  register: semaphore_admin_check
+  failed_when: false
+  changed_when: false
+  become: true
+  become_user: "{{ semaphore_user }}"
+
+- name: Create admin user
+  ansible.builtin.command:
+    cmd: >
+      semaphore user add
+      --admin
+      --login "{{ semaphore_admin_username }}"
+      --name "{{ semaphore_admin_name }}"
+      --email "{{ semaphore_admin_email }}"
+      --password "{{ semaphore_admin_password }}"
+      --config "{{ semaphore_config_file }}"
+  when:
+    - semaphore_admin_check.rc != 0
+    - semaphore_admin_password | length > 0
+  changed_when: true
+  no_log: true
+  become: true
+  become_user: "{{ semaphore_user }}"
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: semaphore.service.j2
+    dest: /etc/systemd/system/semaphore.service
+    mode: "0644"
+  notify: Restart semaphore service
+
+- name: Enable and start Semaphore service
+  ansible.builtin.systemd:
+    name: semaphore
+    enabled: true
+    state: started
