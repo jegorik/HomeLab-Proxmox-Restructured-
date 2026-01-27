@@ -1,0 +1,37 @@
+{
+    "mysql": {
+        "host": "{{ semaphore_mysql_host | default('127.0.0.1:3306') }}",
+        "user": "{{ semaphore_mysql_user | default('semaphore') }}",
+        "pass": "{{ semaphore_mysql_password | default('') }}",
+        "name": "{{ semaphore_mysql_name | default('semaphore') }}",
+        "options": {}
+    },
+    "postgres": {
+        "host": "{{ semaphore_postgres_host | default('127.0.0.1:5432') }}",
+        "user": "{{ semaphore_postgres_user | default('semaphore') }}",
+        "pass": "{{ semaphore_postgres_password | default('') }}",
+        "name": "{{ semaphore_postgres_name | default('semaphore') }}",
+        "options": {}
+    },
+    "bolt": {
+        "host": "{{ semaphore_db_path }}"
+    },
+    "dialect": "{{ semaphore_db_dialect }}",
+    "port": ":{{ semaphore_port }}",
+    "interface": "{{ semaphore_host }}",
+    "tmp_path": "{{ semaphore_tmp_path }}",
+    "cookie_hash": "{{ semaphore_cookie_hash }}",
+    "cookie_encryption": "{{ semaphore_cookie_encryption }}",
+    "access_key_encryption": "{{ semaphore_access_key_encryption }}",
+    "email_alert": {{ semaphore_email_alert | lower }},
+    "email_sender": "{{ semaphore_email_sender | default('') }}",
+    "email_host": "{{ semaphore_email_host | default('') }}",
+    "email_port": "{{ semaphore_email_port | default('') }}",
+    "email_username": "{{ semaphore_email_username | default('') }}",
+    "email_password": "{{ semaphore_email_password | default('') }}",
+    "email_secure": {{ semaphore_email_secure | default(false) | lower }},
+    "ldap_enable": {{ semaphore_ldap_enable | lower }},
+    "max_parallel_tasks": {{ semaphore_max_parallel_tasks }},
+    "concurrency_mode": "{{ semaphore_concurrency_mode | default('') }}",
+    "web_uRL": "{{ semaphore_web_url | default('') }}"
+}

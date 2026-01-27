@@ -1,0 +1,22 @@
+[Unit]
+Description=Semaphore UI
+Documentation=https://github.com/semaphoreui/semaphore
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ semaphore_user }}
+Group={{ semaphore_group }}
+ExecStart=/usr/bin/semaphore server --config {{ semaphore_config_file }}
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10s
+LimitNOFILE=infinity
+
+# Hardening
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

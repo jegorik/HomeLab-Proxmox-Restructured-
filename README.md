@@ -63,6 +63,8 @@ graph TB
         INFLUX1[Bind Mounts]
         GRAFANA[lxc_grafana<br/>Grafana OSS<br/>:3000]
         GRAFANA1[Bind Mounts]
+        SEMA[lxc_semaphoreUI<br/>Semaphore UI<br/>:3000]
+        SEMA1[Bind Mounts]
     end
     
     subgraph "State Management"
@@ -114,12 +116,15 @@ graph TB
     
     GRAFANA --> GRAFANA1
     
+    SEMA --> SEMA1
+    
     D -->|Network| E
     D -->|Network| F
     D -->|Network| NPM
     D -->|Network| PBS
     D -->|Network| INFLUX
     D -->|Network| GRAFANA
+    D -->|Network| SEMA
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
@@ -376,6 +381,34 @@ sequenceDiagram
 
 ---
 
+### 10. **lxc_semaphoreUI** - Semaphore UI Automation
+
+**Purpose**: Modern UI for Ansible, Terraform, and OpenTofu automation
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- Modern web UI for DevOps task management
+- Data persistence via bind mount (`/var/lib/semaphore`)
+- BoltDB embedded database for simplicity
+- **Unprivileged container** with UID 900 → 100900 mapping
+- Secure secret generation for cookies and encryption
+- Web UI on port 3000
+
+**Documentation**: See [lxc_semaphoreUI/README.md](lxc_semaphoreUI/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Host paths for bind mounts must exist
+
+---
+
 ### 9. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
@@ -439,6 +472,14 @@ Additional services will be added following the same patterns and deployment ord
    ./deploy.sh deploy
    ```
 
+6. **lxc_semaphoreUI** - Deploy Semaphore UI (requires Vault)
+
+   ```bash
+   cd lxc_semaphoreUI
+   export SEMAPHORE_ADMIN_PASSWORD="your-password"
+   ./deploy.sh deploy
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -456,6 +497,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_PBS** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_influxdb** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_grafana** | lxc_vault, (optional) lxc_influxdb | Transit engine, KV secrets, userpass auth |
+| **lxc_semaphoreUI** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
@@ -627,6 +669,7 @@ All LXC containers in this project run in **unprivileged mode** for enhanced sec
 | lxc_netbox | netbox | 900 | 100900 | N/A (PostgreSQL/Redis use different UIDs) |
 | lxc_PBS | backup | 34 | 100034 | `/etc/proxmox-backup`, `/mnt/pbs-backups` |
 | lxc_npm | npm | 900 | 100900 | `/data`, `/etc/letsencrypt` |
+| lxc_semaphoreUI | semaphore | 900 | 100900 | `/var/lib/semaphore` |
 
 #### Bind Mount Permissions
 
@@ -653,6 +696,9 @@ chown -R 100105:100109 /rpool/data/netbox-db
 
 # NetBox Redis (UID 900 → 100900)
 chown -R 100900:100900 /rpool/data/netbox-redis
+
+# Semaphore UI (UID 900 → 100900)
+chown -R 100900:100900 /rpool/data/semaphoreUI
 ```
 
 #### Troubleshooting Permission Issues

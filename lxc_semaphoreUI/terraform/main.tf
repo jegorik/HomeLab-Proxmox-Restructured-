@@ -1,7 +1,7 @@
 # =============================================================================
-# LXC Base Template - Main Terraform Configuration
+# LXC Semaphore UI - Main Terraform Configuration
 # =============================================================================
-# Deploys a standard LXC container on Proxmox
+# Deploys Semaphore UI Automation Platform in an LXC container on Proxmox
 #
 # Last Updated: January 2026
 # =============================================================================
@@ -16,6 +16,9 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Extract Proxmox host from endpoint URL
+  proxmox_host = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
 }
 
 # -----------------------------------------------------------------------------
@@ -39,10 +42,50 @@ resource "terraform_data" "password_keeper" {
 }
 
 # -----------------------------------------------------------------------------
+# Bind Mount Permission Fix (Unprivileged Container Support)
+# -----------------------------------------------------------------------------
+
+# Fix bind mount permissions on Proxmox host for unprivileged container
+# Unprivileged containers use UID mapping: container UID 900 → host UID 100900
+resource "terraform_data" "fix_bind_mount_permissions" {
+  # Upload permission fix script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
+
+  # Execute permission fix script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions.sh",
+      "# Create and fix permissions for Semaphore data directory",
+      "/tmp/fix_bind_mount_permissions.sh '${var.lxc_semaphore_data_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.proxmox_host
+      timeout     = "2m"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # LXC Container Resource
 # -----------------------------------------------------------------------------
 
-resource "proxmox_virtual_environment_container" "lxc" {
+resource "proxmox_virtual_environment_container" "semaphore" {
   # Basic identification
   description = var.lxc_description
   node_name   = data.vault_generic_secret.proxmox_node_name.data["node_name"]
@@ -83,8 +126,11 @@ resource "proxmox_virtual_environment_container" "lxc" {
     swap      = var.lxc_swap
   }
 
-  # Bind Mounts Configuration (Optional - None by default in Base Template)
-  # Add mount_point blocks here if needed
+  # Bind Mount for Semaphore Data Persistence
+  mount_point {
+    volume = var.lxc_semaphore_data_mount_volume
+    path   = var.lxc_semaphore_data_mount_path
+  }
 
   # Network configuration
   network_interface {
@@ -140,11 +186,11 @@ resource "proxmox_virtual_environment_container" "lxc" {
 resource "terraform_data" "ansible_user_setup" {
   # Trigger user creation only when container is recreated
   triggers_replace = [
-    proxmox_virtual_environment_container.lxc.id,
+    proxmox_virtual_environment_container.semaphore.id,
   ]
 
   # Ensure container is fully created before user setup
-  depends_on = [proxmox_virtual_environment_container.lxc]
+  depends_on = [proxmox_virtual_environment_container.semaphore]
 
   # Create Ansible user via SSH
   # Upload setup script
