@@ -56,7 +56,7 @@ lxc_description = "Proxmox Backup Server - Managed by OpenTofu"
 
 lxc_start_on_boot = true
 lxc_started       = true
-lxc_unprivileged  = false  # Required for bind mounts
+lxc_unprivileged  = true  # Recommended for security
 
 # -----------------------------------------------------------------------------
 # Hardware Resources
