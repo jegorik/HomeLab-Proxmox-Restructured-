@@ -103,9 +103,6 @@ ansible_deploy() {
         log_info "Using SEMAPHORE_ADMIN_PASSWORD from environment"
     fi
 
-    log_info "Injecting SEMAPHORE_ADMIN_PASSWORD via extra vars"
-    extra_vars="-e semaphore_admin_password=${SEMAPHORE_ADMIN_PASSWORD}"
-
     log_info "Running: ansible-playbook -i inventory.yml site.yml"
 
     # Export variables so Ansible can access them via environment
@@ -113,7 +110,7 @@ ansible_deploy() {
     export SEMAPHORE_ADMIN_PASSWORD
     
     # shellcheck disable=SC2086
-    if ansible-playbook -i inventory.yml site.yml ${extra_vars} | tee -a "${LOG_FILE}"; then
+    if ansible-playbook -i inventory.yml site.yml | tee -a "${LOG_FILE}"; then
         log_success "Playbook complete"
         return 0
     else

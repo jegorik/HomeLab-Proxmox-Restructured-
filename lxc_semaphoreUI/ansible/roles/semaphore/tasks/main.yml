@@ -3,6 +3,28 @@
 # Semaphore Role - Main Tasks
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Preflight Checks
+# -----------------------------------------------------------------------------
+# Validate required secrets are provided before proceeding
+
+- name: Set Semaphore admin password from environment if not provided
+  ansible.builtin.set_fact:
+    semaphore_admin_password: "{{ lookup('env', 'SEMAPHORE_ADMIN_PASSWORD') }}"
+  when: semaphore_admin_password is not defined
+  no_log: true
+  tags: [semaphore, setup, preflight]
+
+- name: Verify Semaphore admin password is defined
+  ansible.builtin.fail:
+    msg: |
+      Semaphore admin password must be provided via one of:
+      - Environment variable: SEMAPHORE_ADMIN_PASSWORD
+      - Ansible inventory variable: semaphore_admin_password
+      - Extra vars: -e semaphore_admin_password=xxx
+  when: semaphore_admin_password is not defined or semaphore_admin_password | length == 0
+  tags: [semaphore, setup, preflight]
+
 - name: Create semaphore group
   ansible.builtin.group:
     name: "{{ semaphore_group }}"
