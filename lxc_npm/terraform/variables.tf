@@ -231,8 +231,9 @@ variable "lxc_down_delay" {
 # LXC Bind Mount Configuration (Data Persistence)
 # -----------------------------------------------------------------------------
 # Bind mounts allow persistent storage that survives container recreation.
-# NOTE: Bind mounts may require privileged containers (lxc_unprivileged = false)
-# or proper ID mapping on the host if using unprivileged containers.
+# NOTE: Bind mounts require proper permissions on the host.
+# Unprivileged containers (lxc_unprivileged = true) are recommended for security,
+# using UID/GID mapping for host directory access.
 
 variable "lxc_npm_data_mount_volume" {
   description = "Host path for NPM data directory (SSL certs, database, configs)"
