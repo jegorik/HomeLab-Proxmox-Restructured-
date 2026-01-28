@@ -1,0 +1,25 @@
+---
+# =============================================================================
+# Portainer Role - Default Variables
+# =============================================================================
+
+# Portainer image
+portainer_image: "portainer/portainer-ce:latest"
+
+# Force pull image on each run
+portainer_force_pull: false
+
+# Portainer data storage path (bind mounted from Proxmox host)
+portainer_data_path: "/opt/portainer/data"
+
+# Docker Compose file location
+portainer_compose_path: "/opt/portainer"
+
+# Portainer HTTPS port
+portainer_port: 9443
+
+# Container restart policy
+portainer_restart_policy: "always"
+
+# Container name
+portainer_container_name: "portainer"

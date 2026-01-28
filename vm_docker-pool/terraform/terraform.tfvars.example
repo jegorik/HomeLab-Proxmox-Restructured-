@@ -1,0 +1,161 @@
+# =============================================================================
+# VM Docker Pool - Terraform Variables Example
+# =============================================================================
+#
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to version control!
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   nano terraform.tfvars
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Vault Configuration
+# -----------------------------------------------------------------------------
+# HashiCorp Vault server for secrets management
+
+vault_address         = "https://vault.example.local:8200"
+vault_skip_tls_verify = true  # Set to false in production with valid certs
+
+# -----------------------------------------------------------------------------
+# Vault Secret Paths
+# -----------------------------------------------------------------------------
+# Customize these paths if your Vault secret structure differs
+
+# proxmox_endpoint_vault_path      = "secret/proxmox/endpoint"
+# proxmox_node_name_vault_path     = "secret/proxmox/node"
+# proxmox_user_name_vault_path     = "secret/proxmox/user"
+# proxmox_root_name_vault_path     = "secret/proxmox/root"
+# proxmox_root_password_vault_path = "proxmox/root"
+# proxmox_api_token_vault_path     = "proxmox/api_token"
+# root_ssh_public_key_path         = "secret/ssh/root"
+# root_ssh_private_key_path        = "ssh/root"
+# ansible_ssh_public_key_path      = "secret/ssh/ansible"
+# s3_bucket_name_vault_path        = "secret/aws/s3"
+# ephemeral_vault_mount_path       = "secret"
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+# NetBox server for DCIM/IPAM registration
+
+netbox_url      = "https://netbox.example.local:8000"
+netbox_insecure = true  # Set to false with valid TLS certificate
+
+# netbox_api_token_vault_path = "netbox/api_token"
+
+# -----------------------------------------------------------------------------
+# AWS Configuration
+# -----------------------------------------------------------------------------
+# AWS region for S3 state backend
+
+aws_region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# Proxmox Connection
+# -----------------------------------------------------------------------------
+# Connection settings for Proxmox API
+
+connection_insecure = true   # Set to false in production with valid certs
+ssh_agent_enabled   = false  # Set to true if using SSH agent
+
+# -----------------------------------------------------------------------------
+# VM Identity
+# -----------------------------------------------------------------------------
+# Basic VM identification settings
+
+vm_id          = 300
+vm_hostname    = "docker-pool"
+vm_description = "Ubuntu Server 24.04.3 LTS with Docker and Portainer"
+vm_tags        = ["tofu-managed", "docker", "portainer", "ubuntu"]
+
+# -----------------------------------------------------------------------------
+# VM Resources
+# -----------------------------------------------------------------------------
+# Hardware allocation for the VM
+
+vm_cpu_cores       = 2
+vm_cpu_type        = "x86-64-v2-AES"  # Use "host" for best performance
+vm_memory          = 4096             # 4 GB RAM
+vm_memory_floating = 0                # Disable memory ballooning
+vm_disk_size       = 32               # 32 GB boot disk
+vm_disk_datastore  = "local-lvm"
+vm_disk_interface  = "scsi0"
+vm_machine_type    = "q35"
+
+# -----------------------------------------------------------------------------
+# VM Network
+# -----------------------------------------------------------------------------
+# Network configuration for the VM
+
+vm_ip_address    = "192.168.X.200/24"  # Replace X with your subnet
+vm_gateway       = "192.168.X.1"        # Replace X with your subnet
+vm_dns_servers   = ["1.1.1.1", "8.8.8.8"]
+vm_network_bridge = "vmbr0"
+
+# -----------------------------------------------------------------------------
+# VM Lifecycle
+# -----------------------------------------------------------------------------
+# Startup and shutdown behavior
+
+vm_startup_order      = "3"
+vm_startup_up_delay   = "60"
+vm_startup_down_delay = "60"
+
+
+# -----------------------------------------------------------------------------
+# Ansible user configuration
+# -----------------------------------------------------------------------------
+ansible_user_enabled = true
+ansible_user_name    = "ansible"
+ansible_user_sudo    = true
+ansible_user_shell   = "/bin/bash"
+
+
+# -----------------------------------------------------------------------------
+# VM Root user Account
+# -----------------------------------------------------------------------------
+# User account configuration (SSH key from Vault)
+
+password_length = 25
+password_special_chars = "!@#$%^&*"
+password_lower_chars_count = 4
+password_upper_chars_count = 4
+password_numeric_count = 4
+password_special_chars_count =4
+vm_username = "root"
+
+# -----------------------------------------------------------------------------
+# Cloud Image
+# -----------------------------------------------------------------------------
+# Ubuntu cloud image settings
+
+vm_cloud_image_url       = "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+vm_cloud_image_filename  = "ubuntu-24.04-server-cloudimg-amd64.qcow2"
+vm_cloud_image_datastore = "local"
+
+# -----------------------------------------------------------------------------
+# Portainer Bind Mount
+# -----------------------------------------------------------------------------
+# Persistent storage for Portainer data
+
+portainer_bind_mount_enabled = true
+portainer_bind_mount_source  = "/rpool/datastore/portainer"
+portainer_bind_mount_target  = "/opt/portainer/data"
+
+# -----------------------------------------------------------------------------
+# NetBox Registration
+# -----------------------------------------------------------------------------
+# NetBox DCIM/IPAM settings for VM registration
+
+cluster_name     = "Proxmox Cluster"
+site_name        = "Home Lab"
+tenant_name      = "Infrastructure"
+vrf_name         = "Default"
+device_id        = 1
+interface_name   = "eth0"
+disk_name        = "boot-disk"
+disk_description = "Boot disk for Docker Pool VM"

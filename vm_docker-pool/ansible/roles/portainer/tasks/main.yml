@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# Portainer Role - Main Tasks
+# =============================================================================
+# Deploys Portainer CE for Docker container management
+#
+# Features:
+# - Portainer CE deployment via Docker Compose
+# - Persistent data storage via bind mount
+# - HTTPS access on port 9443
+# - Auto-restart on failure
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Data Directory Setup
+# -----------------------------------------------------------------------------
+
+- name: Create Portainer data directory
+  ansible.builtin.file:
+    path: "{{ portainer_data_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [portainer, setup]
+
+- name: Create Portainer compose directory
+  ansible.builtin.file:
+    path: "{{ portainer_compose_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [portainer, setup]
+
+# -----------------------------------------------------------------------------
+# Docker Compose Configuration
+# -----------------------------------------------------------------------------
+
+- name: Deploy Portainer docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ portainer_compose_path }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  register: portainer_compose
+  tags: [portainer, config]
+
+# -----------------------------------------------------------------------------
+# Portainer Deployment
+# -----------------------------------------------------------------------------
+
+- name: Pull Portainer image
+  community.docker.docker_image:
+    name: "{{ portainer_image }}"
+    source: pull
+    force_source: "{{ portainer_force_pull | default(false) }}"
+  tags: [portainer, deploy]
+
+- name: Start Portainer with Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ portainer_compose_path }}"
+    state: present
+  register: portainer_output
+  tags: [portainer, deploy]
+
+- name: Display Portainer deployment status
+  ansible.builtin.debug:
+    msg: "Portainer deployment completed. Access at https://{{ ansible_host }}:{{ portainer_port }}"
+  tags: [portainer, deploy]
+
+# -----------------------------------------------------------------------------
+# Health Check
+# -----------------------------------------------------------------------------
+
+- name: Wait for Portainer to be ready
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ portainer_port }}/api/system/status"
+    method: GET
+    validate_certs: no
+    status_code: 200
+  register: portainer_health
+  until: portainer_health.status == 200
+  retries: 30
+  delay: 5
+  tags: [portainer, verify]
+
+- name: Display Portainer access information
+  ansible.builtin.debug:
+    msg: |
+      ========================================
+      Portainer CE Deployed Successfully!
+      ========================================
+      URL: https://{{ ansible_host }}:{{ portainer_port }}
+      
+      First-time setup:
+      1. Access the URL above in your browser
+      2. Create an admin user and password
+      3. Select "Docker - Manage the local Docker environment"
+      ========================================
+  tags: [portainer, verify]

@@ -1,0 +1,49 @@
+# =============================================================================
+# Portainer CE - Docker Compose Configuration
+# =============================================================================
+# Managed by Ansible - Do not edit manually
+#
+# Portainer provides a web-based GUI for managing Docker containers.
+# Data is persisted via bind mount to survive container redeployment.
+#
+# Last Updated: {{ ansible_date_time.date }}
+# =============================================================================
+
+services:
+  portainer:
+    image: {{ portainer_image }}
+    container_name: {{ portainer_container_name }}
+    restart: {{ portainer_restart_policy }}
+    
+    # Security: Run with limited capabilities
+    security_opt:
+      - no-new-privileges:true
+    
+    # Port mapping - HTTPS only
+    ports:
+      - "{{ portainer_port }}:9443"
+    
+    # Volume mounts
+    volumes:
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persistent data storage (bind mounted from Proxmox host)
+      - {{ portainer_data_path }}:/data
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://127.0.0.1:9443/api/system/status", "--no-check-certificate"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Labels for organization
+    labels:
+      - "traefik.enable=false"
+      - "com.centurylinklabs.watchtower.enable=false"
+
+# Network configuration (use default bridge)
+networks:
+  default:
+    driver: bridge

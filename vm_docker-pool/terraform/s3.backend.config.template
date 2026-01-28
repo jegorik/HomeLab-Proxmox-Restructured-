@@ -1,0 +1,45 @@
+# =============================================================================
+# VM Docker Pool - S3 Backend Configuration Template
+# =============================================================================
+#
+# Copy this file to s3.backend.config and fill in your values.
+# NEVER commit s3.backend.config to version control!
+#
+# Usage:
+#   cp s3.backend.config.template s3.backend.config
+#   nano s3.backend.config
+#   tofu init -backend-config=s3.backend.config
+#
+# State Encryption:
+#   State is encrypted via Vault Transit engine. Ensure VAULT_TOKEN
+#   environment variable is set before running terraform commands.
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# S3 bucket for state storage (create this bucket first)
+bucket = "your-terraform-state-bucket"
+
+# State file path within the bucket
+key = "vm_docker-pool/terraform.tfstate"
+
+# AWS region where the bucket is located
+region = "us-east-1"
+
+# Enable server-side encryption
+encrypt = true
+
+# Optional: DynamoDB table for state locking
+# dynamodb_table = "terraform-state-lock"
+
+# Optional: Skip credential validation (useful for some S3-compatible stores)
+# skip_credentials_validation = true
+
+# Optional: Skip region validation (useful for some S3-compatible stores)
+# skip_region_validation = true
+
+# Optional: Force path-style URLs (required for MinIO and some S3-compatible stores)
+# force_path_style = true
+
+# Optional: Custom S3 endpoint (for MinIO, Ceph, etc.)
+# endpoint = "https://minio.example.local:9000"
