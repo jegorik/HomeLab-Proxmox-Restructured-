@@ -77,15 +77,12 @@
 # -----------------------------------------------------------------------------
 
 - name: Wait for Portainer to be ready
-  ansible.builtin.uri:
-    url: "https://127.0.0.1:{{ portainer_port }}/api/system/status"
-    method: GET
-    validate_certs: no
-    status_code: 200
-  register: portainer_health
-  until: portainer_health.status == 200
-  retries: 30
-  delay: 5
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ portainer_port }}"
+    delay: 5
+    timeout: 120
+    state: started
   tags: [portainer, verify]
 
 - name: Display Portainer access information

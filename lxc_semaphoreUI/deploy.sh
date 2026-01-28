@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LXC Base Template - Deployment Script
+# SemaphoreUI LXC container - Deployment Script
 # =============================================================================
 # Simplified deployment using modular scripts
 #

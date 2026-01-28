@@ -30,13 +30,10 @@ services:
       # Persistent data storage (bind mounted from Proxmox host)
       - {{ portainer_data_path }}:/data
     
-    # Health check
+    # Disable custom healthcheck - Portainer CE image is minimal (no wget/curl)
+    # Docker will report container as healthy based on running state
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://127.0.0.1:9443/api/system/status", "--no-check-certificate"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      disable: true
     
     # Labels for organization
     labels:
