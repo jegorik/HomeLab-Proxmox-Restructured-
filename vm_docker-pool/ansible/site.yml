@@ -1,0 +1,72 @@
+---
+# =============================================================================
+# VM Docker Pool - Main Ansible Playbook
+# =============================================================================
+# Configures Ubuntu Server VM with Docker and Portainer
+#
+# Usage:
+#   ansible-playbook -i inventory.yml site.yml
+#
+# Tags:
+#   base      - Base system configuration (UFW, SSH, packages)
+#   docker    - Docker CE and Docker Compose installation
+#   portainer - Portainer CE deployment
+#
+# Last Updated: January 2026
+# =============================================================================
+
+- name: Configure Docker Pool VM
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Override these in group_vars or host_vars as needed
+    base_packages:
+      - curl
+      - wget
+      - gnupg
+      - ca-certificates
+      - apt-transport-https
+      - python3
+      - python3-pip
+      - vim
+      - htop
+      - tree
+      - jq
+      - net-tools
+      - qemu-guest-agent
+
+    base_timezone: "UTC"
+    base_locale: "en_US.UTF-8"
+
+    # Docker configuration
+    docker_users:
+      - ansible
+
+    # Portainer configuration
+    portainer_data_path: "/opt/portainer/data"
+    portainer_port: 9443
+
+  pre_tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+      tags: [always]
+
+  roles:
+    - role: base
+      tags: [base, always]
+    - role: docker
+      tags: [docker]
+
+  tasks:
+    # Flush all pending handlers (especially Docker restart) before Portainer deployment
+    # This ensures Docker daemon is fully restarted before starting containers
+    - name: Flush handlers before Portainer deployment
+      ansible.builtin.meta: flush_handlers
+      tags: [portainer]
+
+    - name: Include Portainer role
+      ansible.builtin.include_role:
+        name: portainer
+      tags: [portainer]

@@ -1,0 +1,56 @@
+# =============================================================================
+# VM Docker Pool - Ansible Inventory Example
+# =============================================================================
+#
+# Copy this file to inventory.yml and update with your VM details.
+# The deploy.sh script automatically generates this file from Terraform outputs.
+#
+# Manual usage:
+#   cp inventory.yml.example inventory.yml
+#   nano inventory.yml
+#   ansible-playbook -i inventory.yml site.yml
+#
+# Last Updated: January 2026
+# =============================================================================
+
+all:
+  hosts:
+    docker-pool:
+      ansible_host: 192.168.X.200  # Replace with your VM IP
+      ansible_user: ansible
+      ansible_ssh_private_key_file: ~/.ssh/ansible_key
+      ansible_python_interpreter: /usr/bin/python3
+
+  vars:
+    # Base role variables
+    base_timezone: "UTC"
+    base_locale: "en_US.UTF-8"
+    
+    # SSH hardening
+    ssh_permit_root_login: "no"
+    ssh_password_authentication: "no"
+    ssh_pubkey_authentication: "yes"
+    
+    # UFW firewall ports
+    ufw_allowed_ports:
+      - { port: 22, proto: tcp, comment: "SSH" }
+      - { port: 9443, proto: tcp, comment: "Portainer HTTPS" }
+    
+    # Docker role variables
+    docker_edition: "ce"
+    docker_users:
+      - ansible
+    
+    # Docker daemon configuration
+    docker_daemon_options:
+      log-driver: "json-file"
+      log-opts:
+        max-size: "10m"
+        max-file: "3"
+      storage-driver: "overlay2"
+    
+    # Portainer role variables
+    portainer_image: "portainer/portainer-ce:latest"
+    portainer_data_path: "/opt/portainer/data"
+    portainer_port: 9443
+    portainer_restart_policy: "always"

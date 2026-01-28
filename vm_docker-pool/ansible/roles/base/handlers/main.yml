@@ -1,0 +1,14 @@
+---
+# =============================================================================
+# Base Role - Handlers
+# =============================================================================
+
+- name: Restart SSH
+  ansible.builtin.systemd:
+    name: ssh
+    state: restarted
+
+- name: Restart cron
+  ansible.builtin.systemd:
+    name: cron
+    state: restarted

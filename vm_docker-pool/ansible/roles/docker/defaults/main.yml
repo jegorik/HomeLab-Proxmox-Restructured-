@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# Docker Role - Default Variables
+# =============================================================================
+
+# Docker edition (ce = Community Edition)
+docker_edition: "ce"
+
+# Users to add to the docker group
+docker_users:
+  - ansible
+
+# Docker daemon configuration options
+docker_daemon_options:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  storage-driver: "overlay2"
+  live-restore: true
+  userland-proxy: false
+  default-address-pools:
+    - base: "172.17.0.0/16"
+      size: 24

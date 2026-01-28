@@ -72,11 +72,17 @@ graph TB
         H[Encrypted State<br/>AES-GCM]
     end
     
+    subgraph "VM Services - Deploy After Vault"
+        DOCKER[vm_docker-pool<br/>Docker + Portainer<br/>:9443]
+        DOCKER1[Bind Mounts]
+    end
+    
     subgraph "Future Projects"
         I[Additional Services...]
     end
     
     A -->|Provision| E
+    A -->|Provision| DOCKER
     A -->|Provision| F
     A -->|Provision| NPM
     A -->|Provision| PBS
@@ -101,6 +107,7 @@ graph TB
     E -->|Secrets & Encryption| PBS
     E -->|Secrets & Encryption| INFLUX
     E -->|Secrets & Encryption| GRAFANA
+    E -->|Secrets & Encryption| DOCKER
     
     F --> F1
     F --> F2
@@ -118,6 +125,8 @@ graph TB
     
     SEMA --> SEMA1
     
+    DOCKER --> DOCKER1
+    
     D -->|Network| E
     D -->|Network| F
     D -->|Network| NPM
@@ -125,6 +134,7 @@ graph TB
     D -->|Network| INFLUX
     D -->|Network| GRAFANA
     D -->|Network| SEMA
+    D -->|Network| DOCKER
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
@@ -133,6 +143,7 @@ graph TB
     style PBS fill:#e67e22,color:#fff
     style INFLUX fill:#9b59b6,color:#fff
     style GRAFANA fill:#ff6b6b,color:#fff
+    style DOCKER fill:#2496ED,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -381,7 +392,7 @@ sequenceDiagram
 
 ---
 
-### 10. **lxc_semaphoreUI** - Semaphore UI Automation
+### 9. **lxc_semaphoreUI** - Semaphore UI Automation
 
 **Purpose**: Modern UI for Ansible, Terraform, and OpenTofu automation
 
@@ -409,7 +420,39 @@ sequenceDiagram
 
 ---
 
-### 9. **Future Projects**
+### 10. **vm_docker-pool** - Docker + Portainer VM
+
+**Purpose**: Container orchestration platform with Docker CE and Portainer management UI
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- **First VM-based project** (Ubuntu Server 24.04.3 LTS)
+- Docker CE + Docker Compose plugin installation
+- Portainer CE for container management (port 9443)
+- Cloud-init for initial VM provisioning
+- Data persistence via bind mount (`/opt/portainer/data`)
+- QEMU Guest Agent for Proxmox integration
+- Docker daemon with log rotation (10MB max, 3 files)
+- UFW firewall (SSH + Portainer only)
+
+**Documentation**: See [vm_docker-pool/README.md](vm_docker-pool/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- Host paths for bind mounts must exist
+- Ubuntu Server 24.04.3 LTS cloud image available
+
+---
+
+### 11. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -480,6 +523,13 @@ Additional services will be added following the same patterns and deployment ord
    ./deploy.sh deploy
    ```
 
+7. **vm_docker-pool** - Deploy Docker + Portainer VM (requires Vault)
+
+   ```bash
+   cd vm_docker-pool
+   ./deploy.sh deploy
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -498,6 +548,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_influxdb** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_grafana** | lxc_vault, (optional) lxc_influxdb | Transit engine, KV secrets, userpass auth |
 | **lxc_semaphoreUI** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **vm_docker-pool** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
@@ -670,6 +721,8 @@ All LXC containers in this project run in **unprivileged mode** for enhanced sec
 | lxc_PBS | backup | 34 | 100034 | `/etc/proxmox-backup`, `/mnt/pbs-backups` |
 | lxc_npm | npm | 900 | 100900 | `/data`, `/etc/letsencrypt` |
 | lxc_semaphoreUI | semaphore | 900 | 100900 | `/var/lib/semaphore` |
+
+> **Note**: VM projects (like `vm_docker-pool`) do not require UID mapping. They use standard Linux permissions with the service running as a regular user. Bind mount directories can be owned by root (0:0) or any appropriate user.
 
 #### Bind Mount Permissions
 

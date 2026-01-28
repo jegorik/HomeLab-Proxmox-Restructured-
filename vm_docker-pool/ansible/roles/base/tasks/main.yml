@@ -1,0 +1,189 @@
+---
+# =============================================================================
+# Base Role - Main Tasks
+# =============================================================================
+# Base system configuration for Ubuntu Server VM
+#
+# Features:
+# - System updates and base packages
+# - Timezone and locale configuration
+# - SSH hardening
+# - UFW firewall configuration
+# - QEMU Guest Agent setup
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# System Updates
+# -----------------------------------------------------------------------------
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [base, packages]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: safe
+  tags: [base, packages]
+
+# -----------------------------------------------------------------------------
+# Base Packages Installation
+# -----------------------------------------------------------------------------
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+  tags: [base, packages]
+
+# -----------------------------------------------------------------------------
+# Timezone Configuration
+# -----------------------------------------------------------------------------
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ base_timezone }}"
+  notify: Restart cron
+  tags: [base, timezone]
+
+# -----------------------------------------------------------------------------
+# Locale Configuration
+# -----------------------------------------------------------------------------
+
+- name: Generate locale
+  community.general.locale_gen:
+    name: "{{ base_locale }}"
+    state: present
+  tags: [base, locale]
+
+- name: Set default locale
+  ansible.builtin.copy:
+    content: |
+      LANG={{ base_locale }}
+      LC_ALL={{ base_locale }}
+    dest: /etc/default/locale
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [base, locale]
+
+# -----------------------------------------------------------------------------
+# SSH Hardening
+# -----------------------------------------------------------------------------
+
+- name: Configure SSH - Disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin {{ ssh_permit_root_login | default("no") }}'
+    state: present
+  notify: Restart SSH
+  tags: [base, ssh, security]
+
+- name: Configure SSH - Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication {{ ssh_password_authentication | default("no") }}'
+    state: present
+  notify: Restart SSH
+  tags: [base, ssh, security]
+
+- name: Configure SSH - Enable public key authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication {{ ssh_pubkey_authentication | default("yes") }}'
+    state: present
+  notify: Restart SSH
+  tags: [base, ssh, security]
+
+- name: Configure SSH - Disable empty passwords
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitEmptyPasswords'
+    line: 'PermitEmptyPasswords no'
+    state: present
+  notify: Restart SSH
+  tags: [base, ssh, security]
+
+- name: Configure SSH - Set MaxAuthTries
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?MaxAuthTries'
+    line: 'MaxAuthTries 3'
+    state: present
+  notify: Restart SSH
+  tags: [base, ssh, security]
+
+# -----------------------------------------------------------------------------
+# UFW Firewall Configuration
+# -----------------------------------------------------------------------------
+
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  tags: [base, firewall]
+
+- name: Set UFW default incoming policy to deny
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+  tags: [base, firewall]
+
+- name: Set UFW default outgoing policy to allow
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+  tags: [base, firewall]
+
+- name: Allow configured ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ ufw_allowed_ports }}"
+  when: ufw_allowed_ports is defined
+  tags: [base, firewall]
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  tags: [base, firewall]
+
+# -----------------------------------------------------------------------------
+# QEMU Guest Agent Configuration
+# -----------------------------------------------------------------------------
+
+- name: Ensure QEMU Guest Agent is installed
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+  tags: [base, qemu]
+
+- name: Enable and start QEMU Guest Agent
+  ansible.builtin.systemd:
+    name: qemu-guest-agent
+    enabled: yes
+    state: started
+  tags: [base, qemu]
+
+# -----------------------------------------------------------------------------
+# System Cleanup
+# -----------------------------------------------------------------------------
+
+- name: Remove unnecessary packages
+  ansible.builtin.apt:
+    autoremove: yes
+    purge: yes
+  tags: [base, cleanup]
+
+- name: Clean apt cache
+  ansible.builtin.apt:
+    autoclean: yes
+  tags: [base, cleanup]
