@@ -88,8 +88,8 @@ resource "proxmox_virtual_environment_container" "npm" {
   # NPM stores all user data (SSL certs, database, proxy configs) in /data
   # This bind mount ensures data survives container recreation.
   #
-  # IMPORTANT: Requires privileged container (lxc_unprivileged = false)
   # Host directory must exist before container creation.
+  # For unprivileged containers, ensure host path is owned by mapped UID/GID.
   mount_point {
     volume = var.lxc_npm_data_mount_volume
     path   = var.lxc_npm_data_mount_path

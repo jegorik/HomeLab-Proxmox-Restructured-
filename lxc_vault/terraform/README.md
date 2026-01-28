@@ -61,32 +61,20 @@ This configuration uses **root@pam** authentication with a password file instead
 
 ### Privileged vs Unprivileged Containers with Bind Mounts
 
-This project uses a **privileged container** (`lxc_unprivileged = false`) because:
+This project uses an **unprivileged container** (`lxc_unprivileged = true`) by default for better security.
 
-#### Why Privileged Containers?
+#### Unprivileged Containers (Recommended)
 
-- **Simpler Permissions**: UID/GID inside container match the host (no mapping needed)
-- **Direct Access**: Root inside container = root on host, allowing seamless access to bind-mounted directories
-- **Less Configuration**: No need to configure `/etc/subuid` and `/etc/subgid` on the Proxmox host
+Unprivileged containers are safer because root inside the container maps to a non-root user on the host (typically UID 100000).
 
-#### Unprivileged Containers (More Secure, More Complex)
+To make bind mounts work with unprivileged containers, this project automatically handles permission fixes via the `fix_bind_mount_permissions.sh` script, which:
+1. Calculates the correct host UID/GID based on the mapping
+2. Sets ownership of the bind-mounted directories on the host
 
-For better security, you can use unprivileged containers with bind mounts, but you must:
-
-1. **Configure UID/GID Mapping** on Proxmox host:
-
-   ```bash
-   # Add to /etc/pve/lxc/<VMID>.conf
-   lxc.idmap: u 0 100000 65536
-   lxc.idmap: g 0 100000 65536
-   ```
-
-2. **Set Proper Permissions** on host directories:
-
-   ```bash
-   # If container UID 0 maps to host UID 100000
-   chown -R 100000:100000 /rpool/data/vault
-   ```
+If you choose to use **privileged containers** (`lxc_unprivileged = false`), be aware that:
+- Root inside container = root on host
+- Security isolation is reduced
+- Host filesystem permissions are simpler (direct match)
 
 3. **Reference**: [Unprivileged LXC Containers](https://pve.proxmox.com/wiki/Unprivileged_LXC_containers)
 

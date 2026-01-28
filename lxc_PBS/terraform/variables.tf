@@ -231,7 +231,7 @@ variable "lxc_down_delay" {
 # LXC Bind Mount Configuration (Data Persistence)
 # -----------------------------------------------------------------------------
 # Bind mounts allow persistent storage that survives container recreation.
-# IMPORTANT: Bind mounts usually require privileged containers or complex idmap.
+# IMPORTANT: Unprivileged containers (recommended) require UID/GID mapping for host directory access.
 
 variable "lxc_pbs_config_mount_volume" {
   description = "Host path for PBS configuration (/etc/proxmox-backup)"
@@ -332,7 +332,19 @@ variable "lxc_dns_servers" {
 variable "lxc_unprivileged" {
   description = "Run as unprivileged container (recommended for security)"
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "service_user_uid" {
+  description = "UID of the service user inside the container (mapped to host 100000+UID)"
+  type        = number
+  default     = 34
+}
+
+variable "service_user_gid" {
+  description = "GID of the service user inside the container (mapped to host 100000+GID)"
+  type        = number
+  default     = 34
 }
 
 variable "lxc_start_on_boot" {

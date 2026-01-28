@@ -148,7 +148,7 @@ path "auth/token/revoke-self" {
 #
 # 1. Create test user:
 #    vault write auth/userpass/users/netbox-test \
-#      password="test123" \
+#      password="your-secure-password" \
 #      policies="netbox-deploy"
 #
 # 2. Login as test user:
