@@ -1,0 +1,29 @@
+# Authentik template and notes
+#
+# Documented variables (use a local `.env` file to override defaults):
+# - PG_DB: Database name for Authentik (default: authentik).
+# - PG_PASS: Database password for Authentik (required).
+# - PG_USER: Database user for Authentik (default: authentik).
+# - AUTHENTIK_SECRET_KEY: Secret key for Authentik (required).
+# - AUTHENTIK_IMAGE: Authentik image to use (default: ghcr.io/goauthentik/server).
+# - AUTHENTIK_TAG: Authentik tag to use (default: 2025.12.1).
+# - COMPOSE_PORT_HTTP: HTTP port for Authentik (default: 9000).
+# - COMPOSE_PORT_HTTPS: HTTPS port for Authentik (default: 9443).
+
+# Example `.env` snippet:
+# PG_DB=authentik
+# PG_PASS=your_password
+# PG_USER=authentik
+# AUTHENTIK_SECRET_KEY=your_secret_key
+# AUTHENTIK_IMAGE=ghcr.io/goauthentik/server
+# AUTHENTIK_TAG=2025.12.1
+# COMPOSE_PORT_HTTP=9000
+# COMPOSE_PORT_HTTPS=9443
+
+# Quick start:
+# 1. Create the `.env` file in this directory.
+# 2. Place overrides in a local `.env` file in this directory.
+# 3. Run the following commands to generate a password and secret key and write them to your .env file:
+#    - `echo "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')" >> .env` for the database password
+#    - `echo "AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')" >> .env` for the secret key
+# 4. Run `docker compose -f compose.yml up -d`.
