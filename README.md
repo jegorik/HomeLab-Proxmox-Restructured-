@@ -132,6 +132,10 @@ graph TB
     AUTH -.->|SSO| GRAFANA
     AUTH -.->|SSO| SEMA
     AUTH -.->|SSO| DOCKER
+    AUTH -.->|SSO| PBS
+    AUTH -.->|SSO| DOCKER
+    AUTH -.->|SSO| INFLUX
+    AUTH -.->|SSO| NPM
     
     D -->|Network| E
     D -->|Network| F
