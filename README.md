@@ -128,14 +128,14 @@ graph TB
     
     DOCKER --> DOCKER1
     DOCKER -->|Deploy| AUTH
-    AUTH -.->|SSO| F
     AUTH -.->|SSO| GRAFANA
     AUTH -.->|SSO| SEMA
     AUTH -.->|SSO| DOCKER
     AUTH -.->|SSO| PBS
-    AUTH -.->|SSO| DOCKER
     AUTH -.->|SSO| INFLUX
     AUTH -.->|SSO| NPM
+    AUTH -.->|SSO| E
+    AUTH -.->|SSO| F
     
     D -->|Network| E
     D -->|Network| F
