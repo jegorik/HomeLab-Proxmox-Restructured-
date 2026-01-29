@@ -456,6 +456,11 @@ sequenceDiagram
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
+## 🐳 Docker Compose Templates
+
+   1. authentik [docker-compose_templates/authentik/README.md](docker-compose_templates/authentik/README.md)
+   2. nextcloud-aio [docker-compose_templates/nextcloud-aio/README.md](docker-compose_templates/nextcloud-aio/README.md)
+
 ## 🚀 Deployment Order
 
 **CRITICAL**: Projects must be deployed in the correct order due to dependencies.
@@ -633,37 +638,35 @@ All projects share these common requirements:
 
 ## 📂 Project Structure
 
-Each project follows this standardized structure:
-
 ```text
-lxc_<service>/
-├── README.md                    # Project overview and documentation
-├── DEPLOYMENT.md                # Detailed deployment guide
-├── QUICKREF.sh                  # Quick reference commands
-├── deploy.sh                    # Automated deployment script
-├── .gitignore                   # Git ignore patterns
-├── logs/                        # Deployment logs directory
-│   └── README.md                # Log management documentation
-├── terraform/                   # Infrastructure provisioning
-│   ├── main.tf                  # Main Terraform configuration
-│   ├── variables.tf             # Variable definitions
-│   ├── outputs.tf               # Output definitions
-│   ├── providers.tf             # Provider configurations
-│   ├── backend.tf               # State backend configuration
-│   ├── encryption.tf            # State encryption configuration
-│   ├── terraform.tfvars.example # Example variables file
+lxc_<service> or vm_<service>/
+├── README.md                      # Project overview and documentation
+├── DEPLOYMENT.md                  # Detailed deployment guide
+├── QUICKREF.sh                    # Quick reference commands
+├── deploy.sh                      # Automated deployment script
+├── .gitignore                     # Git ignore patterns
+├── logs/                          # Deployment logs directory
+│   └── README.md                  # Log management documentation
+├── terraform/                     # Infrastructure provisioning
+│   ├── main.tf                    # Main Terraform configuration
+│   ├── variables.tf               # Variable definitions
+│   ├── outputs.tf                 # Output definitions
+│   ├── providers.tf               # Provider configurations
+│   ├── backend.tf                 # State backend configuration
+│   ├── encryption.tf              # State encryption configuration
+│   ├── terraform.tfvars.example   # Example variables file
 │   └── s3.backend.config.template # Example backend config
-└── ansible/                     # Configuration management
-    ├── site.yml                 # Main playbook
-    ├── ansible.cfg              # Ansible configuration
-    ├── inventory.yml.example    # Example inventory
-    └── roles/                   # Ansible roles
-        └── <role_name>/         # Individual roles
-            ├── README.md        # Role documentation
-            ├── tasks/           # Role tasks
-            ├── templates/       # Jinja2 templates
-            ├── handlers/        # Ansible handlers
-            └── meta/            # Role metadata
+└── ansible/                       # Configuration management
+    ├── site.yml                   # Main playbook
+    ├── ansible.cfg                # Ansible configuration
+    ├── inventory.yml.example      # Example inventory
+    └── roles/                     # Ansible roles
+        └── <role_name>/           # Individual roles
+            ├── README.md          # Role documentation
+            ├── tasks/             # Role tasks
+            ├── templates/         # Jinja2 templates
+            ├── handlers/          # Ansible handlers
+            └── meta/              # Role metadata
 ```
 
 ### Standardized Files

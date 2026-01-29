@@ -1,4 +1,4 @@
-# Authentik is an open-source identity and access management solution.
+# Authentik is an open-source identity and access management solution
 
 ## Quick start
 

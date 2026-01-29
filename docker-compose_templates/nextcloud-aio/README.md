@@ -1,4 +1,4 @@
-# Nextcloud AIO is a Docker-based solution for running Nextcloud.
+# Nextcloud AIO is a Docker-based solution for running Nextcloud
 
 ## Quick start
 
