@@ -330,7 +330,7 @@ variable "lxc_dns_servers" {
 # -----------------------------------------------------------------------------
 
 variable "lxc_unprivileged" {
-  description = "Run as unprivileged container (recommended for security)"
+  description = "Run as unprivileged container (recommended for security). Default: true."
   type        = bool
   default     = true
 }

@@ -52,6 +52,7 @@ resource "proxmox_virtual_environment_container" "pbs" {
   # Lifecycle settings
   start_on_boot = var.lxc_start_on_boot
   started       = var.lxc_started
+  # Run unprivileged for security (defaults to true)
   unprivileged  = var.lxc_unprivileged
   protection    = var.lxc_protection
 
@@ -221,7 +222,7 @@ resource "terraform_data" "fix_bind_mount_permissions_config" {
 
   # Upload script to Proxmox host
   provisioner "file" {
-    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    source      = "${path.module}/../scripts/fix_bind_mount_permissions.sh"
     destination = "/tmp/fix_bind_mount_permissions_config.sh"
 
     connection {
@@ -264,7 +265,7 @@ resource "terraform_data" "fix_bind_mount_permissions_datastore" {
 
   # Upload script to Proxmox host
   provisioner "file" {
-    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    source      = "${path.module}/../scripts/fix_bind_mount_permissions.sh"
     destination = "/tmp/fix_bind_mount_permissions_datastore.sh"
 
     connection {
@@ -307,7 +308,7 @@ resource "terraform_data" "fix_bind_mount_permissions_s3" {
 
   # Upload script to Proxmox host
   provisioner "file" {
-    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    source      = "${path.module}/../scripts/fix_bind_mount_permissions.sh"
     destination = "/tmp/fix_bind_mount_permissions_s3.sh"
 
     connection {
