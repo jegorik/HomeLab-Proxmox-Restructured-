@@ -75,6 +75,7 @@ graph TB
     subgraph "VM Services - Deploy After Vault"
         DOCKER[vm_docker-pool<br/>Docker + Portainer<br/>:9443]
         DOCKER1[Bind Mounts]
+        AUTH[authentik<br/>SSO & IAM<br/>:9000/9443]
     end
     
     subgraph "Future Projects"
@@ -126,6 +127,11 @@ graph TB
     SEMA --> SEMA1
     
     DOCKER --> DOCKER1
+    DOCKER -->|Deploy| AUTH
+    AUTH -.->|SSO| F
+    AUTH -.->|SSO| GRAFANA
+    AUTH -.->|SSO| SEMA
+    AUTH -.->|SSO| DOCKER
     
     D -->|Network| E
     D -->|Network| F
@@ -144,6 +150,7 @@ graph TB
     style INFLUX fill:#9b59b6,color:#fff
     style GRAFANA fill:#ff6b6b,color:#fff
     style DOCKER fill:#2496ED,color:#fff
+    style AUTH fill:#fd4b2d,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
 ```
@@ -452,14 +459,44 @@ sequenceDiagram
 
 ---
 
-### 11. **Future Projects**
+---
+
+### 11. **authentik** - Identity and Access Management
+
+**Purpose**: SSO and IAM solution for centralized authentication
+
+**Status**: ✅ Container-ready (Docker Compose)
+
+**Key Features**:
+
+- Unified authentication across all services
+- Support for OIDC, SAML, and LDAP
+- Customizable login flows and branding
+- Automated deployment via Portainer on `vm_docker-pool`
+- Web UI on port 9000/9443
+
+**Documentation**: See [docker-compose_templates/authentik/README.md](docker-compose_templates/authentik/README.md)
+
+**Deployment Order**: 🥉 **Deploy After Docker** - Requires working Docker environment
+
+**Prerequisites**:
+
+- `vm_docker-pool` must be deployed and running
+- Docker Compose plugin installed
+- Portainer CE accessible for container management
+
+### 12. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
 ## 🐳 Docker Compose Templates
 
-   1. authentik [docker-compose_templates/authentik/README.md](docker-compose_templates/authentik/README.md)
-   2. nextcloud-aio [docker-compose_templates/nextcloud-aio/README.md](docker-compose_templates/nextcloud-aio/README.md)
+A collection of Docker Compose templates for rapid deployment of containerized services via Portainer.
+
+**Documentation**: See [docker-compose_templates/README.md](docker-compose_templates/README.md)
+
+1. **authentik**: SSO & Identity Management
+2. **nextcloud-aio**: All-in-one personal cloud solution
 
 ## 🚀 Deployment Order
 
@@ -554,6 +591,7 @@ Additional services will be added following the same patterns and deployment ord
 | **lxc_grafana** | lxc_vault, (optional) lxc_influxdb | Transit engine, KV secrets, userpass auth |
 | **lxc_semaphoreUI** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **vm_docker-pool** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **authentik** | vm_docker-pool | Working Docker environment, Portainer CE |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
 
