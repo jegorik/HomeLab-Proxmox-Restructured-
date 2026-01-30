@@ -27,7 +27,8 @@ pip install ansible
 ### PBS-Specific Requirements
 
 > [!IMPORTANT]
-> Proxmox Backup Server requires a **privileged container** (`lxc_unprivileged = false`) for bind mounts to work correctly with proper permissions.
+> This container runs as an **unprivileged container** (`lxc_unprivileged = true`) by default.
+> The deployment script automatically fixes bind mount permissions using `fix_bind_mount_permissions.sh` to map the host UID/GID correctly.
 
 Ensure the bind mount directories exist on the Proxmox host:
 
