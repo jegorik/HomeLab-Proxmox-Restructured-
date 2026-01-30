@@ -91,6 +91,18 @@ variable "root_ssh_private_key_path" {
   type        = string
 }
 
+variable "ssh_private_key_path" {
+  description = "Path to the local private key for SSH connections to Proxmox Host"
+  type        = string
+  default     = "~/.ssh/id_rsa"
+}
+
+variable "proxmox_ssh_user" {
+  description = "SSH user for Proxmox Host connection"
+  type        = string
+  default     = "root"
+}
+
 # -----------------------------------------------------------------------------
 # AWS Configuration (for S3 Backend State Storage)
 # -----------------------------------------------------------------------------

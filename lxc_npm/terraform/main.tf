@@ -192,3 +192,93 @@ resource "terraform_data" "ansible_user_setup" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Host Bind Mount Permission Fix
+# -----------------------------------------------------------------------------
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts (NPM Data)
+resource "terraform_data" "fix_bind_mount_permissions_data" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_npm_data_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions_data.sh"
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions_data.sh",
+      "/tmp/fix_bind_mount_permissions_data.sh '${var.lxc_npm_data_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions_data.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+}
+
+# Fix permissions on Proxmox host for unprivileged container bind mounts (LetsEncrypt)
+resource "terraform_data" "fix_bind_mount_permissions_letsencrypt" {
+  # Run this when important variables change
+  triggers_replace = [
+    var.lxc_id,
+    var.lxc_unprivileged,
+    var.lxc_npm_letsencrypt_mount_volume,
+    var.service_user_uid,
+    var.service_user_gid
+  ]
+
+  # Upload script to Proxmox host
+  provisioner "file" {
+    source      = "${path.module}/../../lxc_base_template/scripts/fix_bind_mount_permissions.sh"
+    destination = "/tmp/fix_bind_mount_permissions_le.sh"
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+
+  # Execute script on Proxmox host
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/fix_bind_mount_permissions_le.sh",
+      "/tmp/fix_bind_mount_permissions_le.sh '${var.lxc_npm_letsencrypt_mount_volume}' '${var.service_user_uid}' '${var.service_user_gid}'",
+      "rm -f /tmp/fix_bind_mount_permissions_le.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = var.proxmox_ssh_user
+      private_key = file(pathexpand(var.ssh_private_key_path))
+      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      timeout     = "2m"
+    }
+  }
+}
