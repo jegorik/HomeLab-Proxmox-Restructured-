@@ -7,21 +7,13 @@ fqdn: ${hostname}.${site_name}.local
 # User Configuration
 # -------------------------------------------------------------------------
 users:
-  - name: default
-    groups: users, admin
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
+  - name: root
     ssh_authorized_keys:
       - ${root_ssh_key}
-
-  - name: ${ansible_user_name}
-    groups: users, wheel
+  - name: ${vm_username}
     sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: ${ansible_user_shell}
-    ssh_authorized_keys:
-      - ${ansible_ssh_key}
-
-  - name: root
+    groups: wheel
+    shell: /bin/bash
     ssh_authorized_keys:
       - ${root_ssh_key}
 
@@ -63,4 +55,4 @@ packages:
 # -------------------------------------------------------------------------
 runcmd:
   - systemctl enable --now qemu-guest-agent
-  - [ chown, -R, "${ansible_user_name}:users", /data ]
+  - [chown, -R, "${vm_username}:users", /data]

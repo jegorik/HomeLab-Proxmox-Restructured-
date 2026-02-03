@@ -116,7 +116,7 @@ vm_disk_replicate = true
 data_disk_backup = true
 
 # SCSI controller
-vm_scsi_hardware = "virtio-scsi-pci"
+vm_scsi_hardware = "virtio-scsi-single"
 
 # VM "hardware" configuration
 vm_machine_type    = "q35"
@@ -229,6 +229,7 @@ vm_username = "root"
 # Set to true for new VMs with cloud-init provisioning
 # Set to false to manage existing VMs in Proxmox
 vm_create_new = true
+cloud_init_interface = "ide2"
 
 # Cloud Image Download
 cloud_image_download           = true

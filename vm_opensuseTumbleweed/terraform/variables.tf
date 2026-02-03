@@ -160,6 +160,12 @@ variable "vm_create_new" {
   default     = false
 }
 
+variable "cloud_init_interface" {
+  description = "Interface for cloud-init (ide2, scsi1, etc.)"
+  type        = string
+  default     = "ide2"
+}
+
 variable "cloud_image_download" {
   description = "Download cloud image (true) or use existing disk image (false)"
   type        = bool
@@ -379,7 +385,7 @@ variable "vm_disk_replicate" {
 variable "vm_scsi_hardware" {
   description = "SCSI controller hardware type"
   type        = string
-  default     = "virtio-scsi-pci"
+  default     = "virtio-scsi-single"
 }
 
 # -----------------------------------------------------------------------------

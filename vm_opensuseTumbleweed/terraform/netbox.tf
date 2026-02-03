@@ -106,7 +106,7 @@ resource "netbox_primary_ip" "tumbleweed_vm" {
 resource "netbox_virtual_disk" "boot_disk" {
   name               = var.disk_name
   description        = var.disk_description
-  size_mb            = (var.vm_boot_disk_size * 1024)
+  size_mb            = (var.vm_boot_disk_size * 1000)
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
 
   depends_on = [netbox_virtual_machine.tumbleweed_vm]
@@ -115,7 +115,7 @@ resource "netbox_virtual_disk" "boot_disk" {
 resource "netbox_virtual_disk" "data_disk" {
   name               = var.data_disk_name
   description        = var.data_disk_description
-  size_mb            = (var.data_disk_size * 1024)
+  size_mb            = (var.data_disk_size * 1000)
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
 
   depends_on = [netbox_virtual_machine.tumbleweed_vm]
