@@ -248,6 +248,14 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
     type = var.vm_os_type
   }
 
+  # ---------------------------------------------------------------------------
+  # TPM 2.0 for Security Features
+  # ---------------------------------------------------------------------------
+  tpm_state {
+    datastore_id = var.vm_disk_datastore
+    version      = "v2.0"
+  }
+
   # -------------------------------------------------------------------------
   # Cloud-Init Configuration (for new VM provisioning)
   # -------------------------------------------------------------------------
@@ -258,7 +266,7 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
 
     content {
       datastore_id = var.vm_disk_datastore
-      interface    = var.vm_disk_interface
+      interface    = var.cloud_init_interface
 
       dns {
         servers = var.vm_dns_servers
@@ -357,6 +365,54 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
 }
 
 # -----------------------------------------------------------------------------
+# Ansible User Setup
+# -----------------------------------------------------------------------------
+
+# Create Ansible user with SSH access for configuration management
+# This is a prerequisite for Ansible playbooks to work
+resource "terraform_data" "ansible_user_setup" {
+  # Trigger user creation only when container is recreated
+  triggers_replace = [
+    proxmox_virtual_environment_vm.tumbleweed_vm[0].id
+  ]
+
+  # Ensure container is fully created before user setup
+  depends_on = [proxmox_virtual_environment_vm.tumbleweed_vm[0]]
+
+  # Create Ansible user via SSH
+  # Upload setup script
+  provisioner "file" {
+    source      = "${path.module}/../scripts/setup_ansible_user.sh"
+    destination = "/tmp/setup_ansible_user.sh"
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.vm_ip
+      timeout     = "5m"
+    }
+  }
+
+  # Execute setup script
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/setup_ansible_user.sh",
+      "ANSIBLE_SSH_KEY='${data.vault_generic_secret.ansible_ssh_public_key.data["key"]}' /tmp/setup_ansible_user.sh '${var.ansible_user_enabled}' '${var.ansible_user_name}' '${var.ansible_user_shell}' '${var.ansible_user_sudo}' '${join(",", var.ansible_user_sudo_commands)}' '${join(",", var.ansible_user_groups)}'",
+      "rm -f /tmp/setup_ansible_user.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
+      host        = local.vm_ip
+      timeout     = "5m"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Wait for VM to be Ready
 # -----------------------------------------------------------------------------
 
@@ -368,7 +424,7 @@ resource "terraform_data" "wait_for_vm" {
   provisioner "local-exec" {
     command = <<-EOF
       echo "Waiting for VM to boot and SSH to become available..."
-      VM_IP="${trimsuffix(var.vm_ip_address, "/24")}"
+      VM_IP="${local.vm_ip}"
       
       # Wait up to 5 minutes for SSH
       for i in $(seq 1 60); do

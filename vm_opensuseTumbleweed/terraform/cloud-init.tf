@@ -7,10 +7,8 @@ locals {
   user_data = templatefile("${path.module}/templates/${var.cloudinit_data_file_name}", {
     hostname           = var.vm_hostname
     site_name          = var.site_name
-    ansible_user_name  = var.ansible_user_name
-    ansible_user_shell = var.ansible_user_shell
-    ansible_ssh_key    = trimspace(data.vault_generic_secret.ansible_ssh_public_key.data["key"])
     root_ssh_key       = trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])
+    vm_username        = var.vm_username
   })
 }
 
@@ -42,7 +40,6 @@ resource "terraform_data" "cloud_init_trigger" {
 
   input = {
     root_username = var.vm_username
-    ansible_key   = data.vault_generic_secret.ansible_ssh_public_key.data["key"]
     root_key      = data.vault_generic_secret.root_ssh_public_key.data["key"]
     hostname      = var.vm_hostname
   }
