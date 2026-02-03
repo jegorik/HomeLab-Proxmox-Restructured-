@@ -32,6 +32,7 @@ lxc_base_template/
 ├── terraform/                # Infrastructure as Code
 │   ├── main.tf               # LXC container resource
 │   ├── variables.tf          # Configuration variables (lxc_*)
+│   ├── encryption.tf         # State file encryption configuration  
 │   ├── providers.tf          # Vault + Proxmox + NetBox providers
 │   ├── netbox.tf             # NetBox registration resources
 │   ├── outputs.tf            # Deployment outputs

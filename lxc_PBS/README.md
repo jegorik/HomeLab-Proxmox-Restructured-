@@ -30,6 +30,7 @@ lxc_PBS/
 │
 ├── terraform/                # Infrastructure as Code
 │   ├── main.tf               # LXC container resource with bind mounts
+│   ├── encryption.tf         # State file encryption configuration
 │   ├── variables.tf          # Configuration variables
 │   ├── providers.tf          # Vault + Proxmox + NetBox providers
 │   ├── netbox.tf             # NetBox registration resources
