@@ -19,6 +19,26 @@ variable "vault_skip_tls_verify" {
 }
 
 # -----------------------------------------------------------------------------
+# Encryption Configuration Variables
+# -----------------------------------------------------------------------------
+variable "transit_engine_path" {
+  description = "Vault Transit secrets engine mount path"
+  type        = string
+  default     = "transit"
+}
+
+variable "transit_key_name" {
+  description = "Name of the encryption key in Vault Transit engine"
+  type        = string
+}
+
+variable "transit_key_length" {
+  description = "Length of the encryption key in bytes (e.g., 32 for 256-bit AES)"
+  type        = number
+  default     = 32
+}
+
+# -----------------------------------------------------------------------------
 # Vault Secret Paths
 # -----------------------------------------------------------------------------
 
@@ -252,7 +272,7 @@ variable "vm_cpu_type" {
 variable "vm_boot_order" {
   description = "Boot order for the VM"
   type        = list(string)
-  default     = ["scsi0", "scsi1", "cdrom"]
+  default     = ["scsi0", "ide2", "net0"]
 }
 
 variable "vm_efi_disk_file_format" {

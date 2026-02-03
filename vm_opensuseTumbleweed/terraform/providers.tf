@@ -45,13 +45,6 @@ terraform {
   }
 }
 
-
-provider "vault" {
-  address          = var.vault_address
-  skip_tls_verify  = var.vault_skip_tls_verify
-  skip_child_token = true
-}
-
 # -----------------------------------------------------------------------------
 # Vault Generic Secrets (Persist in State)
 # -----------------------------------------------------------------------------
@@ -114,6 +107,11 @@ ephemeral "vault_kv_secret_v2" "root_ssh_private_key" {
   name  = var.root_ssh_private_key_path
 }
 
+provider "vault" {
+  address          = var.vault_address
+  skip_tls_verify  = var.vault_skip_tls_verify
+  skip_child_token = true
+}
 
 provider "aws" {
   region = var.aws_region
@@ -122,8 +120,6 @@ provider "aws" {
 provider "proxmox" {
   # Proxmox VE API endpoint URL (from Vault)
   endpoint = data.vault_generic_secret.proxmox_endpoint.data["url"]
-
-  # Authentication via username/password (required for bind mounts)
   username = data.vault_generic_secret.proxmox_root.data["username"]
   password = ephemeral.vault_kv_secret_v2.proxmox_root_password.data["password"]
 
@@ -132,8 +128,9 @@ provider "proxmox" {
 
   # SSH configuration for operations requiring direct host access
   ssh {
-    agent    = var.ssh_agent_enabled
-    username = data.vault_generic_secret.proxmox_root.data["username"]
+    agent       = var.ssh_agent_enabled
+    username    = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
+    private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
   }
 }
 

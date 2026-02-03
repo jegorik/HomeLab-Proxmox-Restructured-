@@ -21,6 +21,14 @@ vault_address         = "https://vault.example.local:8200"
 vault_skip_tls_verify = true  # Set to false in production with valid certs
 
 # -----------------------------------------------------------------------------
+# Encryption Configuration
+# -----------------------------------------------------------------------------
+
+transit_key_name    = "your_transit_key_vault_path"
+transit_engine_path = "your_transit_engine_path"
+transit_key_length  = 32
+
+# -----------------------------------------------------------------------------
 # Vault Secret Paths
 # -----------------------------------------------------------------------------
 # Customize these paths if your Vault secret structure differs

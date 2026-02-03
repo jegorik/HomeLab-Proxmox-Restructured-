@@ -15,17 +15,25 @@
 vault_address         = "https://vault.example.local:8200"
 vault_skip_tls_verify = true  # Set to false in production
 
-proxmox_api_token_vault_path     = "your_vault_api_token_path"
-proxmox_endpoint_vault_path      = "your_vault_endpoint_path"
-proxmox_node_name_vault_path     = "your_vault_node_name_path"
-proxmox_root_name_vault_path     = "your_vault_root_name_path"
-proxmox_root_password_vault_path = "your_vault_root_password_path"
-s3_bucket_name_vault_path        = "your_vault_s3_bucket_name_path"
-root_ssh_public_key_path         = "your_vault_root_ssh_public_key_path"
-root_ssh_private_key_path        = "your_vault_root_ssh_private_key_path"
-ansible_ssh_public_key_path      = "your_vault_ansible_ssh_public_key_path"
-ephemeral_vault_mount_path       = "your_vault_ephemeral_vault_mount_path"
-netbox_api_token_vault_path      = "your_vault_netbox_api_token_vault_path"
+# -----------------------------------------------------------------------------
+# Encryption Configuration
+# -----------------------------------------------------------------------------
+
+transit_key_name    = "your_transit_key_vault_path"
+transit_engine_path = "your_transit_engine_path"
+transit_key_length  = 32
+
+proxmox_api_token_vault_path     = "your_api_token_vault_path"
+proxmox_endpoint_vault_path      = "your_endpoint_vault_path"
+proxmox_node_name_vault_path     = "your_node_name_vault_path"
+proxmox_root_name_vault_path     = "your_root_name_vault_path"
+proxmox_root_password_vault_path = "your_root_password_vault_path"
+s3_bucket_name_vault_path        = "your_s3_bucket_name_vault_path"
+root_ssh_public_key_path         = "your_root_ssh_public_key_path"
+root_ssh_private_key_path        = "your_root_ssh_private_key_path"
+ansible_ssh_public_key_path      = "your_ansible_ssh_public_key_path"
+ephemeral_vault_mount_path       = "your_ephemeral_vault_mount_path"
+netbox_api_token_vault_path      = "your_netbox_api_token_vault_path"
 
 # -----------------------------------------------------------------------------
 # NetBox Configuration
@@ -89,8 +97,7 @@ vm_qemu_agent_type = "virtio"
 vm_bios                 = "ovmf"
 
 # Boot order
-vm_boot_order = ["scsi0", "scsi1", "cdrom"]
-
+vm_boot_order = ["scsi0", "ide2", "net0"]
 # Datastore
 vm_disk_datastore       = "local-lvm"
 

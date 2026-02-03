@@ -226,26 +226,6 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
 
   scsi_hardware = var.vm_scsi_hardware
 
-  # Initialization (Cloud-Init)
-  initialization {
-    datastore_id      = var.vm_disk_datastore
-    user_data_file_id = proxmox_virtual_environment_file.cloud_init_user_config[count.index].id
-
-    # Fallback/Additional IP config (Explicit IP config usually wins or merges)
-    # Since we define IP in user_data via template? No, template sets hostname.
-    # We should set IP config here to be safe and standard.
-    ip_config {
-      ipv4 {
-        address = var.vm_ip_address
-        gateway = var.vm_gateway
-      }
-    }
-
-    dns {
-      servers = var.vm_dns_servers
-    }
-  }
-
   # -------------------------------------------------------------------------
   # Network Configuration
   # -------------------------------------------------------------------------
@@ -388,7 +368,7 @@ resource "terraform_data" "wait_for_vm" {
   provisioner "local-exec" {
     command = <<-EOF
       echo "Waiting for VM to boot and SSH to become available..."
-      VM_IP="${local.vm_ip}"
+      VM_IP="${trimsuffix(var.vm_ip_address, "/24")}"
       
       # Wait up to 5 minutes for SSH
       for i in $(seq 1 60); do

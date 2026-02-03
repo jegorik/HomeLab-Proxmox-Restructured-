@@ -36,6 +36,26 @@ variable "vault_username" {
 }
 
 # -----------------------------------------------------------------------------
+# Encryption Configuration Variables
+# -----------------------------------------------------------------------------
+variable "transit_engine_path" {
+  description = "Vault Transit secrets engine mount path"
+  type        = string
+  default     = "transit"
+}
+
+variable "transit_key_name" {
+  description = "Name of the encryption key in Vault Transit engine"
+  type        = string
+}
+
+variable "transit_key_length" {
+  description = "Length of the encryption key in bytes (e.g., 32 for 256-bit AES)"
+  type        = number
+  default     = 32
+}
+
+# -----------------------------------------------------------------------------
 # Vault Secret Paths
 # -----------------------------------------------------------------------------
 
