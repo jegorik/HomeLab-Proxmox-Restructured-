@@ -327,28 +327,28 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
   # Usage: Comment out unused USB blocks or set host to empty string ""
 
   # USB Device 1: Keyboard or primary input
-  usb {
-    host = var.vm_usb_device_1_host # USB ID (e.g., "046d:c328" or "1-4")
-    usb3 = var.vm_usb_device_1_usb3 # false for keyboards (better compatibility)
-  }
+  # usb {
+  #   host = var.vm_usb_device_1_host # USB ID (e.g., "046d:c328" or "1-4")
+  #   usb3 = var.vm_usb_device_1_usb3 # false for keyboards (better compatibility)
+  # }
 
-  # USB Device 2: Mouse or secondary input
-  usb {
-    host = var.vm_usb_device_2_host # USB ID (e.g., "413c:2113" or "4-2")
-    usb3 = var.vm_usb_device_2_usb3 # false for mice (better compatibility)
-  }
+  # # USB Device 2: Mouse or secondary input
+  # usb {
+  #   host = var.vm_usb_device_2_host # USB ID (e.g., "413c:2113" or "4-2")
+  #   usb3 = var.vm_usb_device_2_usb3 # false for mice (better compatibility)
+  # }
 
-  # USB Device 3: Additional peripheral or hub
-  usb {
-    host = var.vm_usb_device_3_host # USB ID (e.g., "0951:1666" or "4-2.3")
-    usb3 = var.vm_usb_device_3_usb3 # true for storage devices
-  }
+  # # USB Device 3: Additional peripheral or hub
+  # usb {
+  #   host = var.vm_usb_device_3_host # USB ID (e.g., "0951:1666" or "4-2.3")
+  #   usb3 = var.vm_usb_device_3_usb3 # true for storage devices
+  # }
 
-  # USB Device 4: Storage or additional device
-  usb {
-    host = var.vm_usb_device_4_host # USB ID or empty "" if not used
-    usb3 = var.vm_usb_device_4_usb3 # true for high-speed devices
-  }
+  # # USB Device 4: Storage or additional device
+  # usb {
+  #   host = var.vm_usb_device_4_host # USB ID or empty "" if not used
+  #   usb3 = var.vm_usb_device_4_usb3 # true for high-speed devices
+  # }
 
   # -------------------------------------------------------------------------
   # Timeout Configuration
@@ -362,54 +362,6 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
   timeout_stop_vm     = var.vm_timeout_stop_vm
   timeout_reboot      = var.vm_timeout_reboot
   timeout_migrate     = var.vm_timeout_migrate
-}
-
-# -----------------------------------------------------------------------------
-# Ansible User Setup
-# -----------------------------------------------------------------------------
-
-# Create Ansible user with SSH access for configuration management
-# This is a prerequisite for Ansible playbooks to work
-resource "terraform_data" "ansible_user_setup" {
-  # Trigger user creation only when container is recreated
-  triggers_replace = [
-    proxmox_virtual_environment_vm.tumbleweed_vm[0].id
-  ]
-
-  # Ensure container is fully created before user setup
-  depends_on = [proxmox_virtual_environment_vm.tumbleweed_vm[0]]
-
-  # Create Ansible user via SSH
-  # Upload setup script
-  provisioner "file" {
-    source      = "${path.module}/../scripts/setup_ansible_user.sh"
-    destination = "/tmp/setup_ansible_user.sh"
-
-    connection {
-      type        = "ssh"
-      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
-      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = local.vm_ip
-      timeout     = "5m"
-    }
-  }
-
-  # Execute setup script
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/setup_ansible_user.sh",
-      "ANSIBLE_SSH_KEY='${data.vault_generic_secret.ansible_ssh_public_key.data["key"]}' /tmp/setup_ansible_user.sh '${var.ansible_user_enabled}' '${var.ansible_user_name}' '${var.ansible_user_shell}' '${var.ansible_user_sudo}' '${join(",", var.ansible_user_sudo_commands)}' '${join(",", var.ansible_user_groups)}'",
-      "rm -f /tmp/setup_ansible_user.sh"
-    ]
-
-    connection {
-      type        = "ssh"
-      user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
-      private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = local.vm_ip
-      timeout     = "5m"
-    }
-  }
 }
 
 # -----------------------------------------------------------------------------

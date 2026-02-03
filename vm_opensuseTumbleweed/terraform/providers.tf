@@ -79,6 +79,12 @@ data "vault_generic_secret" "s3_bucket_name" {
   path = var.s3_bucket_name_vault_path
 }
 
+# Retrieve NetBox API token from Vault (for local-exec in workarounds)
+# Note: This is a non-ephemeral copy needed for curl commands
+data "vault_generic_secret" "netbox_api_token" {
+  path = "${var.ephemeral_vault_mount_path}${var.netbox_api_token_vault_path}"
+}
+
 # -----------------------------------------------------------------------------
 # Vault Ephemeral Secrets (Do Not Persist in State)
 # -----------------------------------------------------------------------------

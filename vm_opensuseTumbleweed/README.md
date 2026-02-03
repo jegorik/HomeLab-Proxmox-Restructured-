@@ -245,6 +245,7 @@ vm_opensuseTumbleweed/
 │
 ├── scripts/                          # Helper scripts
 │   ├── common.sh                     # Logging and utility functions
+│   ├── setup_ansible_user.sh         # Setup ansible user on target VM
 │   ├── credentials.sh                # Credential management
 │   ├── terraform.sh                  # Terraform operations
 │   └── ansible.sh                    # Ansible operations
