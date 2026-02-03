@@ -255,13 +255,13 @@ variable "lxc_os_type" {
 # Bind mounts allow persistent storage that survives container recreation.
 # IMPORTANT: Bind mounts usually require privileged containers or complex idmap.
 
-variable "lxc_influxdb_data_mount_volume"{
+variable "lxc_influxdb_data_mount_volume" {
   description = "Host path for InfluxDB data"
   type        = string
   default     = "/rpool/data/influxdb"
 }
 
-variable "lxc_influxdb_data_mount_path"{
+variable "lxc_influxdb_data_mount_path" {
   description = "Container path for InfluxDB data"
   type        = string
   default     = "/var/lib/influxdb"

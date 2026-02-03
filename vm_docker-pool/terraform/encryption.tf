@@ -112,7 +112,3 @@ terraform {
     }
   }
 }
-
-data "vault_generic_secret" "s3_bucket_name" {
-  path = var.s3_bucket_name_vault_path
-}
