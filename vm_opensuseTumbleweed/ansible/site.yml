@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# VM OpenSUSE Tumbleweed - Main Ansible Playbook
+# =============================================================================
+# Configures OpenSUSE Tumbleweed 16 VM (common, software, desktop).
+
+- name: Configure OpenSUSE Tumbleweed 16 VM
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Ensure python3-zypp is installed for zypper module
+      ansible.builtin.raw: zypper install -y python3-zypp
+      changed_when: false
+      failed_when: false
+
+  roles:
+    - role: common
+      tags: [common, always]
+    - role: software_installation
+      tags: [software_installation]
+    - role: desktop_environment
+      tags: [desktop_environment]

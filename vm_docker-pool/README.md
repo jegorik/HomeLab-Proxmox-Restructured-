@@ -96,6 +96,7 @@ vm_docker-pool/
 │   └── vault.sh              # Vault authentication
 └── terraform/
     ├── backend.tf            # S3 backend configuration
+    ├── encryption.tf         # State file encryption configuration
     ├── main.tf               # VM resource definition
     ├── netbox.tf             # NetBox DCIM registration
     ├── outputs.tf            # Terraform outputs

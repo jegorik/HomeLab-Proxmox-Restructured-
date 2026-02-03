@@ -76,6 +76,9 @@ graph TB
         DOCKER[vm_docker-pool<br/>Docker + Portainer<br/>:9443]
         DOCKER1[Bind Mounts]
         AUTH[authentik<br/>SSO & IAM<br/>:9000/9443]
+        OPENSUSE[vm_opensuseTumbleweed<br/>OpenSUSE Workstation<br/>Desktop Environment]
+        OPENSUSE1[USB Passthrough]
+        OPENSUSE2[Data Disk 50GB]
     end
     
     subgraph "Future Projects"
@@ -84,6 +87,7 @@ graph TB
     
     A -->|Provision| E
     A -->|Provision| DOCKER
+    A -->|Provision| OPENSUSE
     A -->|Provision| F
     A -->|Provision| NPM
     A -->|Provision| PBS
@@ -98,6 +102,7 @@ graph TB
     B -->|Configure| PBS
     B -->|Configure| INFLUX
     B -->|Configure| GRAFANA
+    B -->|Configure| OPENSUSE
     
     C -->|Automate| A
     C -->|Automate| B
@@ -109,6 +114,7 @@ graph TB
     E -->|Secrets & Encryption| INFLUX
     E -->|Secrets & Encryption| GRAFANA
     E -->|Secrets & Encryption| DOCKER
+    E -->|Secrets & Encryption| OPENSUSE
     
     F --> F1
     F --> F2
@@ -128,6 +134,10 @@ graph TB
     
     DOCKER --> DOCKER1
     DOCKER -->|Deploy| AUTH
+    
+    OPENSUSE --> OPENSUSE1
+    OPENSUSE --> OPENSUSE2
+    
     AUTH -.->|SSO| GRAFANA
     AUTH -.->|SSO| SEMA
     AUTH -.->|SSO| DOCKER
@@ -145,6 +155,7 @@ graph TB
     D -->|Network| GRAFANA
     D -->|Network| SEMA
     D -->|Network| DOCKER
+    D -->|Network| OPENSUSE
     D -->|Network| I
     
     style E fill:#844fba,color:#fff
@@ -154,6 +165,7 @@ graph TB
     style INFLUX fill:#9b59b6,color:#fff
     style GRAFANA fill:#ff6b6b,color:#fff
     style DOCKER fill:#2496ED,color:#fff
+    style OPENSUSE fill:#73BA25,color:#fff
     style AUTH fill:#fd4b2d,color:#fff
     style H fill:#28a745,color:#fff
     style I fill:#6c757d,color:#fff
@@ -463,8 +475,6 @@ sequenceDiagram
 
 ---
 
----
-
 ### 11. **authentik** - Identity and Access Management
 
 **Purpose**: SSO and IAM solution for centralized authentication
@@ -489,7 +499,42 @@ sequenceDiagram
 - Docker Compose plugin installed
 - Portainer CE accessible for container management
 
-### 12. **Future Projects**
+---
+
+### 12. **vm_opensuseTumbleweed** - OpenSUSE Tumbleweed Workstation
+
+**Purpose**: Rolling-release Linux workstation VM with desktop environment and USB passthrough
+
+**Status**: ✅ Production-ready with Vault integration
+
+**Key Features**:
+
+- **OpenSUSE Tumbleweed** rolling-release distribution
+- **UEFI/OVMF boot** for modern operating system support
+- **Desktop Environment** (KDE Plasma or GNOME)
+- **USB Device Passthrough** (up to 4 devices - keyboard, mouse, peripherals)
+- **Dual Disk Configuration** (32GB boot + 50GB data disk)
+- Cloud-init for initial VM provisioning
+- QEMU Guest Agent for Proxmox integration
+- Ansible-based configuration management
+- Full Vault integration for secrets and state encryption
+
+**Documentation**: See [vm_opensuseTumbleweed/README.md](vm_opensuseTumbleweed/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- Vault Transit engine enabled
+- Required secrets stored in Vault KV
+- Vault authentication configured (userpass)
+- OpenSUSE Tumbleweed cloud image available
+- USB devices identified (optional, for passthrough)
+
+---
+
+### 13. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
@@ -576,6 +621,20 @@ A collection of Docker Compose templates for rapid deployment of containerized s
    ./deploy.sh deploy
    ```
 
+8. **vm_opensuseTumbleweed** - Deploy OpenSUSE Tumbleweed Workstation VM (requires Vault)
+
+   ```bash
+   cd vm_opensuseTumbleweed
+   # Edit terraform/terraform.tfvars and terraform/s3.backend.config
+   cd terraform
+   tofu init -backend-config=s3.backend.config
+   tofu apply
+   # Then configure with Ansible
+   cd ../ansible
+   # Edit inventory.yml with VM IP
+   ansible-playbook site.yml
+   ```
+
 ### Phase 3: Future Services
 
 1. **Additional Projects** - Deploy as needed
@@ -595,6 +654,7 @@ A collection of Docker Compose templates for rapid deployment of containerized s
 | **lxc_grafana** | lxc_vault, (optional) lxc_influxdb | Transit engine, KV secrets, userpass auth |
 | **lxc_semaphoreUI** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **vm_docker-pool** | lxc_vault | Transit engine, KV secrets, userpass auth |
+| **vm_opensuseTumbleweed** | lxc_vault | Transit engine, KV secrets, userpass auth |
 | **authentik** | vm_docker-pool | Working Docker environment, Portainer CE |
 | **lxc_base_template** | lxc_vault, lxc_netbox | Credentials, NetBox API token |
 | **netbox_settings_template** | lxc_netbox | NetBox API token, Transit engine |
@@ -858,7 +918,7 @@ This project is licensed under the MIT License - see individual project LICENSE 
 
 ---
 
-**Last Updated**: January 25, 2026
+**Last Updated**: February 3, 2026
 
 **Maintained By**: HomeLab Infrastructure Team
 

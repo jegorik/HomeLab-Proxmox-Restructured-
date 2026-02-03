@@ -1,0 +1,66 @@
+#cloud-config
+hostname: ${hostname}
+manage_etc_hosts: true
+fqdn: ${hostname}.${site_name}.local
+
+# -------------------------------------------------------------------------
+# User Configuration
+# -------------------------------------------------------------------------
+users:
+  - name: default
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${root_ssh_key}
+
+  - name: ${ansible_user_name}
+    groups: users, wheel
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: ${ansible_user_shell}
+    ssh_authorized_keys:
+      - ${ansible_ssh_key}
+
+  - name: root
+    ssh_authorized_keys:
+      - ${root_ssh_key}
+
+# -------------------------------------------------------------------------
+# Disk Formatting & Mounting (Secondary Persistence Disk)
+# -------------------------------------------------------------------------
+disk_setup:
+  /dev/sdb:
+    table_type: gpt
+    layout: true
+    overwrite: false # Don't wipe if already exists (persistence)
+
+fs_setup:
+  - label: DATA
+    filesystem: xfs
+    device: /dev/sdb1
+    overwrite: false # Don't reformat if exists
+
+mounts:
+  - [/dev/sdb1, /data, xfs, "defaults,noatime", "0", "2"]
+
+# -------------------------------------------------------------------------
+# Package Update & Install
+# -------------------------------------------------------------------------
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - curl
+  - wget
+  - git
+  - vim
+  - sudo
+  - python3
+  - python3-pip
+
+# -------------------------------------------------------------------------
+# Final Tasks
+# -------------------------------------------------------------------------
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+  - [ chown, -R, "${ansible_user_name}:users", /data ]

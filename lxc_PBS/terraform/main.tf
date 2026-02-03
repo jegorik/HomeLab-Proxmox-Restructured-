@@ -53,8 +53,8 @@ resource "proxmox_virtual_environment_container" "pbs" {
   start_on_boot = var.lxc_start_on_boot
   started       = var.lxc_started
   # Run unprivileged for security (defaults to true)
-  unprivileged  = var.lxc_unprivileged
-  protection    = var.lxc_protection
+  unprivileged = var.lxc_unprivileged
+  protection   = var.lxc_protection
 
   # Container features
   features {

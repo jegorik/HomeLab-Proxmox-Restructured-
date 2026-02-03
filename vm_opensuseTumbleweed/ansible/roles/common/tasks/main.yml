@@ -1,0 +1,74 @@
+---
+- name: Ensure system is updated
+  community.general.zypper:
+    name: "*"
+    state: latest
+    update_cache: true
+  register: common_zypper_update
+  retries: 3
+  delay: 10
+
+- name: Install base packages
+  community.general.zypper:
+    name:
+      - vim
+      - sudo
+      - curl
+      - wget
+      - git
+      - firewalld
+      - man
+    state: present
+
+- name: Identify secondary disk device (Data Disk)
+  ansible.builtin.shell: |
+    set -o pipefail
+    lsblk -no NAME,SIZE | grep '50G' | awk '{print $1}' | head -n1
+  register: common_data_disk_device
+  changed_when: false
+  # Logic to find the disk dynamically if needed,
+  # but Cloud-Init has already formatted and mounted it to /data.
+  # We just verify permissions here.
+
+- name: Ensure /data directory permissions
+  ansible.builtin.file:
+    path: /data
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    group: users
+    mode: "0755"
+
+- name: Ensure firewalld is running and enabled
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: common_firewall_enabled
+
+- name: Configure Firewall - Allow services
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ common_firewall_allowed_services }}"
+  when: common_firewall_enabled
+  notify: Reload firewalld
+
+- name: Create target user
+  ansible.builtin.user:
+    name: "{{ common_target_user_name }}"
+    password: "{{ common_target_user_password_hash }}"
+    shell: "{{ common_target_user_shell }}"
+    groups: "{{ common_target_user_groups }}"
+    append: true
+    state: present
+  when: common_target_user_name is defined
+
+- name: Ensure passwordless sudo for wheel group
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: "^%wheel"
+    line: "%wheel ALL=(ALL:ALL) ALL"
+    validate: "visudo -cf %s"

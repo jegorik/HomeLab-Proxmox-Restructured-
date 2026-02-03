@@ -1,0 +1,262 @@
+# =============================================================================
+# VM OpenSUSE Tumbleweed - Terraform Variables Example
+# =============================================================================
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   nano terraform.tfvars
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Vault Configuration
+# -----------------------------------------------------------------------------
+
+vault_address         = "https://vault.example.local:8200"
+vault_skip_tls_verify = true  # Set to false in production
+
+# -----------------------------------------------------------------------------
+# Encryption Configuration
+# -----------------------------------------------------------------------------
+
+transit_key_name    = "your_transit_key_vault_path"
+transit_engine_path = "your_transit_engine_path"
+transit_key_length  = 32
+
+proxmox_api_token_vault_path     = "your_api_token_vault_path"
+proxmox_endpoint_vault_path      = "your_endpoint_vault_path"
+proxmox_node_name_vault_path     = "your_node_name_vault_path"
+proxmox_root_name_vault_path     = "your_root_name_vault_path"
+proxmox_root_password_vault_path = "your_root_password_vault_path"
+s3_bucket_name_vault_path        = "your_s3_bucket_name_vault_path"
+root_ssh_public_key_path         = "your_root_ssh_public_key_path"
+root_ssh_private_key_path        = "your_root_ssh_private_key_path"
+ansible_ssh_public_key_path      = "your_ansible_ssh_public_key_path"
+ephemeral_vault_mount_path       = "your_ephemeral_vault_mount_path"
+netbox_api_token_vault_path      = "your_netbox_api_token_vault_path"
+
+# -----------------------------------------------------------------------------
+# NetBox Configuration
+# -----------------------------------------------------------------------------
+
+netbox_url      = "https://netbox.example.local:8000"
+netbox_insecure = true
+
+# -----------------------------------------------------------------------------
+# AWS Configuration (S3 Backend)
+# -----------------------------------------------------------------------------
+
+aws_region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# Proxmox Connection
+# -----------------------------------------------------------------------------
+
+connection_insecure = true
+ssh_agent_enabled   = true
+
+# -----------------------------------------------------------------------------
+# VM Identity
+# -----------------------------------------------------------------------------
+
+vm_id          = 210
+vm_hostname    = "opensuseTumbleweed"
+vm_description = "OpenSUSE Tumbleweed VM - Managed by OpenTofu"
+vm_tags        = ["tofu-managed", "opensuse", "Tumbleweed"]
+
+# -----------------------------------------------------------------------------
+# VM Resources
+# -----------------------------------------------------------------------------
+
+# Boot disk
+vm_boot_disk_size       = 50 # GB
+vm_efi_disk_file_format = "raw"
+vm_efi_disk_type        = "4m"
+vm_disk_interface       = "scsi0"
+vm_disk_discard         = "on"
+vm_disk_ssd             = true
+vm_disk_iothread        = true
+
+# VM settings
+vm_on_boot              = false
+vm_started              = true
+vm_stop_on_destroy      = true
+vm_template             = false
+vm_migrate              = false
+vm_reboot               = false
+vm_protection           = false
+vm_reboot_after_update  = true
+
+# QEMU agent 
+vm_qemu_agent_enabled   = true
+vm_qemu_agent_timeout   = "2m"
+vm_qemu_agent_trim = false
+vm_qemu_agent_type = "virtio"
+
+# Bios
+vm_bios                 = "ovmf"
+
+# Boot order
+vm_boot_order = ["scsi0", "ide2", "net0"]
+# Datastore
+vm_disk_datastore       = "local-lvm"
+
+# Secondary data disk
+data_disk_datastore   = "local-lvm"
+data_disk_interface   = "scsi1" # Extracted to variable
+data_disk_size        = 50     # GB
+data_disk_file_format = "raw"
+data_disk_discard     = "ignore"
+data_disk_ssd         = true
+data_disk_iothread    = true
+vm_disk_aio = "io_uring"
+vm_disk_cache = "writeback"
+vm_disk_backup = true
+vm_disk_replicate = true
+data_disk_backup = true
+
+# SCSI controller
+vm_scsi_hardware = "virtio-scsi-pci"
+
+# VM "hardware" configuration
+vm_machine_type    = "q35"
+vm_cpu_cores       = 4
+vm_cpu_type        = "x86-64-v2-AES"
+vm_cpu_sockets = 1
+vm_cpu_architecture = "x86_64"
+vm_cpu_hotplugged = 0
+vm_cpu_limit = 0
+vm_cpu_units = 1024
+vm_cpu_numa = false
+vm_memory          = 8192
+vm_memory_floating = 0
+vm_memory_keep_hugepages = false
+
+# OS type
+vm_os_type = "l26"
+
+# -----------------------------------------------------------------------------
+# USB Device Passthrough
+# -----------------------------------------------------------------------------
+
+# USB Device 1: Dell Keyboard (413c:2514)
+vm_usb_device_1_host = "413c:2514"
+vm_usb_device_1_usb3 = false
+
+# USB Device 2: Hub Port 1-4
+vm_usb_device_2_host = "1-4"
+vm_usb_device_2_usb3 = false
+
+# USB Device 3: Hub Port 4-2.4
+vm_usb_device_3_host = "4-2.4"
+vm_usb_device_3_usb3 = false
+
+# USB Device 4: Logitech Device (046d:c328)
+vm_usb_device_4_host = "046d:c328"
+vm_usb_device_4_usb3 = false
+
+# -----------------------------------------------------------------------------
+# VM Network
+# -----------------------------------------------------------------------------
+
+vm_ip_address     = "[IP_ADDRESS]"
+vm_gateway        = "[GATEWAY_IP_ADDRESS]"
+vm_dns_servers    = ["[FIRST_DNS_IP_ADDRESS]", "[SECOND_DNS_IP_ADDRESS]"]
+vm_network_bridge = "vmbr0"
+vm_network_model    = "virtio"
+vm_network_mac_address = ""
+vm_network_enabled = true
+vm_network_firewall = false
+vm_network_disconnected = false
+vm_network_mtu = 1
+vm_network_rate_limit = 0
+vm_use_dhcp = false
+
+# -----------------------------------------------------------------------------
+# VM Lifecycle
+# -----------------------------------------------------------------------------
+
+vm_startup_order      = "1"
+vm_startup_up_delay   = "20"
+vm_startup_down_delay = "20"
+
+# -----------------------------------------------------------------------------
+# Timeout Configuration
+# -----------------------------------------------------------------------------
+
+vm_timeout_create      = 1800
+vm_timeout_clone       = 1800
+vm_timeout_start_vm    = 1800
+vm_timeout_shutdown_vm = 1800
+vm_timeout_stop_vm     = 300
+vm_timeout_reboot      = 1800
+vm_timeout_move_disk   = 1800
+vm_timeout_migrate     = 1800
+
+# -----------------------------------------------------------------------------
+# Random password generator settings
+# -----------------------------------------------------------------------------
+
+password_length = 20
+password_use_special_chars = true
+password_special_chars = "!@#$%^&*"
+password_lower_chars_count = 4
+password_upper_chars_count = 4
+password_numeric_count = 4
+password_special_chars_count = 4
+
+
+# -----------------------------------------------------------------------------
+# Ansible User
+# -----------------------------------------------------------------------------
+
+ansible_user_enabled = true
+ansible_user_name    = "ansible"
+ansible_user_sudo    = true
+ansible_user_shell   = "/bin/bash"
+
+# -----------------------------------------------------------------------------
+# Root User
+# -----------------------------------------------------------------------------
+
+vm_username = "root"
+
+# -----------------------------------------------------------------------------
+# Cloud Image
+# -----------------------------------------------------------------------------
+
+# VM Creation Control
+# Set to true for new VMs with cloud-init provisioning
+# Set to false to manage existing VMs in Proxmox
+vm_create_new = true
+
+# Cloud Image Download
+cloud_image_download           = true
+vm_cloud_image_url       = "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-Cloud-Snapshot20260131.qcow2"
+vm_cloud_image_filename  = "openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-Cloud-Snapshot20260131.qcow2"
+vm_cloud_image_datastore = "local"
+cloud_image_checksum     = "95da5b30afbbe29608677b5ecee99d3a9f869c6f75ef4d9178218686e09b411c"
+cloud_image_checksum_algorithm = "sha256"
+overwrite_cloud_image = false
+cloud_image_checksum_verification = true
+cloud_image_upload_timeout = 1800 # # 30 minutes (sufficient for slow connections)
+cloudinit_data_file_name = "user-data.yaml.tftpl"
+cloudinit_content_type = "snippets"
+
+# -----------------------------------------------------------------------------
+# NetBox Metadata
+# -----------------------------------------------------------------------------
+
+vm_status_in_netbox = "active"
+vm_ip_status_in_netbox = "active"
+vm_netbox_object_type = "virtualization.vminterface"
+disk_name = "boot_disk"
+disk_description = "Boot disk for OpenSUSE Tumbleweed VM"
+data_disk_name = "data-disk"
+data_disk_description = "Secondary Persistent Data Disk"
+cluster_name     = "Cluster-01"
+site_name        = "HomeLab"
+device_id        = 1
+vrf_name         = "HomeLab-VRF"
+tenant_name      = "HomeLab"
+interface_name   = "eth0"

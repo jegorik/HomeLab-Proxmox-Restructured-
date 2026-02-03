@@ -87,6 +87,35 @@
   changed_when: true
   tags: ["install", "git"]
 
+- name: Set ownership of NetBox directory (ensure all files owned by netbox user)
+  ansible.builtin.file:
+    path: "{{ netbox_install_dir }}"
+    owner: "{{ netbox_user }}"
+    group: "{{ netbox_group }}"
+    recurse: true
+  tags: ["install", "permissions"]
+
+- name: Ensure Ansible temp directory exists for netbox user
+  ansible.builtin.file:
+    path: "{{ netbox_install_dir }}/.ansible/tmp"
+    state: directory
+    owner: "{{ netbox_user }}"
+    group: "{{ netbox_group }}"
+    mode: "0755"
+  when: netbox_git_check.stat.exists
+  tags: ["install", "git", "update"]
+
+- name: Add NetBox directory to Git safe.directory
+  community.general.git_config:
+    name: safe.directory
+    value: "{{ netbox_install_dir }}"
+    scope: global
+    add_mode: add
+  become: true
+  become_user: "{{ netbox_user }}"
+  when: netbox_git_check.stat.exists
+  tags: ["install", "git", "update"]
+
 - name: Update NetBox repository (existing installation from bind mount)
   ansible.builtin.git:
     repo: https://github.com/netbox-community/netbox.git
@@ -96,15 +125,7 @@
   become: true
   become_user: "{{ netbox_user }}"
   when: netbox_git_check.stat.exists
-  tags: ["install", "git", "update"]
-
-- name: Set ownership of NetBox directory (ensure all files owned by netbox user)
-  ansible.builtin.file:
-    path: "{{ netbox_install_dir }}"
-    owner: "{{ netbox_user }}"
-    group: "{{ netbox_group }}"
-    recurse: true
-  tags: ["install", "permissions"]
+  tags: ["install", "git", "update", "fetch"]
 
 - name: Create Python virtual environment
   ansible.builtin.command:

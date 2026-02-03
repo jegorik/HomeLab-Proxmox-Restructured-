@@ -1,0 +1,31 @@
+# =============================================================================
+# .gitignore for VM OpenSUSE Tumbleweed (Terraform/Ansible)
+# =============================================================================
+
+# Terraform/OpenTofu
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform/terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*
+*.backend.config
+s3.backend.config
+terraform/s3.backend.config
+tfplan
+*.retry
+
+# Logs
+*.log
+logs/
+logs/*.log
+
+# Generated Ansible inventory (contains real IPs)
+ansible/inventory/hosts.ini
+ansible/inventory/inventory.yml
+ansible/inventory.yml
+ansible/inventory.yaml
+
+# OS / Editor
+.DS_Store
