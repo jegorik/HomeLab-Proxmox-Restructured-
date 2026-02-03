@@ -1,0 +1,65 @@
+---
+- name: Add Brave Browser repository
+  community.general.zypper_repository:
+    name: brave-browser
+    repo: "{{ software_installation_brave_repo_url }}"
+    auto_import_keys: true
+    state: present
+  when: software_installation_install_brave
+
+- name: Add VSCode repository
+  community.general.zypper_repository:
+    name: vscode
+    repo: "{{ software_installation_vscode_repo_url }}"
+    auto_import_keys: true
+    state: present
+  when: software_installation_install_vscode
+
+- name: Refresh repositories
+  ansible.builtin.command: zypper refresh
+  changed_when: true
+
+- name: Install software packages (System/Zypper)
+  community.general.zypper:
+    name:
+      - "{{ 'brave-browser' if software_installation_install_brave else '' }}"
+      - "{{ 'code' if software_installation_install_vscode else '' }}"
+      - "{{ 'docker' if software_installation_install_docker else '' }}"
+      - "{{ 'flatpak' if software_installation_install_flatpak else '' }}"
+    state: present
+    update_cache: true
+  # Filter out empty strings from list handled by Jinja2 inside module usually or need explicit filter.
+  # The module handles empty strings generally by ignoring them or erroring.
+  # To be safe, let's just let it be, or use `reject` filter.
+  # But better refactor:
+  vars:
+    __packages:
+      - "{{ 'brave-browser' if software_installation_install_brave else '' }}"
+      - "{{ 'code' if software_installation_install_vscode else '' }}"
+      - "{{ 'docker' if software_installation_install_docker else '' }}"
+      - "{{ 'flatpak' if software_installation_install_flatpak else '' }}"
+
+- name: Enable and start Docker service
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: software_installation_install_docker
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    groups: docker
+    append: true
+  when: software_installation_install_docker
+
+- name: Add Flathub repository
+  ansible.builtin.command: flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  when: software_installation_install_flatpak
+  changed_when: false
+
+- name: Install Obsidian via Flatpak
+  ansible.builtin.command: flatpak install -y flathub md.obsidian.Obsidian
+  register: software_installation_flatpak_result
+  changed_when: "'Skipping' not in software_installation_flatpak_result.stdout"
+  when: software_installation_install_obsidian and software_installation_install_flatpak

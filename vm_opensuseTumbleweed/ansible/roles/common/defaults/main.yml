@@ -1,0 +1,15 @@
+---
+# Defaults for common role
+
+# System User to create
+# Use mkpasswd -m sha-512 to generate hash
+common_target_user_name: "myuser"  # Override in group_vars or via Vault
+common_target_user_password_hash: "!" # Locked by default if not provided
+common_target_user_groups: ["users", "wheel"]
+common_target_user_shell: "/bin/bash"
+
+# Firewall
+common_firewall_enabled: true
+common_firewall_allowed_services:
+  - ssh
+  - dhcpv6-client

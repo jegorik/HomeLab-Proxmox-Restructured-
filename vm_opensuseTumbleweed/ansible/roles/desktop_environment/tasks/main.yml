@@ -1,0 +1,47 @@
+---
+- name: Install ZSH and font tools
+  community.general.zypper:
+    name:
+      - zsh
+      - tar
+      - gzip
+      - fontconfig
+    state: present
+
+- name: Change user shell to zsh
+  ansible.builtin.user:
+    name: "{{ desktop_environment_target_user }}"
+    shell: /bin/zsh
+
+- name: Check for Oh My Zsh installation
+  ansible.builtin.stat:
+    path: "/home/{{ desktop_environment_target_user }}/.oh-my-zsh"
+  register: desktop_environment_omz_folder
+
+- name: Install Oh My Zsh (via curl)
+  ansible.builtin.shell: |
+    set -o pipefail
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  become: true
+  become_user: "{{ desktop_environment_target_user }}"
+  when: not desktop_environment_omz_folder.stat.exists
+  changed_when: true
+
+- name: Clone Powerlevel10k theme
+  ansible.builtin.git:
+    repo: "https://github.com/romkatv/powerlevel10k.git"
+    dest: "/home/{{ desktop_environment_target_user }}/.oh-my-zsh/custom/themes/powerlevel10k"
+    depth: 1
+    version: master
+  become: true
+  become_user: "{{ desktop_environment_target_user }}"
+  when: desktop_environment_theme_p10k
+
+- name: Configure .zshrc
+  ansible.builtin.lineinfile:
+    path: "/home/{{ desktop_environment_target_user }}/.zshrc"
+    regexp: "^ZSH_THEME="
+    line: 'ZSH_THEME="powerlevel10k/powerlevel10k"'
+  become: true
+  become_user: "{{ desktop_environment_target_user }}"
+  when: desktop_environment_theme_p10k

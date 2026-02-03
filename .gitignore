@@ -197,6 +197,8 @@ fabric.properties
 *.agent/
 *.jules
 
+# Cursor rules
+.cursor/
 # Ansible collections
 *.ansible/
 

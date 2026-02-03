@@ -1,0 +1,9 @@
+---
+software_installation_install_brave: true
+software_installation_install_vscode: true
+software_installation_install_docker: true
+software_installation_install_obsidian: true
+software_installation_install_flatpak: true
+
+software_installation_brave_repo_url: "https://brave-browser-rpm-release.s3.brave.com/x86_64/"
+software_installation_vscode_repo_url: "https://packages.microsoft.com/yumrepos/vscode"

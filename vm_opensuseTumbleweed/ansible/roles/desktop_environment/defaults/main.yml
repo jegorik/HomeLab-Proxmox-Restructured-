@@ -1,0 +1,5 @@
+---
+desktop_environment_configure_zsh: true
+desktop_environment_install_fonts: true
+desktop_environment_theme_p10k: true
+desktop_environment_target_user: "{{ ansible_user_id }}"

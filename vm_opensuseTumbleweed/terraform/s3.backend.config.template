@@ -1,0 +1,37 @@
+# =============================================================================
+# AWS S3 Backend Configuration for OpenTofu State Storage
+# =============================================================================
+# This file configures remote state storage in AWS S3 with state locking.
+#
+# Usage:
+#   tofu init -backend-config=s3.backend.config
+#
+# Prerequisites:
+# 1. AWS S3 bucket created for state storage
+# 2. AWS credentials configured (via Vault dynamic credentials recommended)
+#
+# Last Updated: January 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# S3 Backend Configuration
+# -----------------------------------------------------------------------------
+
+# S3 bucket name where state files are stored
+bucket = "your-terraform-state-bucket"
+
+# Object key path within the S3 bucket
+key = "vm_opensuseTumbleweed/terraform.tfstate"
+
+# AWS region where S3 bucket is located
+region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# State Locking
+# -----------------------------------------------------------------------------
+
+# S3 enable state locking (prevents concurrent modifications)
+use_lockfile = true
+
+# Tags for lock object
+lock_tags = {"lock-owner":"opentofu"}
