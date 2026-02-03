@@ -26,3 +26,9 @@ output "vm_username" {
   description = "The username for root user"
   value       = var.vm_username
 }
+
+output "vm_root_password" {
+  description = "Generated password for VM user (use SSH keys preferably)"
+  value       = random_password.vm_root_password.result
+  sensitive   = true
+}

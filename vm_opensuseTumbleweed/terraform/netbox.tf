@@ -33,12 +33,11 @@ resource "netbox_virtual_machine" "tumbleweed_vm" {
   device_id   = var.device_id
   site_id     = data.netbox_site.site.id
   tenant_id   = data.netbox_tenant.tenant.id
+  vcpus       = var.vm_cpu_cores
+  memory_mb   = var.vm_memory_dedicated
 
-  vcpus        = var.vm_cpu_cores
-  memory_mb    = var.vm_memory_dedicated
-  disk_size_mb = (var.vm_boot_disk_size * 1024) + (var.data_disk_size * 1024)
-
-  status = var.vm_status_in_netbox
+  disk_size_mb = ((var.vm_boot_disk_size + var.data_disk_size) * 1024)
+  status       = var.vm_status_in_netbox
 
   comments = <<-EOT
     OpenSUSE Tumbleweed VM
@@ -55,7 +54,8 @@ resource "netbox_virtual_machine" "tumbleweed_vm" {
 
   lifecycle {
     ignore_changes = [
-      comments
+      comments,
+      disk_size_mb
     ]
   }
 }
@@ -92,11 +92,40 @@ resource "netbox_ip_address" "primary" {
 # Set Primary IP for VM
 # -----------------------------------------------------------------------------
 
+# Workaround for NetBox provider bug #767
+# The provider overwrites VM disk_size_mb on each virtual disk creation
+# This null_resource syncs the correct disk size via API after all disks are created
+resource "terraform_data" "sync_netbox_disk_size" {
+  triggers_replace = [
+    netbox_virtual_disk.boot_disk.id,
+    netbox_virtual_disk.data_disk.id
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      curl -s -X PATCH \
+        -H "Authorization: Token ${data.vault_generic_secret.netbox_api_token.data["token"]}" \
+        -H "Content-Type: application/json" \
+        -d '{"disk": ${(var.vm_boot_disk_size + var.data_disk_size) * 1024}}' \
+        "${var.netbox_url}/api/virtualization/virtual-machines/${netbox_virtual_machine.tumbleweed_vm.id}/" \
+        ${var.netbox_insecure ? "-k" : ""}
+    EOT
+  }
+
+  depends_on = [
+    netbox_virtual_disk.boot_disk,
+    netbox_virtual_disk.data_disk
+  ]
+}
+
 resource "netbox_primary_ip" "tumbleweed_vm" {
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
   ip_address_id      = netbox_ip_address.primary.id
 
-  depends_on = [netbox_ip_address.primary]
+  depends_on = [
+    netbox_ip_address.primary,
+    terraform_data.sync_netbox_disk_size
+  ]
 }
 
 # -----------------------------------------------------------------------------
@@ -106,7 +135,7 @@ resource "netbox_primary_ip" "tumbleweed_vm" {
 resource "netbox_virtual_disk" "boot_disk" {
   name               = var.disk_name
   description        = var.disk_description
-  size_mb            = (var.vm_boot_disk_size * 1000)
+  size_mb            = (var.vm_boot_disk_size * 1024)
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
 
   depends_on = [netbox_virtual_machine.tumbleweed_vm]
@@ -115,7 +144,7 @@ resource "netbox_virtual_disk" "boot_disk" {
 resource "netbox_virtual_disk" "data_disk" {
   name               = var.data_disk_name
   description        = var.data_disk_description
-  size_mb            = (var.data_disk_size * 1000)
+  size_mb            = (var.data_disk_size * 1024)
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
 
   depends_on = [netbox_virtual_machine.tumbleweed_vm]

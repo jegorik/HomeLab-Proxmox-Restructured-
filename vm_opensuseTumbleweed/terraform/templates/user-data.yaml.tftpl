@@ -8,14 +8,28 @@ fqdn: ${hostname}.${site_name}.local
 # -------------------------------------------------------------------------
 users:
   - name: root
+    shell: /bin/bash
     ssh_authorized_keys:
       - ${root_ssh_key}
   - name: ${vm_username}
+    sudo: ALL=(ALL) ALL
+    groups: wheel, admin
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${root_ssh_key}
+  - name: ${ansible_username}
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: wheel
     shell: /bin/bash
     ssh_authorized_keys:
-      - ${root_ssh_key}
+      - ${ansible_ssh_key}
+chpasswd:
+  users:
+    - name: root
+      password: "${vm_root_password}"
+      type: text
+  expire: false
+ssh_pwauth: false
 
 # -------------------------------------------------------------------------
 # Disk Formatting & Mounting (Secondary Persistence Disk)

@@ -5,10 +5,13 @@
 locals {
   # Cloud-Init User Data Configuration
   user_data = templatefile("${path.module}/templates/${var.cloudinit_data_file_name}", {
-    hostname           = var.vm_hostname
-    site_name          = var.site_name
-    root_ssh_key       = trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])
-    vm_username        = var.vm_username
+    hostname         = var.vm_hostname
+    site_name        = var.site_name
+    root_ssh_key     = trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])
+    vm_root_password = terraform_data.password_keeper.input
+    vm_username      = var.vm_username
+    ansible_username = var.ansible_user_name
+    ansible_ssh_key  = trimspace(data.vault_generic_secret.ansible_ssh_public_key.data["key"])
   })
 }
 
