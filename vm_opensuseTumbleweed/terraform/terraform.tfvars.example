@@ -101,19 +101,46 @@ vm_boot_order = ["scsi0", "ide2", "net0"]
 # Datastore
 vm_disk_datastore       = "local-lvm"
 
-# Secondary data disk
-data_disk_datastore   = "local-lvm"
-data_disk_interface   = "scsi1" # Extracted to variable
-data_disk_size        = 50     # GB
-data_disk_file_format = "raw"
-data_disk_discard     = "ignore"
-data_disk_ssd         = true
-data_disk_iothread    = true
+# -----------------------------------------------------------------------------
+# VirtIO-FS Persistent Storage
+# -----------------------------------------------------------------------------
+# Prerequisites:
+# 1. Create ZFS datasets on Proxmox host:
+#    zfs create <your-pool>/vm_workstation
+#    zfs create <your-pool>/vm_workstation/home
+#    zfs create <your-pool>/vm_workstation/etc
+#    chown 1000:1000 /<your-pool>/vm_workstation/home
+#
+# 2. Create Directory Mappings in Proxmox GUI:
+#    Datacenter → Resource Mappings → Add Directory
+#    - ID: workstation_home, Path: /<your-pool>/vm_workstation/home, Nodes: <your-node>
+#    - ID: workstation_etc, Path: /<your-pool>/vm_workstation/etc, Nodes: <your-node>
+
+# VirtIO-FS for /home (user data, configs, documents)
+virtiofs_home_enabled = true
+virtiofs_home_mapping = "workstation_home"  # Must match Proxmox Directory Mapping ID
+
+# VirtIO-FS for /persistent/etc (selective system configs)
+virtiofs_etc_enabled = true
+virtiofs_etc_mapping = "workstation_etc"    # Must match Proxmox Directory Mapping ID
+
+# VirtIO-FS options
+virtiofs_cache_mode   = "auto"    # auto, always, metadata, never
+virtiofs_direct_io    = false
+virtiofs_expose_acl   = true      # Enable POSIX ACLs
+virtiofs_expose_xattr = true      # Enable extended attributes
+
+# System config items to persist via symlinks to /persistent/etc/<item>
+persistent_etc_items = ["NetworkManager", "systemd/system"]
+
+# Fixed UID for target user (ensures permission consistency)
+target_user_uid = 1000
+
+# Boot disk I/O settings
 vm_disk_aio = "io_uring"
 vm_disk_cache = "writeback"
 vm_disk_backup = true
 vm_disk_replicate = true
-data_disk_backup = true
 
 # SCSI controller
 vm_scsi_hardware = "virtio-scsi-single"
@@ -253,8 +280,6 @@ vm_ip_status_in_netbox = "active"
 vm_netbox_object_type = "virtualization.vminterface"
 disk_name = "boot_disk"
 disk_description = "Boot disk for OpenSUSE Tumbleweed VM"
-data_disk_name = "data-disk"
-data_disk_description = "Secondary Persistent Data Disk"
 cluster_name     = "Cluster-01"
 site_name        = "HomeLab"
 device_id        = 1

@@ -64,13 +64,18 @@ graph TB
         C[Virtual Machine<br/>OpenSUSE Tumbleweed]
         D[Virtual Bridge<br/>vmbr0]
         E[USB Devices<br/>Keyboard/Mouse]
+        Z[ZFS Datasets<br/>Persistent Storage]
     end
     
     subgraph "VM Components"
         F[Desktop Environment<br/>KDE Plasma/GNOME]
         G[QEMU Guest Agent]
         H[Cloud-Init]
-        I[Secondary Data Disk<br/>50GB /data]
+    end
+    
+    subgraph "Persistent Storage (VirtIO-FS)"
+        P1[/home<br/>User Data & Configs]
+        P2[/persistent/etc<br/>System Configs]
     end
     
     subgraph "State Management"
@@ -91,7 +96,8 @@ graph TB
     C -->|Runs| F
     C -->|Runs| G
     C -->|Initialized by| H
-    C -->|Mounts| I
+    Z -->|VirtIO-FS| P1
+    Z -->|VirtIO-FS| P2
     E -->|Passthrough| C
     
     A -->|Secrets| L
@@ -102,7 +108,28 @@ graph TB
     style F fill:#1d99f3,color:#fff
     style K fill:#28a745,color:#fff
     style L fill:#844fba,color:#fff
+    style Z fill:#ff6600,color:#fff
 ```
+
+### Data Persistence Model
+
+This project uses **VirtIO-FS** to share host ZFS datasets with the VM, enabling data to persist independently of the VM lifecycle:
+
+```text
+Host (Proxmox)                          VM (Guest)
+─────────────────                       ─────────────
+/<pool>/vm_workstation/home    ──▶      /home (virtiofs mount)
+/<pool>/vm_workstation/etc     ──▶      /persistent/etc (virtiofs mount)
+                                         ├── NetworkManager → /etc/NetworkManager (symlink)
+                                         └── systemd/system → /etc/systemd/system (symlink)
+```
+
+**Key Benefits:**
+
+- 🔄 **VM Recreation Safe**: Destroy and recreate VM without losing user data
+- 📦 **User Settings Preserved**: Application configs in ~/.config, ~/.local persist
+- 🔧 **Selective /etc Persistence**: Network configs, custom services survive reinstall
+- 🔑 **Permission Consistency**: Fixed UID 1000 ensures ownership matches across recreations
 
 ## ✨ Features
 
@@ -111,7 +138,7 @@ graph TB
 - ✅ **UEFI/OVMF Boot Support** for modern operating systems
 - ✅ **High-Performance CPU** with host passthrough option
 - ✅ **Flexible Resource Allocation** (CPU, RAM, Disk)
-- ✅ **Dual Disk Configuration** (Boot + Data persistence)
+- ✅ **VirtIO-FS Persistent Storage** (ZFS-backed /home and /etc)
 - ✅ **USB Device Passthrough** (up to 4 devices)
 - ✅ **Network Configuration** (Static IP or DHCP)
 - ✅ **Cloud-Init Provisioning** for automated setup
@@ -119,6 +146,15 @@ graph TB
 - ✅ **Encrypted State Files** using Vault Transit engine
 - ✅ **S3 Remote State Backend** with locking
 - ✅ **NetBox DCIM Integration** for VM registration
+
+### Persistent Storage (VirtIO-FS)
+
+- ✅ **User Data Persistence** - /home survives VM destruction
+- ✅ **Config Preservation** - ~/.config, ~/.local preserved
+- ✅ **Selective /etc Persistence** - NetworkManager, systemd units
+- ✅ **Fresh vs Reconnect Detection** - Ansible handles both scenarios
+- ✅ **Fixed UID Consistency** - Permissions match across recreations
+- ✅ **ACL & Xattr Support** - Full POSIX permissions via VirtIO-FS
 
 ### Configuration (Ansible)
 
@@ -155,7 +191,7 @@ graph TB
 
 | Tool | Version | Purpose |
 | ------ | --------- | --------- |
-| **Proxmox VE** | 8.x+ | Hypervisor platform |
+| **Proxmox VE** | 8.4+ | Hypervisor platform (VirtIO-FS support) |
 | **OpenTofu** | 1.8+ | Infrastructure provisioning (or Terraform 1.7+) |
 | **Ansible** | 2.15+ | Configuration management |
 | **Python** | 3.9+ | Ansible runtime |
@@ -245,10 +281,9 @@ vm_opensuseTumbleweed/
 │
 ├── scripts/                          # Helper scripts
 │   ├── common.sh                     # Logging and utility functions
-│   ├── setup_ansible_user.sh         # Setup ansible user on target VM
-│   ├── credentials.sh                # Credential management
-│   ├── terraform.sh                  # Terraform operations
-│   └── ansible.sh                    # Ansible operations
+│   ├── vault.sh                      # Vault authentication and AWS credentials
+│   ├── terraform.sh                  # Terraform/OpenTofu operations
+│   └── ansible.sh                    # Ansible inventory and execution
 │
 ├── terraform/                        # Infrastructure provisioning
 │   ├── main.tf                       # VM resource definition
@@ -266,11 +301,13 @@ vm_opensuseTumbleweed/
     ├── ansible.cfg                   # Ansible configuration
     ├── site.yml                      # Main playbook
     ├── inventory.yml.example         # Example inventory
+    ├── group_vars/all.yml            # Global variables
     │
     └── roles/                        # Ansible roles
-        ├── common/                   # Base system configuration
-        ├── software_installation/    # Software packages
-        └── desktop_environment/      # Desktop environment setup
+        ├── persistence/              # VirtIO-FS mounts and /etc symlinks
+        ├── common/                   # Base system (firewall, sudoers, packages)
+        ├── software_installation/    # Flatpak, Brave, VSCode, development tools
+        └── desktop_environment/      # KDE Plasma or GNOME installation
 ```
 
 ## 🔧 Configuration
@@ -293,7 +330,6 @@ vm_cpu_cores = 2
 vm_cpu_type = \"x86-64-v2-AES\"  # or \"host\" for maximum performance
 vm_memory_dedicated = 4096
 vm_boot_disk_size = 32
-data_disk_size = 50
 
 # USB Device Passthrough (optional)
 vm_usb_device_1_host = \"212e:1534\"  # Keyboard

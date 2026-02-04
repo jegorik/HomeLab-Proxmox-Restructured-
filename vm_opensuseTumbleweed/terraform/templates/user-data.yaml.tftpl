@@ -6,12 +6,14 @@ fqdn: ${hostname}.${site_name}.local
 # -------------------------------------------------------------------------
 # User Configuration
 # -------------------------------------------------------------------------
+# Note: Target user is created by Ansible with fixed UID for permission consistency
 users:
   - name: root
     shell: /bin/bash
     ssh_authorized_keys:
       - ${root_ssh_key}
   - name: ${vm_username}
+    uid: ${target_user_uid}
     sudo: ALL=(ALL) ALL
     groups: wheel, admin
     shell: /bin/bash
@@ -32,22 +34,19 @@ chpasswd:
 ssh_pwauth: false
 
 # -------------------------------------------------------------------------
-# Disk Formatting & Mounting (Secondary Persistence Disk)
+# VirtIO-FS Mounts (Persistent Storage from Host ZFS Datasets)
 # -------------------------------------------------------------------------
-disk_setup:
-  /dev/sdb:
-    table_type: gpt
-    layout: true
-    overwrite: false # Don't wipe if already exists (persistence)
-
-fs_setup:
-  - label: DATA
-    filesystem: xfs
-    device: /dev/sdb1
-    overwrite: false # Don't reformat if exists
-
+# Data persists independently of VM lifecycle - survives destroy/recreate.
+# Mapping names must match Proxmox Directory Mapping IDs.
+%{ if virtiofs_home_enabled || virtiofs_etc_enabled ~}
 mounts:
-  - [/dev/sdb1, /data, xfs, "defaults,noatime", "0", "2"]
+%{ if virtiofs_home_enabled ~}
+  - ["${virtiofs_home_mapping}", "/home", "virtiofs", "defaults,nofail,_netdev", "0", "0"]
+%{ endif ~}
+%{ if virtiofs_etc_enabled ~}
+  - ["${virtiofs_etc_mapping}", "/persistent/etc", "virtiofs", "defaults,nofail,_netdev", "0", "0"]
+%{ endif ~}
+%{ endif ~}
 
 # -------------------------------------------------------------------------
 # Package Update & Install
@@ -65,8 +64,61 @@ packages:
   - python3-pip
 
 # -------------------------------------------------------------------------
+# Write Files (Persistence Detection Script)
+# -------------------------------------------------------------------------
+write_files:
+  - path: /usr/local/bin/check-persistence-marker.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      # Check if this is a fresh install or reconnection to existing data
+      MARKER_FILE="/home/.persistent_marker"
+      if [ -f "$MARKER_FILE" ]; then
+        echo "RECONNECT"
+      else
+        echo "FRESH"
+      fi
+
+# -------------------------------------------------------------------------
 # Final Tasks
 # -------------------------------------------------------------------------
 runcmd:
   - systemctl enable --now qemu-guest-agent
-  - [chown, -R, "${vm_username}:users", /data]
+%{ if !use_dhcp ~}
+  # Configure NetworkManager with static IP (persists across reboots)
+  # Delete auto-created DHCP connection and create static one
+  - nmcli con delete "Wired connection 1" || true
+  - nmcli con delete "cloud-init eth0" || true
+  - |
+    nmcli con add type ethernet con-name "static-eth0" ifname eth0 \
+      ipv4.method manual \
+      ipv4.addresses "${vm_ip_address}" \
+      ipv4.gateway "${vm_gateway}" \
+      ipv4.dns "${vm_dns_servers}" \
+      ipv6.method disabled \
+      connection.autoconnect yes
+  - nmcli con up "static-eth0"
+%{ endif ~}
+%{ if virtiofs_home_enabled || virtiofs_etc_enabled ~}
+  # SELinux: Set permissive mode for virtiofs mounts (required for write access)
+  # The unlabeled_t context from host prevents writes in enforcing mode
+  - setenforce 0 || true
+  - sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config || true
+%{ endif ~}
+%{ if virtiofs_home_enabled ~}
+  # Create user home directories on the mounted virtiofs (after mount completes)
+  - mkdir -p /home/${vm_username}/.ssh
+  - mkdir -p /home/${ansible_username}/.ssh
+  - chown -R ${target_user_uid}:users /home/${vm_username}
+  - chown -R $(id -u ${ansible_username}):users /home/${ansible_username}
+  # Set up SSH authorized_keys on the persistent filesystem
+  - echo "${root_ssh_key}" > /home/${vm_username}/.ssh/authorized_keys
+  - echo "${ansible_ssh_key}" > /home/${ansible_username}/.ssh/authorized_keys
+  - chmod 700 /home/${vm_username}/.ssh /home/${ansible_username}/.ssh
+  - chmod 600 /home/${vm_username}/.ssh/authorized_keys /home/${ansible_username}/.ssh/authorized_keys
+  - chown ${target_user_uid}:users /home/${vm_username}/.ssh/authorized_keys
+  - chown $(id -u ${ansible_username}):users /home/${ansible_username}/.ssh/authorized_keys
+%{ endif ~}
+%{ if virtiofs_etc_enabled ~}
+  - mkdir -p /persistent/etc
+%{ endif ~}

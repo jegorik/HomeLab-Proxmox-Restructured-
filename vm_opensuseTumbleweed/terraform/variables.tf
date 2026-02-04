@@ -389,73 +389,79 @@ variable "vm_scsi_hardware" {
 }
 
 # -----------------------------------------------------------------------------
-# Secondary Data Disk (Persistence)
+# VirtIO-FS Persistent Storage Configuration
 # -----------------------------------------------------------------------------
+# VirtIO-FS mounts allow sharing host ZFS datasets with the VM.
+# Data persists independently of VM lifecycle (survives destroy/recreate).
+#
+# Prerequisites:
+# 1. Create ZFS datasets on Proxmox host:
+#    zfs create <your-pool>/vm_workstation/home
+#    zfs create <your-pool>/vm_workstation/etc
+#
+# 2. Create Directory Mappings in Proxmox GUI:
+#    Datacenter → Resource Mappings → Add Directory
+#    - ID: workstation_home, Path: /<your-pool>/vm_workstation/home
+#    - ID: workstation_etc, Path: /<your-pool>/vm_workstation/etc
 
-variable "data_disk_size" {
-  description = "Size of secondary data disk in GB (for /home or /data)"
+variable "virtiofs_home_enabled" {
+  description = "Enable VirtIO-FS mount for /home (persistent user data)"
+  type        = bool
+  default     = true
+}
+
+variable "virtiofs_home_mapping" {
+  description = "Proxmox Directory Mapping ID for /home virtiofs share (created in Datacenter → Mappings)"
+  type        = string
+  default     = "workstation_home"
+}
+
+variable "virtiofs_etc_enabled" {
+  description = "Enable VirtIO-FS mount for /persistent/etc (selective system configs)"
+  type        = bool
+  default     = true
+}
+
+variable "virtiofs_etc_mapping" {
+  description = "Proxmox Directory Mapping ID for /persistent/etc virtiofs share"
+  type        = string
+  default     = "workstation_etc"
+}
+
+variable "virtiofs_cache_mode" {
+  description = "VirtIO-FS cache mode (auto, always, metadata, never)"
+  type        = string
+  default     = "auto"
+}
+
+variable "virtiofs_direct_io" {
+  description = "Enable direct I/O for VirtIO-FS (bypasses page cache)"
+  type        = bool
+  default     = false
+}
+
+variable "virtiofs_expose_acl" {
+  description = "Expose POSIX ACLs through VirtIO-FS"
+  type        = bool
+  default     = true
+}
+
+variable "virtiofs_expose_xattr" {
+  description = "Expose extended attributes through VirtIO-FS"
+  type        = bool
+  default     = true
+}
+
+variable "persistent_etc_items" {
+  description = "List of /etc subdirectories to persist via symlinks (e.g., NetworkManager, systemd/system)"
+  type        = list(string)
+  default     = ["NetworkManager", "systemd/system"]
+}
+
+variable "target_user_uid" {
+  description = "Fixed UID for target user (ensures permission consistency across VM recreations)"
   type        = number
-  default     = 50
-}
-
-variable "data_disk_datastore" {
-  description = "Datastore for secondary data disk"
-  type        = string
-  default     = "local-lvm"
-}
-
-variable "data_disk_file_format" {
-  description = "File format for data disk (raw recommended for performance)"
-  type        = string
-  default     = "raw"
-}
-
-variable "data_disk_interface" {
-  description = "Disk interface for data disk (scsi0, virtio0, etc.)"
-  type        = string
-  default     = "scsi1"
-}
-
-variable "data_disk_discard" {
-  description = "Enable discard (TRIM) for the data disk"
-  type        = string
-  default     = "ignore"
-}
-
-variable "data_disk_ssd" {
-  description = "Enable SSD mode for the data disk"
-  type        = bool
-  default     = true
-}
-
-variable "data_disk_iothread" {
-  description = "Enable I/O thread for the data disk"
-  type        = bool
-  default     = true
-}
-
-variable "data_disk_backup" {
-  description = "Enable backup for the data disk"
-  type        = bool
-  default     = true
-}
-
-variable "data_disk_replicate" {
-  description = "Enable replication for the data disk"
-  type        = bool
-  default     = true
-}
-
-variable "data_disk_aio" {
-  description = "Enable AIO for the data disk"
-  type        = string
-  default     = "io_uring"
-}
-
-variable "data_disk_cache" {
-  description = "Enable cache for the data disk"
-  type        = string
-  default     = "writeback"
+  default     = 1000
 }
 
 # -----------------------------------------------------------------------------
@@ -874,13 +880,13 @@ variable "cloud_image_checksum" {
 variable "vm_cloud_image_url" {
   description = "URL to download OpenSUSE cloud image"
   type        = string
-  default     = "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-Cloud-Snapshot20260131.qcow2"
+  default     = "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-Cloud.qcow2"
 }
 
 variable "vm_cloud_image_filename" {
   description = "Filename for the downloaded cloud image"
   type        = string
-  default     = "openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-Cloud-Snapshot20260131.qcow2"
+  default     = "openSUSE-Tumbleweed-Minimal-VM.x86_64-Cloud.qcow2"
 }
 
 variable "cloudinit_content_type" {
@@ -975,16 +981,4 @@ variable "disk_description" {
   description = "NetBox virtual disk description"
   type        = string
   default     = "Boot disk for OpenSUSE VM"
-}
-
-variable "data_disk_name" {
-  description = "NetBox virtual disk name"
-  type        = string
-  default     = "data-disk"
-}
-
-variable "data_disk_description" {
-  description = "NetBox virtual disk description"
-  type        = string
-  default     = "Secondary Persistent Data Disk"
 }

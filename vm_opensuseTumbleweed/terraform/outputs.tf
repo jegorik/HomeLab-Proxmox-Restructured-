@@ -27,6 +27,11 @@ output "vm_username" {
   value       = var.vm_username
 }
 
+output "target_user_uid" {
+  description = "The UID for the target user"
+  value       = var.target_user_uid
+}
+
 output "vm_root_password" {
   description = "Generated password for VM user (use SSH keys preferably)"
   value       = random_password.vm_root_password.result

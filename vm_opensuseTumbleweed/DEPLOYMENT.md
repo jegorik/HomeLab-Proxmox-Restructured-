@@ -26,12 +26,30 @@ This guide provides step-by-step instructions for deploying an OpenSUSE Tumblewe
 ### What Gets Deployed
 
 - **VM Configuration**: UEFI-based VM with 2 CPU cores, 4GB RAM, 32GB boot disk
-- **Secondary Disk**: 50GB data disk for persistent storage
+- **Persistent Storage**: VirtIO-FS mounts for `/home` and `/persistent/etc` from host ZFS datasets
 - **Network**: Static IP or DHCP configuration
 - **USB Passthrough**: Up to 4 USB devices (keyboard, mouse, etc.)
 - **Desktop Environment**: KDE Plasma or GNOME (configurable)
 - **QEMU Guest Agent**: For Proxmox integration
 - **Automation User**: Ansible user with SSH key authentication
+
+### Data Persistence Model
+
+This project uses **VirtIO-FS** to share host ZFS datasets with the VM, enabling:
+
+- **User data survives VM destruction** - `/home` is mounted from host ZFS
+- **Selective /etc persistence** - NetworkManager, systemd units persist via symlinks
+- **Permission consistency** - Fixed UID 1000 ensures ownership matches across recreations
+- **Fresh install vs reconnect** - Ansible detects existing data and handles accordingly
+
+```text
+Host ZFS Datasets                 VM Mount Points
+─────────────────                 ───────────────
+/<pool>/vm_workstation/home   →   /home (virtiofs)
+/<pool>/vm_workstation/etc    →   /persistent/etc (virtiofs)
+                                  ├── NetworkManager → /etc/NetworkManager (symlink)
+                                  └── systemd/system → /etc/systemd/system (symlink)
+```
 
 ### Deployment Time
 
@@ -45,10 +63,81 @@ This guide provides step-by-step instructions for deploying an OpenSUSE Tumblewe
 
 ### 1. Infrastructure Requirements
 
-✅ **Proxmox VE 8.x+** installed and accessible  
+✅ **Proxmox VE 8.4+** installed and accessible (VirtIO-FS support)  
 ✅ **HashiCorp Vault** deployed and configured (see [lxc_vault](../lxc_vault/README.md))  
 ✅ **Network bridge** (vmbr0) configured  
-✅ **Storage** available for VM disks (local-lvm or other)
+✅ **Storage** available for VM boot disk (local-lvm or other)  
+✅ **ZFS pool** available for persistent data (see section 1.1)
+
+### 1.1 ZFS Datasets for Persistent Storage (REQUIRED)
+
+Create ZFS datasets on your Proxmox host for persistent VM data:
+
+```bash
+# SSH to Proxmox host
+ssh root@<your-proxmox-host>
+
+# Create parent dataset (adjust pool name to match your environment)
+zfs create <your-pool>/vm_workstation
+
+# Create home dataset for user data
+zfs create <your-pool>/vm_workstation/home
+
+# Create etc dataset for selective system configs
+zfs create <your-pool>/vm_workstation/etc
+
+# CRITICAL: Enable POSIX ACLs for virtiofs compatibility
+# Without this, virtiofs mounts will fail with "Operation not supported" errors
+zfs set acltype=posix <your-pool>/vm_workstation/home
+zfs set acltype=posix <your-pool>/vm_workstation/etc
+
+# Set ownership for VM user (UID 1000)
+chown 1000:1000 /<your-pool>/vm_workstation/home
+
+# Verify datasets and ACL configuration
+zfs list | grep vm_workstation
+zfs get acltype <your-pool>/vm_workstation/home
+zfs get acltype <your-pool>/vm_workstation/etc
+```
+
+**Example with pool name `rpool`:**
+
+```bash
+zfs create rpool/datastore/vm_workstation
+zfs create rpool/datastore/vm_workstation/home
+zfs create rpool/datastore/vm_workstation/etc
+
+# Enable POSIX ACLs (REQUIRED for virtiofs)
+zfs set acltype=posix rpool/datastore/vm_workstation/home
+zfs set acltype=posix rpool/datastore/vm_workstation/etc
+
+chown 1000:1000 /rpool/datastore/vm_workstation/home
+```
+
+### 1.2 Proxmox Directory Mappings (REQUIRED)
+
+Create Directory Mappings in Proxmox GUI for VirtIO-FS:
+
+1. Open Proxmox Web UI
+2. Navigate to: **Datacenter → Resource Mappings → Add → Directory**
+3. Create two mappings:
+
+| ID | Path | Nodes | Comment |
+| ---- | ------ | ------- | ---------- |
+| `workstation_home` | `/<your-pool>/vm_workstation/home` | `<your-node>` | VirtIO-FS /home mount |
+| `workstation_etc` | `/<your-pool>/vm_workstation/etc` | `<your-node>` | VirtIO-FS /etc persistence |
+
+**Screenshot reference:**
+
+```text
+Datacenter
+└── Resource Mappings
+    └── Directory
+        ├── workstation_home (/<pool>/vm_workstation/home)
+        └── workstation_etc (/<pool>/vm_workstation/etc)
+```
+
+> **Note:** The mapping IDs (`workstation_home`, `workstation_etc`) must match the values in `terraform.tfvars`.
 
 ### 2. Vault Configuration
 
@@ -138,7 +227,13 @@ vm_gateway = "192.168.0.1"               # Default gateway
 vm_cpu_cores = 2                         # CPU cores
 vm_memory_dedicated = 4096               # RAM in MB
 vm_boot_disk_size = 32                   # Boot disk in GB
-data_disk_size = 50                      # Data disk in GB
+
+# VirtIO-FS Persistent Storage (must match Proxmox Directory Mappings)
+virtiofs_home_enabled = true
+virtiofs_home_mapping = "workstation_home"  # Proxmox mapping ID for /home
+virtiofs_etc_enabled = true
+virtiofs_etc_mapping = "workstation_etc"    # Proxmox mapping ID for /persistent/etc
+target_user_uid = 1000                      # Fixed UID (must match ZFS ownership)
 
 # Vault Configuration
 vault_address = "http://192.168.1.50:8200"
@@ -357,29 +452,32 @@ exit
 # Install and configure VNC or RDP server in Ansible roles
 ```
 
-### 2. Configure Data Disk
+### 2. Verify Persistent Storage
 
-The secondary data disk (`/dev/sdb`, 50GB) is attached but not mounted by default.
+Verify VirtIO-FS mounts are active and persistent data is accessible:
 
 ```bash
 # SSH into VM
 ssh ansible@192.168.0.210
 
-# Format data disk (one-time)
-sudo mkfs.ext4 /dev/sdb
+# Verify VirtIO-FS mounts
+mount | grep virtiofs
+# Should show:
+# virtiofs_home on /home type virtiofs (rw,...)
+# virtiofs_etc on /persistent/etc type virtiofs (rw,...)
 
-# Create mount point
-sudo mkdir -p /data
+# Verify home directory persistence
+ls -la /home/
 
-# Mount data disk
-sudo mount /dev/sdb /data
+# Verify /etc symlinks
+ls -la /etc/NetworkManager
+ls -la /etc/systemd/system
 
-# Add to /etc/fstab for persistent mount
-echo "/dev/sdb /data ext4 defaults 0 2" | sudo tee -a /etc/fstab
-
-# Verify mount
-df -h /data
+# Check disk usage
+df -h /home /persistent/etc
 ```
+
+**Note:** User data in `/home` and selective `/etc` configs persist across VM recreations via host ZFS datasets. No additional disk configuration needed.
 
 ### 3. Install Additional Software
 
@@ -557,6 +655,53 @@ ansible-playbook site.yml -vvv
 3. Ensure python3-zypp is installed (pre-task)
 4. Review specific task error messages
 5. Run playbook with `--start-at-task` to skip completed tasks
+
+### Issue: VirtioFS Mount "Operation not supported" Errors
+
+**Symptoms**: Cannot write to `/home` or `/persistent/etc`, errors like:
+
+- `mkdir: cannot create directory '/home': Operation not supported`
+- `touch: cannot touch '/home/test': Operation not supported`
+- Cloud-init fails with `[Errno 95] Operation not supported`
+
+**Diagnosis**:
+
+```bash
+# SSH into VM as root
+ssh root@<vm-ip>
+
+# Test write to virtiofs mount
+touch /home/test_write
+
+# Check mount status
+mount | grep virtiofs
+df -h /home
+
+# On Proxmox host - check ZFS ACL configuration
+ssh root@<proxmox-host>
+zfs get acltype <pool>/vm_workstation/home
+```
+
+**Root Cause**: ZFS dataset has `acltype=off` while virtiofs is configured with `expose-acl=1`. This mismatch causes EOPNOTSUPP (errno 95) errors.
+
+**Solution**:
+
+```bash
+# On Proxmox host - enable POSIX ACLs on ZFS datasets
+ssh root@<proxmox-host>
+
+zfs set acltype=posix <pool>/vm_workstation/home
+zfs set acltype=posix <pool>/vm_workstation/etc
+
+# Verify configuration
+zfs get acltype <pool>/vm_workstation/home
+zfs get acltype <pool>/vm_workstation/etc
+
+# Test write from VM (should now work)
+ssh root@<vm-ip> "touch /home/test_write && echo 'Success!' && rm /home/test_write"
+```
+
+**Prevention**: Always set `acltype=posix` when creating ZFS datasets for virtiofs (see [Prerequisites](#prerequisites) section).
 
 ### Issue: Desktop Environment Not Starting
 

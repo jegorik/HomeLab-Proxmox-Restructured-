@@ -5,13 +5,23 @@
 locals {
   # Cloud-Init User Data Configuration
   user_data = templatefile("${path.module}/templates/${var.cloudinit_data_file_name}", {
-    hostname         = var.vm_hostname
-    site_name        = var.site_name
-    root_ssh_key     = trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])
-    vm_root_password = terraform_data.password_keeper.input
-    vm_username      = var.vm_username
-    ansible_username = var.ansible_user_name
-    ansible_ssh_key  = trimspace(data.vault_generic_secret.ansible_ssh_public_key.data["key"])
+    hostname              = var.vm_hostname
+    site_name             = var.site_name
+    root_ssh_key          = trimspace(data.vault_generic_secret.root_ssh_public_key.data["key"])
+    vm_root_password      = terraform_data.password_keeper.input
+    vm_username           = var.vm_username
+    ansible_username      = var.ansible_user_name
+    ansible_ssh_key       = trimspace(data.vault_generic_secret.ansible_ssh_public_key.data["key"])
+    target_user_uid       = var.target_user_uid
+    virtiofs_home_enabled = var.virtiofs_home_enabled
+    virtiofs_home_mapping = var.virtiofs_home_mapping
+    virtiofs_etc_enabled  = var.virtiofs_etc_enabled
+    virtiofs_etc_mapping  = var.virtiofs_etc_mapping
+    # Network configuration for static IP
+    use_dhcp       = var.vm_use_dhcp
+    vm_ip_address  = var.vm_ip_address
+    vm_gateway     = var.vm_gateway
+    vm_dns_servers = join(",", var.vm_dns_servers)
   })
 }
 

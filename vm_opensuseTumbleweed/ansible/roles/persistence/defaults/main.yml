@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# Persistence Role - Default Variables
+# =============================================================================
+# Manages persistent storage for user data and selective /etc configs.
+# Data survives VM destruction/recreation via VirtIO-FS mounted ZFS datasets.
+
+# -----------------------------------------------------------------------------
+# Target User Configuration
+# -----------------------------------------------------------------------------
+# Fixed UID ensures permission consistency across VM recreations.
+# The user on the host ZFS dataset should have the same UID.
+
+persistence_target_user_name: "user"
+persistence_target_user_uid: 1000
+persistence_target_user_gid: 100  # 'users' group
+persistence_target_user_groups: ["users", "wheel"]
+persistence_target_user_shell: "/bin/bash"
+
+# -----------------------------------------------------------------------------
+# Persistence Paths
+# -----------------------------------------------------------------------------
+# VirtIO-FS mount points configured by cloud-init
+
+persistence_home_mount: "/home"
+persistence_etc_mount: "/persistent/etc"
+persistence_marker_file: "/home/.persistent_marker"
+
+# -----------------------------------------------------------------------------
+# /etc Items to Persist
+# -----------------------------------------------------------------------------
+# Subdirectories of /etc to symlink to /persistent/etc/<item>
+# On fresh install: copy current /etc/<item> to /persistent/etc/<item> if empty
+# On reconnect: create symlink /etc/<item> -> /persistent/etc/<item>
+
+persistence_etc_items:
+  - "NetworkManager"
+  - "systemd/system"
+
+# -----------------------------------------------------------------------------
+# Persistence Behavior
+# -----------------------------------------------------------------------------
+
+# Auto-copy /etc items to persistent storage on fresh install if target is empty
+persistence_auto_copy_etc: true
+
+# Backup original /etc/<item> before creating symlink (on reconnect)
+persistence_backup_etc_originals: true

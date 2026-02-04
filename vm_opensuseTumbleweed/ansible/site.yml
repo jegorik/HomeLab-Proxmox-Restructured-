@@ -2,9 +2,10 @@
 # =============================================================================
 # VM OpenSUSE Tumbleweed - Main Ansible Playbook
 # =============================================================================
-# Configures OpenSUSE Tumbleweed 16 VM (common, software, desktop).
+# Configures OpenSUSE Tumbleweed VM with persistent storage, common setup,
+# software installation, and desktop environment.
 
-- name: Configure OpenSUSE Tumbleweed 16 VM
+- name: Configure OpenSUSE Tumbleweed VM
   hosts: all
   become: true
   gather_facts: true
@@ -15,7 +16,34 @@
       changed_when: false
       failed_when: false
 
+    - name: Wait for VirtIO-FS mounts to be available
+      ansible.builtin.wait_for:
+        path: /home
+        state: present
+        timeout: 60
+      ignore_errors: true
+
+    # Fix broken repos from previous runs by importing GPG keys early
+    - name: Import Brave Browser GPG key (pre-task)
+      ansible.builtin.rpm_key:
+        key: https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+        state: present
+      failed_when: false
+
+    - name: Import Microsoft GPG key (pre-task)
+      ansible.builtin.rpm_key:
+        key: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+      failed_when: false
+
+    - name: Auto-import GPG keys for all repos
+      ansible.builtin.command: zypper --gpg-auto-import-keys refresh
+      changed_when: false
+      failed_when: false
+
   roles:
+    - role: persistence
+      tags: [persistence, always]
     - role: common
       tags: [common, always]
     - role: software_installation
