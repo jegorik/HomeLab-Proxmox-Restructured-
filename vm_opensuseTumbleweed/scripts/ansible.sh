@@ -74,9 +74,30 @@ ansible_deploy() {
         log_warning "VAULT_TOKEN not set - Vault lookups may fail"
     fi
 
-    log_info "Running: ansible-playbook -i inventory.yml site.yml"
+    # Get Terraform variables to pass to Ansible for consistency
+    local extra_vars=""
+    cd "${TERRAFORM_DIR}" || return 1
+    local iac_tool
+    iac_tool=$(get_iac_tool) || return 1
 
-    if ansible-playbook -i inventory.yml site.yml | tee -a "${LOG_FILE}"; then
+    local vm_username target_user_uid
+    vm_username=$(${iac_tool} output -raw vm_username 2>/dev/null || echo "")
+    target_user_uid=$(${iac_tool} output -raw target_user_uid 2>/dev/null || echo "")
+
+    if [[ -n "${vm_username}" && "${vm_username}" != "null" ]]; then
+        extra_vars="-e target_user_name=${vm_username}"
+        log_info "Passing vm_username from Terraform: ${vm_username}"
+    fi
+    if [[ -n "${target_user_uid}" && "${target_user_uid}" != "null" ]]; then
+        extra_vars="${extra_vars} -e target_user_uid=${target_user_uid}"
+        log_info "Passing target_user_uid from Terraform: ${target_user_uid}"
+    fi
+
+    cd "${ANSIBLE_DIR}" || return 1
+    log_info "Running: ansible-playbook -i inventory.yml site.yml ${extra_vars}"
+
+    # shellcheck disable=SC2086
+    if ansible-playbook -i inventory.yml site.yml ${extra_vars} | tee -a "${LOG_FILE}"; then
         log_success "Playbook complete"
 
         local vm_ip

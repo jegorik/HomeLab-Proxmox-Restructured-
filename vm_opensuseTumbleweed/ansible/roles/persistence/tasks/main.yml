@@ -1,0 +1,190 @@
+---
+# =============================================================================
+# Persistence Role - Main Tasks
+# =============================================================================
+# Manages persistent storage via VirtIO-FS mounted ZFS datasets.
+# Handles fresh install vs reconnection scenarios automatically.
+
+- name: Check if persistence marker exists
+  ansible.builtin.stat:
+    path: "{{ persistence_marker_file }}"
+  register: persistence_marker_stat
+
+- name: Set persistence mode fact
+  ansible.builtin.set_fact:
+    persistence_mode: "{{ 'reconnect' if persistence_marker_stat.stat.exists else 'fresh' }}"
+
+- name: Display persistence mode
+  ansible.builtin.debug:
+    msg: "Persistence mode: {{ persistence_mode }} (marker {{ 'exists' if persistence_marker_stat.stat.exists else 'does not exist' }})"
+
+# -----------------------------------------------------------------------------
+# Target User Management (Fixed UID for Permission Consistency)
+# -----------------------------------------------------------------------------
+
+- name: Ensure 'users' group exists with correct GID
+  ansible.builtin.group:
+    name: users
+    gid: "{{ persistence_target_user_gid }}"
+    state: present
+
+- name: Check if target user already exists
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ persistence_target_user_name }}"
+  register: user_getent
+  failed_when: false
+
+- name: Get existing user info if user exists
+  ansible.builtin.set_fact:
+    existing_user_uid: "{{ user_getent.ansible_facts.getent_passwd[persistence_target_user_name][1] | default(omit) }}"
+  when: user_getent.ansible_facts.getent_passwd[persistence_target_user_name] is defined
+
+- name: Validate existing user UID matches expected
+  ansible.builtin.assert:
+    that:
+      - existing_user_uid | int == persistence_target_user_uid | int
+    fail_msg: |
+      CRITICAL: User '{{ persistence_target_user_name }}' exists with UID {{ existing_user_uid }},
+      but expected UID {{ persistence_target_user_uid }}. This will cause permission issues.
+      Either update cloud-init target_user_uid or delete the user and redeploy.
+    success_msg: "User '{{ persistence_target_user_name }}' exists with correct UID {{ existing_user_uid }}"
+  when: existing_user_uid is defined
+
+- name: Create target user with fixed UID (if not exists)
+  ansible.builtin.user:
+    name: "{{ persistence_target_user_name }}"
+    uid: "{{ persistence_target_user_uid }}"
+    group: users
+    groups: "{{ persistence_target_user_groups | join(',') }}"
+    shell: "{{ persistence_target_user_shell }}"
+    create_home: true
+    home: "{{ persistence_home_mount }}/{{ persistence_target_user_name }}"
+    state: present
+  register: target_user_created
+  when: user_getent.ansible_facts.getent_passwd[persistence_target_user_name] is not defined
+
+- name: Set target_user_created fact for existing user
+  ansible.builtin.set_fact:
+    target_user_created:
+      uid: "{{ existing_user_uid }}"
+      changed: false
+  when: existing_user_uid is defined
+
+# -----------------------------------------------------------------------------
+# Fresh Install Tasks
+# -----------------------------------------------------------------------------
+
+- name: Fresh install - Initialize persistent storage
+  when: persistence_mode == 'fresh'
+  block:
+    - name: Create persistence marker file
+      ansible.builtin.file:
+        path: "{{ persistence_marker_file }}"
+        state: touch
+        owner: root
+        group: root
+        mode: "0644"
+        modification_time: preserve
+        access_time: preserve
+
+    - name: Write deployment info to marker
+      ansible.builtin.copy:
+        content: |
+          # Persistent Storage Marker
+          # Created by Ansible persistence role
+          deployment_date: {{ ansible_date_time.iso8601 }}
+          hostname: {{ ansible_hostname }}
+          target_user: {{ persistence_target_user_name }}
+          target_uid: {{ persistence_target_user_uid }}
+        dest: "{{ persistence_marker_file }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Ensure user home directory has correct ownership
+      ansible.builtin.file:
+        path: "{{ persistence_home_mount }}/{{ persistence_target_user_name }}"
+        state: directory
+        owner: "{{ persistence_target_user_name }}"
+        group: users
+        mode: "0750"
+
+    - name: Create standard XDG directories in user home
+      ansible.builtin.file:
+        path: "{{ persistence_home_mount }}/{{ persistence_target_user_name }}/{{ item }}"
+        state: directory
+        owner: "{{ persistence_target_user_name }}"
+        group: users
+        mode: "0755"
+      loop:
+        - ".config"
+        - ".local"
+        - ".local/share"
+        - ".local/state"
+        - "Documents"
+        - "Downloads"
+        - "Pictures"
+        - "Projects"
+
+    # Handle /etc persistence items on fresh install
+    - name: Process /etc persistence items (fresh install)
+      ansible.builtin.include_tasks: fresh_etc_item.yml
+      loop: "{{ persistence_etc_items }}"
+      loop_control:
+        loop_var: etc_item
+      when: persistence_auto_copy_etc
+
+# -----------------------------------------------------------------------------
+# Reconnect Tasks (Existing Data)
+# -----------------------------------------------------------------------------
+
+- name: Reconnect - Restore symlinks to persistent data
+  when: persistence_mode == 'reconnect'
+  block:
+    - name: Read marker file for deployment info
+      ansible.builtin.slurp:
+        src: "{{ persistence_marker_file }}"
+      register: marker_content
+
+    - name: Display previous deployment info
+      ansible.builtin.debug:
+        msg: "Reconnecting to existing persistent data:\n{{ marker_content.content | b64decode }}"
+
+    - name: Verify user UID matches persistent data
+      ansible.builtin.assert:
+        that:
+          - target_user_created.uid | int == persistence_target_user_uid | int
+        fail_msg: "WARNING: User UID mismatch! Expected {{ persistence_target_user_uid }}, got {{ target_user_created.uid }}. Permission issues may occur."
+        success_msg: "User UID matches persistent data ({{ persistence_target_user_uid }})"
+      ignore_errors: true
+
+    - name: Ensure user home directory ownership
+      ansible.builtin.file:
+        path: "{{ persistence_home_mount }}/{{ persistence_target_user_name }}"
+        state: directory
+        owner: "{{ persistence_target_user_name }}"
+        group: users
+        recurse: false  # Don't recurse to avoid slow operations
+
+    # Handle /etc persistence items on reconnect
+    - name: Process /etc persistence items (reconnect)
+      ansible.builtin.include_tasks: reconnect_etc_item.yml
+      loop: "{{ persistence_etc_items }}"
+      loop_control:
+        loop_var: etc_item
+
+# -----------------------------------------------------------------------------
+# Final Verification
+# -----------------------------------------------------------------------------
+
+- name: Verify persistence setup
+  ansible.builtin.debug:
+    msg: |
+      Persistence Setup Complete
+      ==========================
+      Mode: {{ persistence_mode }}
+      User: {{ persistence_target_user_name }} (UID: {{ persistence_target_user_uid }})
+      Home Mount: {{ persistence_home_mount }}
+      Etc Mount: {{ persistence_etc_mount }}
+      Persistent /etc items: {{ persistence_etc_items | join(', ') }}

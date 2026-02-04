@@ -1,4 +1,10 @@
 ---
+- name: Import Brave Browser GPG key
+  ansible.builtin.rpm_key:
+    key: https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+    state: present
+  when: software_installation_install_brave
+
 - name: Add Brave Browser repository
   community.general.zypper_repository:
     name: brave-browser
@@ -6,6 +12,14 @@
     auto_import_keys: true
     state: present
   when: software_installation_install_brave
+  register: brave_repo_added
+
+- name: Import Microsoft GPG key
+  ansible.builtin.rpm_key:
+    key: https://packages.microsoft.com/keys/microsoft.asc
+    state: present
+  when: software_installation_install_vscode
+  register: vscode_repo_result
 
 - name: Add VSCode repository
   community.general.zypper_repository:
@@ -14,30 +28,30 @@
     auto_import_keys: true
     state: present
   when: software_installation_install_vscode
+  register: vscode_repo_added
 
-- name: Refresh repositories
-  ansible.builtin.command: zypper refresh
+- name: Refresh repositories (only if repos changed)
+  ansible.builtin.command: zypper --gpg-auto-import-keys refresh
+  when: (brave_repo_added is defined and brave_repo_added.changed) or
+        (vscode_repo_added is defined and vscode_repo_added.changed)
   changed_when: true
+
+- name: Build package list
+  ansible.builtin.set_fact:
+    software_packages_to_install: >-
+      {{
+        (software_installation_install_brave | bool | ternary(['brave-browser'], [])) +
+        (software_installation_install_vscode | bool | ternary(['code'], [])) +
+        (software_installation_install_docker | bool | ternary(['docker'], [])) +
+        (software_installation_install_flatpak | bool | ternary(['flatpak'], []))
+      }}
 
 - name: Install software packages (System/Zypper)
   community.general.zypper:
-    name:
-      - "{{ 'brave-browser' if software_installation_install_brave else '' }}"
-      - "{{ 'code' if software_installation_install_vscode else '' }}"
-      - "{{ 'docker' if software_installation_install_docker else '' }}"
-      - "{{ 'flatpak' if software_installation_install_flatpak else '' }}"
+    name: "{{ software_packages_to_install }}"
     state: present
     update_cache: true
-  # Filter out empty strings from list handled by Jinja2 inside module usually or need explicit filter.
-  # The module handles empty strings generally by ignoring them or erroring.
-  # To be safe, let's just let it be, or use `reject` filter.
-  # But better refactor:
-  vars:
-    __packages:
-      - "{{ 'brave-browser' if software_installation_install_brave else '' }}"
-      - "{{ 'code' if software_installation_install_vscode else '' }}"
-      - "{{ 'docker' if software_installation_install_docker else '' }}"
-      - "{{ 'flatpak' if software_installation_install_flatpak else '' }}"
+  when: software_packages_to_install | length > 0
 
 - name: Enable and start Docker service
   ansible.builtin.service:
@@ -58,8 +72,15 @@
   when: software_installation_install_flatpak
   changed_when: false
 
+- name: Check if Obsidian is already installed
+  ansible.builtin.command: flatpak list --app --columns=application
+  register: flatpak_installed_apps
+  changed_when: false
+  when: software_installation_install_obsidian and software_installation_install_flatpak
+
 - name: Install Obsidian via Flatpak
   ansible.builtin.command: flatpak install -y flathub md.obsidian.Obsidian
-  register: software_installation_flatpak_result
-  changed_when: "'Skipping' not in software_installation_flatpak_result.stdout"
-  when: software_installation_install_obsidian and software_installation_install_flatpak
+  when:
+    - software_installation_install_obsidian
+    - software_installation_install_flatpak
+    - "'md.obsidian.Obsidian' not in flatpak_installed_apps.stdout"

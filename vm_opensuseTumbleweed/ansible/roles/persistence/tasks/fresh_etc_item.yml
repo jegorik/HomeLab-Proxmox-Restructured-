@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# Fresh Install - Process /etc Item
+# =============================================================================
+# Copy /etc/<item> to /persistent/etc/<item> if persistent location is empty.
+# Then create symlink from /etc/<item> to /persistent/etc/<item>.
+
+- name: "Fresh: Check if persistent /etc/{{ etc_item }} exists"
+  ansible.builtin.stat:
+    path: "{{ persistence_etc_mount }}/{{ etc_item }}"
+  register: persistent_etc_item_stat
+
+- name: "Fresh: Check if source /etc/{{ etc_item }} exists"
+  ansible.builtin.stat:
+    path: "/etc/{{ etc_item }}"
+  register: source_etc_item_stat
+
+- name: "Fresh: Create parent directory for {{ etc_item }}"
+  ansible.builtin.file:
+    path: "{{ persistence_etc_mount }}/{{ etc_item | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: etc_item | dirname != ''
+
+- name: "Fresh: Copy /etc/{{ etc_item }} to persistent storage"
+  when:
+    - source_etc_item_stat.stat.exists
+    - not persistent_etc_item_stat.stat.exists or (persistent_etc_item_stat.stat.isdir | default(false) and persistent_etc_item_stat.stat.size == 0)
+  block:
+    - name: "Fresh: Create persistent directory for {{ etc_item }}"
+      ansible.builtin.file:
+        path: "{{ persistence_etc_mount }}/{{ etc_item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      when: source_etc_item_stat.stat.isdir | default(false)
+
+    - name: "Fresh: Copy directory contents /etc/{{ etc_item }}"
+      ansible.builtin.copy:
+        src: "/etc/{{ etc_item }}/"
+        dest: "{{ persistence_etc_mount }}/{{ etc_item }}/"
+        remote_src: true
+        owner: root
+        group: root
+        mode: preserve
+      when: source_etc_item_stat.stat.isdir | default(false)
+
+    - name: "Fresh: Copy file /etc/{{ etc_item }}"
+      ansible.builtin.copy:
+        src: "/etc/{{ etc_item }}"
+        dest: "{{ persistence_etc_mount }}/{{ etc_item }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: preserve
+      when: source_etc_item_stat.stat.isreg | default(false)
+
+- name: "Fresh: Create empty persistent directory for {{ etc_item }}"
+  ansible.builtin.file:
+    path: "{{ persistence_etc_mount }}/{{ etc_item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - not source_etc_item_stat.stat.exists
+    - not persistent_etc_item_stat.stat.exists
+
+- name: "Fresh: Remove original /etc/{{ etc_item }} before symlink"
+  ansible.builtin.file:
+    path: "/etc/{{ etc_item }}"
+    state: absent
+  when: source_etc_item_stat.stat.exists
+
+- name: "Fresh: Create symlink /etc/{{ etc_item }} -> {{ persistence_etc_mount }}/{{ etc_item }}"
+  ansible.builtin.file:
+    src: "{{ persistence_etc_mount }}/{{ etc_item }}"
+    dest: "/etc/{{ etc_item }}"
+    state: link
+    force: true

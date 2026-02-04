@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# Reconnect - Process /etc Item
+# =============================================================================
+# Create symlink from /etc/<item> to /persistent/etc/<item>.
+# Optionally backup original /etc/<item> before replacing with symlink.
+
+- name: "Reconnect: Check if /etc/{{ etc_item }} is already a symlink"
+  ansible.builtin.stat:
+    path: "/etc/{{ etc_item }}"
+  register: current_etc_item_stat
+
+- name: "Reconnect: Check if persistent {{ etc_item }} exists"
+  ansible.builtin.stat:
+    path: "{{ persistence_etc_mount }}/{{ etc_item }}"
+  register: persistent_etc_item_stat
+
+- name: "Reconnect: Handle /etc/{{ etc_item }}"
+  when:
+    - persistent_etc_item_stat.stat.exists
+    - not (current_etc_item_stat.stat.islnk | default(false))
+  block:
+    - name: "Reconnect: Backup original /etc/{{ etc_item }}"
+      ansible.builtin.copy:
+        src: "/etc/{{ etc_item }}"
+        dest: "/etc/{{ etc_item }}.bak.{{ ansible_date_time.epoch }}"
+        remote_src: true
+        mode: preserve
+      when:
+        - persistence_backup_etc_originals
+        - current_etc_item_stat.stat.exists
+
+    - name: "Reconnect: Remove original /etc/{{ etc_item }}"
+      ansible.builtin.file:
+        path: "/etc/{{ etc_item }}"
+        state: absent
+      when: current_etc_item_stat.stat.exists
+
+    - name: "Reconnect: Create symlink /etc/{{ etc_item }} -> {{ persistence_etc_mount }}/{{ etc_item }}"
+      ansible.builtin.file:
+        src: "{{ persistence_etc_mount }}/{{ etc_item }}"
+        dest: "/etc/{{ etc_item }}"
+        state: link
+        force: true
+
+- name: "Reconnect: Symlink already exists for /etc/{{ etc_item }}"
+  ansible.builtin.debug:
+    msg: "Symlink /etc/{{ etc_item }} -> {{ persistence_etc_mount }}/{{ etc_item }} already in place"
+  when: current_etc_item_stat.stat.islnk | default(false)
+
+- name: "Reconnect: Warning - persistent {{ etc_item }} does not exist"
+  ansible.builtin.debug:
+    msg: "WARNING: {{ persistence_etc_mount }}/{{ etc_item }} does not exist, skipping symlink creation"
+  when: not persistent_etc_item_stat.stat.exists

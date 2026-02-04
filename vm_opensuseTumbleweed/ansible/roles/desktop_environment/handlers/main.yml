@@ -1,0 +1,9 @@
+---
+- name: Set default target to graphical
+  ansible.builtin.command: systemctl set-default graphical.target
+
+- name: Enable and start SDDM
+  ansible.builtin.service:
+    name: sddm
+    state: started
+    enabled: true

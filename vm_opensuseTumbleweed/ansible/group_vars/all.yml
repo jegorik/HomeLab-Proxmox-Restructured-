@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# Global Variables - Centralized Configuration
+# =============================================================================
+# These variables are shared across all roles and align with Terraform values.
+# Override via deploy.sh extra-vars or by modifying this file.
+
+# -----------------------------------------------------------------------------
+# Target User Configuration
+# -----------------------------------------------------------------------------
+# Must match Terraform's vm_username and target_user_uid to avoid conflicts
+# with cloud-init user creation.
+# NOTE: These defaults should be overridden by deploy.sh passing Terraform outputs
+# via -e target_user_name=<value> -e target_user_uid=<value>
+
+target_user_name: "user"
+target_user_uid: 1000
+target_user_gid: 100  # 'users' group
+target_user_groups:
+  - users
+  - wheel
+target_user_shell: "/bin/bash"
+
+# -----------------------------------------------------------------------------
+# Persistence Role Overrides
+# -----------------------------------------------------------------------------
+# These override persistence/defaults/main.yml to use centralized values
+
+persistence_target_user_name: "{{ target_user_name }}"
+persistence_target_user_uid: "{{ target_user_uid }}"
+persistence_target_user_gid: "{{ target_user_gid }}"
+persistence_target_user_groups: "{{ target_user_groups }}"
+persistence_target_user_shell: "{{ target_user_shell }}"
+
+# -----------------------------------------------------------------------------
+# Desktop Environment Role Overrides
+# -----------------------------------------------------------------------------
+
+desktop_environment_target_user: "{{ target_user_name }}"

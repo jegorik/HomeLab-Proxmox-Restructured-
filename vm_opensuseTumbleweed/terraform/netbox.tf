@@ -36,7 +36,7 @@ resource "netbox_virtual_machine" "tumbleweed_vm" {
   vcpus       = var.vm_cpu_cores
   memory_mb   = var.vm_memory_dedicated
 
-  disk_size_mb = ((var.vm_boot_disk_size + var.data_disk_size) * 1024)
+  disk_size_mb = (var.vm_boot_disk_size * 1024)
   status       = var.vm_status_in_netbox
 
   comments = <<-EOT
@@ -47,7 +47,8 @@ resource "netbox_virtual_machine" "tumbleweed_vm" {
     Created: ${timestamp()}
     
     Persistence:
-    - Data Disk: ${var.data_disk_size} GB
+    - VirtIO-FS /home: ${var.virtiofs_home_mapping}
+    - VirtIO-FS /etc: ${var.virtiofs_etc_mapping}
   EOT
 
   tags = var.vm_tags
@@ -97,8 +98,7 @@ resource "netbox_ip_address" "primary" {
 # This null_resource syncs the correct disk size via API after all disks are created
 resource "terraform_data" "sync_netbox_disk_size" {
   triggers_replace = [
-    netbox_virtual_disk.boot_disk.id,
-    netbox_virtual_disk.data_disk.id
+    netbox_virtual_disk.boot_disk.id
   ]
 
   provisioner "local-exec" {
@@ -106,15 +106,14 @@ resource "terraform_data" "sync_netbox_disk_size" {
       curl -s -X PATCH \
         -H "Authorization: Token ${data.vault_generic_secret.netbox_api_token.data["token"]}" \
         -H "Content-Type: application/json" \
-        -d '{"disk": ${(var.vm_boot_disk_size + var.data_disk_size) * 1024}}' \
+        -d '{"disk": ${var.vm_boot_disk_size * 1024}}' \
         "${var.netbox_url}/api/virtualization/virtual-machines/${netbox_virtual_machine.tumbleweed_vm.id}/" \
         ${var.netbox_insecure ? "-k" : ""}
     EOT
   }
 
   depends_on = [
-    netbox_virtual_disk.boot_disk,
-    netbox_virtual_disk.data_disk
+    netbox_virtual_disk.boot_disk
   ]
 }
 
@@ -136,15 +135,6 @@ resource "netbox_virtual_disk" "boot_disk" {
   name               = var.disk_name
   description        = var.disk_description
   size_mb            = (var.vm_boot_disk_size * 1024)
-  virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
-
-  depends_on = [netbox_virtual_machine.tumbleweed_vm]
-}
-
-resource "netbox_virtual_disk" "data_disk" {
-  name               = var.data_disk_name
-  description        = var.data_disk_description
-  size_mb            = (var.data_disk_size * 1024)
   virtual_machine_id = netbox_virtual_machine.tumbleweed_vm.id
 
   depends_on = [netbox_virtual_machine.tumbleweed_vm]

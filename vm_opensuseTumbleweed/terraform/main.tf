@@ -200,24 +200,40 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
   }
 
   # -------------------------------------------------------------------------
-  # Secondary Data Disk (Persistence)
+  # VirtIO-FS Persistent Storage (ZFS Dataset Mounts)
   # -------------------------------------------------------------------------
-  # Dedicated disk for /data or /home to survive re-provisioning of boot disk
+  # Shares host ZFS datasets with VM via VirtIO-FS for data persistence
+  # independent of VM lifecycle. Data survives VM destruction/recreation.
+  #
+  # Prerequisites:
+  # 1. Create ZFS datasets on Proxmox host
+  # 2. Create Directory Mappings in Proxmox GUI (Datacenter → Mappings)
+  #
+  # Guest mount command: mount -t virtiofs <mapping_name> <mount_point>
+  # Example fstab entry: workstation_home /home virtiofs defaults,nofail 0 0
 
-  disk {
-    datastore_id = var.data_disk_datastore
-    interface    = var.data_disk_interface # Extracted to variable
-    size         = var.data_disk_size
-    file_format  = var.data_disk_file_format
-    aio          = var.data_disk_aio
-    cache        = var.data_disk_cache
-    discard      = var.data_disk_discard
-    ssd          = var.data_disk_ssd
-    iothread     = var.data_disk_iothread
+  # VirtIO-FS mount for /home (user data, configs, documents)
+  dynamic "virtiofs" {
+    for_each = var.virtiofs_home_enabled ? [1] : []
+    content {
+      mapping      = var.virtiofs_home_mapping
+      cache        = var.virtiofs_cache_mode
+      direct_io    = var.virtiofs_direct_io
+      expose_acl   = var.virtiofs_expose_acl
+      expose_xattr = var.virtiofs_expose_xattr
+    }
+  }
 
-    # Backup and replication
-    backup    = var.data_disk_backup
-    replicate = var.data_disk_replicate
+  # VirtIO-FS mount for /persistent/etc (selective system configs)
+  dynamic "virtiofs" {
+    for_each = var.virtiofs_etc_enabled ? [1] : []
+    content {
+      mapping      = var.virtiofs_etc_mapping
+      cache        = var.virtiofs_cache_mode
+      direct_io    = var.virtiofs_direct_io
+      expose_acl   = var.virtiofs_expose_acl
+      expose_xattr = var.virtiofs_expose_xattr
+    }
   }
 
   # -------------------------------------------------------------------------
