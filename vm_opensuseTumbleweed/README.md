@@ -74,8 +74,8 @@ graph TB
     end
     
     subgraph "Persistent Storage (VirtIO-FS)"
-        P1[/home<br/>User Data & Configs]
-        P2[/persistent/etc<br/>System Configs]
+        P1['/home<br/>User Data & Configs']
+        P2['/persistent/etc<br/>System Configs']
     end
     
     subgraph "State Management"
