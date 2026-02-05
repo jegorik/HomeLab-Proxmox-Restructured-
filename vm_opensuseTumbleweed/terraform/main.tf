@@ -154,6 +154,7 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
     limit        = var.vm_cpu_limit
     units        = var.vm_cpu_units
     numa         = var.vm_cpu_numa
+    flags        = var.vm_cpu_flags
   }
 
   # -------------------------------------------------------------------------
@@ -351,28 +352,28 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
   # Usage: Comment out unused USB blocks or set host to empty string ""
 
   # USB Device 1: Keyboard or primary input
-  # usb {
-  #   host = var.vm_usb_device_1_host # USB ID (e.g., "046d:c328" or "1-4")
-  #   usb3 = var.vm_usb_device_1_usb3 # false for keyboards (better compatibility)
-  # }
+  usb {
+    host = var.vm_usb_device_1_host # USB ID (e.g., "046d:c328" or "1-4")
+    usb3 = var.vm_usb_device_1_usb3 # false for keyboards (better compatibility)
+  }
 
-  # # USB Device 2: Mouse or secondary input
-  # usb {
-  #   host = var.vm_usb_device_2_host # USB ID (e.g., "413c:2113" or "4-2")
-  #   usb3 = var.vm_usb_device_2_usb3 # false for mice (better compatibility)
-  # }
+  # USB Device 2: Mouse or secondary input
+  usb {
+    host = var.vm_usb_device_2_host # USB ID (e.g., "413c:2113" or "4-2")
+    usb3 = var.vm_usb_device_2_usb3 # false for mice (better compatibility)
+  }
 
-  # # USB Device 3: Additional peripheral or hub
-  # usb {
-  #   host = var.vm_usb_device_3_host # USB ID (e.g., "0951:1666" or "4-2.3")
-  #   usb3 = var.vm_usb_device_3_usb3 # true for storage devices
-  # }
+  # USB Device 3: Additional peripheral or hub
+  usb {
+    host = var.vm_usb_device_3_host # USB ID (e.g., "0951:1666" or "4-2.3")
+    usb3 = var.vm_usb_device_3_usb3 # true for storage devices
+  }
 
-  # # USB Device 4: Storage or additional device
-  # usb {
-  #   host = var.vm_usb_device_4_host # USB ID or empty "" if not used
-  #   usb3 = var.vm_usb_device_4_usb3 # true for high-speed devices
-  # }
+  # USB Device 4: Storage or additional device
+  usb {
+    host = var.vm_usb_device_4_host # USB ID or empty "" if not used
+    usb3 = var.vm_usb_device_4_usb3 # true for high-speed devices
+  }
 
   # -------------------------------------------------------------------------
   # Timeout Configuration

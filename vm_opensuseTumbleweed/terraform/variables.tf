@@ -275,6 +275,12 @@ variable "vm_cpu_type" {
   default     = "x86-64-v2-AES"
 }
 
+variable "vm_cpu_flags" {
+  description = "CPU flags to enable"
+  type        = list(string)
+  default     = [""]
+}
+
 variable "vm_boot_order" {
   description = "Boot order for the VM"
   type        = list(string)
