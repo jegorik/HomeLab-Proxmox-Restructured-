@@ -389,6 +389,28 @@ variable "vm_scsi_hardware" {
 }
 
 # -----------------------------------------------------------------------------
+# VGA/Display Configuration
+# -----------------------------------------------------------------------------
+
+variable "vm_vga_type" {
+  description = "VGA type (qxl for SPICE/VNC, virtio-gpu for best performance, std for compatibility)"
+  type        = string
+  default     = "virtio"
+}
+
+variable "vm_vga_memory" {
+  description = "VGA memory in MB (16-512, 32 is typical for basic use, 128+ for desktop)"
+  type        = number
+  default     = 64
+}
+
+variable "vm_tablet_device" {
+  description = "Enable USB tablet device for proper mouse support in noVNC/SPICE"
+  type        = bool
+  default     = true
+}
+
+# -----------------------------------------------------------------------------
 # VirtIO-FS Persistent Storage Configuration
 # -----------------------------------------------------------------------------
 # VirtIO-FS mounts allow sharing host ZFS datasets with the VM.

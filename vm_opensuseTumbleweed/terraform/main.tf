@@ -167,6 +167,14 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
     keep_hugepages = var.vm_memory_keep_hugepages
   }
 
+  vga {
+    type   = var.vm_vga_type
+    memory = var.vm_vga_memory
+  }
+
+  # Enable tablet device for better mouse handling
+  tablet_device = var.vm_tablet_device
+
   # -------------------------------------------------------------------------
   # EFI Disk (Required for OVMF/UEFI)
   # -------------------------------------------------------------------------

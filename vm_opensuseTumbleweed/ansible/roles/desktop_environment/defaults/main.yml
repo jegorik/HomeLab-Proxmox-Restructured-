@@ -6,6 +6,8 @@ desktop_environment_packages:
   - patterns-kde-kde
   - patterns-kde-kde_plasma
   - sddm
+  - xorg-x11-server
+  - xf86-video-qxl
 desktop_environment_configure_zsh: true
 desktop_environment_install_fonts: true
 desktop_environment_theme_p10k: true

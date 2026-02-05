@@ -138,6 +138,8 @@ Host (Proxmox)                          VM (Guest)
 - ✅ **UEFI/OVMF Boot Support** for modern operating systems
 - ✅ **High-Performance CPU** with host passthrough option
 - ✅ **Flexible Resource Allocation** (CPU, RAM, Disk)
+- ✅ **VirtIO Display** with QXL/VirtIO-GPU support for desktop VMs
+- ✅ **USB Tablet Device** for proper mouse/keyboard in noVNC/SPICE
 - ✅ **VirtIO-FS Persistent Storage** (ZFS-backed /home and /etc)
 - ✅ **USB Device Passthrough** (up to 4 devices)
 - ✅ **Network Configuration** (Static IP or DHCP)
@@ -158,10 +160,13 @@ Host (Proxmox)                          VM (Guest)
 
 ### Configuration (Ansible)
 
-- ✅ **Desktop Environment Installation** (KDE Plasma or GNOME)
-- ✅ **Software Package Management** via zypper
+- ✅ **KDE Plasma Desktop** with Wayland/X11 support
+- ✅ **X11 Display Server** (Xorg) with QXL video driver
+- ✅ **SDDM Display Manager** with graphical.target
+- ✅ **Software Package Management** (Brave, VSCode, Docker, Flatpak)
 - ✅ **System Hardening** (SSH, firewall configuration)
 - ✅ **User Management** with Ansible automation user
+- ✅ **ZSH Shell** with Oh My Zsh and Powerlevel10k theme
 - ✅ **Idempotent Playbooks** (safe to re-run)
 - ✅ **Role-Based Organization** for maintainability
 
@@ -305,9 +310,9 @@ vm_opensuseTumbleweed/
     │
     └── roles/                        # Ansible roles
         ├── persistence/              # VirtIO-FS mounts and /etc symlinks
-        ├── common/                   # Base system (firewall, sudoers, packages)
-        ├── software_installation/    # Flatpak, Brave, VSCode, development tools
-        └── desktop_environment/      # KDE Plasma or GNOME installation
+        ├── common/                   # Base system (firewall, sudoers, packages, timezone)
+        ├── software_installation/    # Flatpak, Brave, VSCode, Docker, development tools
+        └── desktop_environment/      # KDE Plasma (Xorg, SDDM, QXL driver, ZSH)
 ```
 
 ## 🔧 Configuration

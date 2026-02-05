@@ -82,23 +82,9 @@ write_files:
 # -------------------------------------------------------------------------
 # Final Tasks
 # -------------------------------------------------------------------------
+network: {config: disabled}
 runcmd:
   - systemctl enable --now qemu-guest-agent
-%{ if !use_dhcp ~}
-  # Configure NetworkManager with static IP (persists across reboots)
-  # Delete auto-created DHCP connection and create static one
-  - nmcli con delete "Wired connection 1" || true
-  - nmcli con delete "cloud-init eth0" || true
-  - |
-    nmcli con add type ethernet con-name "static-eth0" ifname eth0 \
-      ipv4.method manual \
-      ipv4.addresses "${vm_ip_address}" \
-      ipv4.gateway "${vm_gateway}" \
-      ipv4.dns "${vm_dns_servers}" \
-      ipv6.method disabled \
-      connection.autoconnect yes
-  - nmcli con up "static-eth0"
-%{ endif ~}
 %{ if virtiofs_home_enabled || virtiofs_etc_enabled ~}
   # SELinux: Set permissive mode for virtiofs mounts (required for write access)
   # The unlabeled_t context from host prevents writes in enforcing mode
