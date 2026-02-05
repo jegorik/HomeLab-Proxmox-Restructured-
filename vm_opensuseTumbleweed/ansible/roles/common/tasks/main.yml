@@ -20,6 +20,15 @@
       - man
     state: present
 
+- name: Install additional utility packages
+  community.general.zypper:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Set system timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
 - name: Ensure firewalld is running and enabled
   ansible.builtin.service:
     name: firewalld
@@ -45,18 +54,18 @@
 - name: Check if sudoers file exists
   ansible.builtin.stat:
     path: /etc/sudoers
-  register: sudoers_stat
+  register: common_sudoers_stat
 
 - name: Create sudoers file if missing (OpenSUSE minimal)
   ansible.builtin.copy:
     content: |
       ## sudoers file
       ## This file MUST be edited with the 'visudo' command.
-      
+
       Defaults env_reset
       Defaults mail_badpass
       Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-      
+
       root ALL=(ALL:ALL) ALL
       %wheel ALL=(ALL:ALL) NOPASSWD: ALL
     dest: /etc/sudoers
@@ -64,7 +73,7 @@
     group: root
     mode: "0440"
     validate: "visudo -cf %s"
-  when: not sudoers_stat.stat.exists
+  when: not common_sudoers_stat.stat.exists
 
 - name: Ensure passwordless sudo for wheel group
   ansible.builtin.lineinfile:
@@ -73,4 +82,4 @@
     regexp: "^%wheel"
     line: "%wheel ALL=(ALL:ALL) NOPASSWD: ALL"
     validate: "visudo -cf %s"
-  when: sudoers_stat.stat.exists
+  when: common_sudoers_stat.stat.exists

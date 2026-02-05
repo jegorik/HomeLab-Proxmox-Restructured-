@@ -1,4 +1,53 @@
 ---
+# =============================================================================
+# Desktop Environment Role - Install KDE Plasma and configure desktop
+# =============================================================================
+# This role installs KDE Plasma desktop environment with Wayland support,
+# configures SDDM display manager, and sets up ZSH with Powerlevel10k theme.
+
+# -----------------------------------------------------------------------------
+# KDE Plasma Desktop Installation
+# -----------------------------------------------------------------------------
+
+- name: Install KDE Plasma desktop environment packages
+  community.general.zypper:
+    name: "{{ desktop_environment_packages }}"
+    state: present
+  register: desktop_environment_kde_installed
+  retries: 3
+  delay: 10
+
+- name: Check existing display-manager.service symlink
+  ansible.builtin.stat:
+    path: /etc/systemd/system/display-manager.service
+  register: desktop_environment_dm_symlink
+  when: "'sddm' in desktop_environment_packages"
+
+- name: Remove legacy display-manager.service symlink if exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/display-manager.service
+    state: absent
+  when:
+    - "'sddm' in desktop_environment_packages"
+    - desktop_environment_dm_symlink.stat.exists | default(false)
+    - desktop_environment_dm_symlink.stat.islnk | default(false)
+    - "'display-manager-legacy' in (desktop_environment_dm_symlink.stat.lnk_source | default(''))"
+
+- name: Enable SDDM display manager
+  ansible.builtin.service:
+    name: sddm
+    enabled: true
+    state: started
+  when: "'sddm' in desktop_environment_packages"
+
+- name: Set graphical.target as default boot target
+  ansible.builtin.command: systemctl set-default graphical.target
+  changed_when: false
+
+# -----------------------------------------------------------------------------
+# ZSH and Shell Customization (Optional)
+# -----------------------------------------------------------------------------
+
 - name: Install ZSH and font tools
   community.general.zypper:
     name:

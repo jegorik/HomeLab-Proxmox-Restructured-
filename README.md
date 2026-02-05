@@ -503,7 +503,7 @@ sequenceDiagram
 
 ### 12. **vm_opensuseTumbleweed** - OpenSUSE Tumbleweed Workstation
 
-**Purpose**: Rolling-release Linux workstation VM with desktop environment and USB passthrough
+**Purpose**: Rolling-release Linux workstation VM with KDE Plasma desktop and persistent storage
 
 **Status**: ✅ Production-ready with Vault integration
 
@@ -511,9 +511,13 @@ sequenceDiagram
 
 - **OpenSUSE Tumbleweed** rolling-release distribution
 - **UEFI/OVMF boot** for modern operating system support
-- **Desktop Environment** (KDE Plasma or GNOME)
+- **KDE Plasma Desktop** with Wayland/X11 support, SDDM display manager
+- **VirtIO Display** (VirtIO-GPU) with USB tablet for noVNC/SPICE
+- **X11 Server** (Xorg) with QXL video driver for VM graphics
+- **VirtIO-FS Persistent Storage** (ZFS-backed /home and /etc, survives VM recreation)
 - **USB Device Passthrough** (up to 4 devices - keyboard, mouse, peripherals)
-- **Dual Disk Configuration** (32GB boot + 50GB data disk)
+- **Software Stack** (Docker, Brave browser, VSCode, Flatpak apps)
+- **ZSH Shell** with Oh My Zsh and Powerlevel10k theme
 - Cloud-init for initial VM provisioning
 - QEMU Guest Agent for Proxmox integration
 - Ansible-based configuration management
@@ -529,6 +533,8 @@ sequenceDiagram
 - Vault Transit engine enabled
 - Required secrets stored in Vault KV
 - Vault authentication configured (userpass)
+- ZFS datasets created on Proxmox host for VirtIO-FS
+- Proxmox Directory Mappings configured (workstation_home, workstation_etc)
 - OpenSUSE Tumbleweed cloud image available
 - USB devices identified (optional, for passthrough)
 

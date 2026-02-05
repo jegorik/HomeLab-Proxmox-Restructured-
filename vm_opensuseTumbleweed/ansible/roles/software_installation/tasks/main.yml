@@ -12,14 +12,14 @@
     auto_import_keys: true
     state: present
   when: software_installation_install_brave
-  register: brave_repo_added
+  register: software_installation_brave_repo_added
 
 - name: Import Microsoft GPG key
   ansible.builtin.rpm_key:
     key: https://packages.microsoft.com/keys/microsoft.asc
     state: present
   when: software_installation_install_vscode
-  register: vscode_repo_result
+  register: software_installation_vscode_repo_result
 
 - name: Add VSCode repository
   community.general.zypper_repository:
@@ -28,17 +28,18 @@
     auto_import_keys: true
     state: present
   when: software_installation_install_vscode
-  register: vscode_repo_added
+  register: software_installation_vscode_repo_added
 
 - name: Refresh repositories (only if repos changed)
   ansible.builtin.command: zypper --gpg-auto-import-keys refresh
-  when: (brave_repo_added is defined and brave_repo_added.changed) or
-        (vscode_repo_added is defined and vscode_repo_added.changed)
+  when:
+    (software_installation_brave_repo_added is defined and software_installation_brave_repo_added.changed) or
+    (software_installation_vscode_repo_added is defined and software_installation_vscode_repo_added.changed)
   changed_when: true
 
 - name: Build package list
   ansible.builtin.set_fact:
-    software_packages_to_install: >-
+    software_installation_packages_to_install: >-
       {{
         (software_installation_install_brave | bool | ternary(['brave-browser'], [])) +
         (software_installation_install_vscode | bool | ternary(['code'], [])) +
@@ -48,10 +49,10 @@
 
 - name: Install software packages (System/Zypper)
   community.general.zypper:
-    name: "{{ software_packages_to_install }}"
+    name: "{{ software_installation_packages_to_install }}"
     state: present
     update_cache: true
-  when: software_packages_to_install | length > 0
+  when: software_installation_packages_to_install | length > 0
 
 - name: Enable and start Docker service
   ansible.builtin.service:
@@ -62,7 +63,7 @@
 
 - name: Add user to docker group
   ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
+    name: "{{ target_user_name | default('user') }}"
     groups: docker
     append: true
   when: software_installation_install_docker
@@ -74,13 +75,14 @@
 
 - name: Check if Obsidian is already installed
   ansible.builtin.command: flatpak list --app --columns=application
-  register: flatpak_installed_apps
+  register: software_installation_flatpak_apps
   changed_when: false
   when: software_installation_install_obsidian and software_installation_install_flatpak
 
 - name: Install Obsidian via Flatpak
   ansible.builtin.command: flatpak install -y flathub md.obsidian.Obsidian
+  changed_when: true
   when:
     - software_installation_install_obsidian
     - software_installation_install_flatpak
-    - "'md.obsidian.Obsidian' not in flatpak_installed_apps.stdout"
+    - "'md.obsidian.Obsidian' not in software_installation_flatpak_apps.stdout"
