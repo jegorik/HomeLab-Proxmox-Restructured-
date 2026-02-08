@@ -16,6 +16,22 @@
       changed_when: false
       failed_when: false
 
+    - name: Wait for cloud-init to complete all stages
+      ansible.builtin.shell: |
+        status=$(cloud-init status 2>/dev/null || echo "not-installed")
+        echo "$status"
+        echo "$status" | grep -qE 'done|error|disabled|not-installed'
+      register: cloud_init_wait
+      retries: 30
+      delay: 10
+      until: cloud_init_wait.rc == 0
+      changed_when: false
+      failed_when: false
+
+    - name: Display cloud-init final status
+      ansible.builtin.debug:
+        msg: "Cloud-init status: {{ cloud_init_wait.stdout_lines | default(['unknown']) | last }}"
+
     - name: Wait for VirtIO-FS mounts to be available
       ansible.builtin.wait_for:
         path: /home
@@ -23,23 +39,57 @@
         timeout: 60
       ignore_errors: true
 
+    - name: Verify DNS resolution is working
+      ansible.builtin.command: getent hosts brave-browser-rpm-release.s3.brave.com
+      register: pre_dns_check
+      retries: 5
+      delay: 10
+      until: pre_dns_check.rc == 0
+      changed_when: false
+      failed_when: false
+
+    - name: Display DNS warning if resolution failed
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: DNS resolution is not working. External repository setup
+          (Brave, VSCode, Flatpak) will be skipped. Check /etc/resolv.conf
+          and NetworkManager connection profiles on the VM.
+      when: pre_dns_check is defined and pre_dns_check.rc != 0
+
     # Fix broken repos from previous runs by importing GPG keys early
     - name: Import Brave Browser GPG key (pre-task)
       ansible.builtin.rpm_key:
         key: https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
         state: present
+      when: pre_dns_check is defined and pre_dns_check.rc == 0
       failed_when: false
 
     - name: Import Microsoft GPG key (pre-task)
       ansible.builtin.rpm_key:
         key: https://packages.microsoft.com/keys/microsoft.asc
         state: present
+      when: pre_dns_check is defined and pre_dns_check.rc == 0
       failed_when: false
+
+    - name: Set DNS availability fact for downstream roles
+      ansible.builtin.set_fact:
+        dns_available: "{{ pre_dns_check is defined and pre_dns_check.rc == 0 }}"
 
     - name: Auto-import GPG keys for all repos
       ansible.builtin.command: zypper --gpg-auto-import-keys refresh
       changed_when: false
       failed_when: false
+
+    # Tumbleweed 2025+: zypper prompts for transaction backend selection.
+    # The community.general.zypper module cannot handle this prompt,
+    # causing rc=4. Pre-configure to use classic backend silently.
+    - name: Configure zypper transaction backend (Tumbleweed 2025+)
+      ansible.builtin.lineinfile:
+        path: /etc/zypp/zypp.conf
+        regexp: '^#?\s*commit\.backend\s*='
+        line: "commit.backend = classic"
+        create: true
+        mode: "0644"
 
   roles:
     - role: persistence

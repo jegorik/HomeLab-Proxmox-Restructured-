@@ -532,7 +532,7 @@ variable "vm_network_model" {
 }
 
 variable "vm_network_mac_address" {
-  description = "MAC address for the network interface"
+  description = "MAC address for the network interface. Empty string for auto-generation."
   type        = string
   default     = ""
 }
@@ -572,9 +572,9 @@ variable "vm_network_rate_limit" {
 # -----------------------------------------------------------------------------
 
 variable "vm_usb_device_1_host" {
-  description = "USB device 1 host identifier (vendor:product or bus-port)"
+  description = "USB device 1 host identifier (vendor:product or bus-port). Empty string to disable."
   type        = string
-  default     = "212e:1534"
+  default     = ""
 }
 
 variable "vm_usb_device_1_usb3" {
@@ -584,9 +584,9 @@ variable "vm_usb_device_1_usb3" {
 }
 
 variable "vm_usb_device_2_host" {
-  description = "USB device 2 host identifier (vendor:product or bus-port)"
+  description = "USB device 2 host identifier (vendor:product or bus-port). Empty string to disable."
   type        = string
-  default     = "1-4"
+  default     = ""
 }
 
 variable "vm_usb_device_2_usb3" {
@@ -596,9 +596,9 @@ variable "vm_usb_device_2_usb3" {
 }
 
 variable "vm_usb_device_3_host" {
-  description = "USB device 3 host identifier (vendor:product or bus-port)"
+  description = "USB device 3 host identifier (vendor:product or bus-port). Empty string to disable."
   type        = string
-  default     = "4-2.4"
+  default     = ""
 }
 
 variable "vm_usb_device_3_usb3" {
@@ -608,9 +608,9 @@ variable "vm_usb_device_3_usb3" {
 }
 
 variable "vm_usb_device_4_host" {
-  description = "USB device 4 host identifier (vendor:product or bus-port)"
+  description = "USB device 4 host identifier (vendor:product or bus-port). Empty string to disable."
   type        = string
-  default     = "046d:c328"
+  default     = ""
 }
 
 variable "vm_usb_device_4_usb3" {
@@ -698,20 +698,20 @@ variable "vm_qemu_agent_type" {
 
 variable "vm_startup_order" {
   description = "Boot order priority (lower = earlier)"
-  type        = string
-  default     = "3"
+  type        = number
+  default     = 3
 }
 
 variable "vm_startup_up_delay" {
   description = "Seconds to wait after starting this VM before starting the next"
-  type        = string
-  default     = "60"
+  type        = number
+  default     = 60
 }
 
 variable "vm_startup_down_delay" {
   description = "Seconds to wait after stopping this VM before stopping the next"
-  type        = string
-  default     = "60"
+  type        = number
+  default     = 60
 }
 
 # -----------------------------------------------------------------------------

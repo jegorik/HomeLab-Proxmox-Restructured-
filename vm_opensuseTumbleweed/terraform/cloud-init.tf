@@ -21,7 +21,7 @@ locals {
     use_dhcp       = var.vm_use_dhcp
     vm_ip_address  = var.vm_ip_address
     vm_gateway     = var.vm_gateway
-    vm_dns_servers = join(",", var.vm_dns_servers)
+    vm_dns_servers = "${join(";", var.vm_dns_servers)};"
   })
 }
 

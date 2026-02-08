@@ -22,3 +22,45 @@ common_ssh_pubkey_authentication: "yes"
 common_firewall_enabled: true
 common_firewall_allowed_services:
   - ssh
+
+# -----------------------------------------------------------------------------
+# GPU Passthrough Support
+# -----------------------------------------------------------------------------
+# OpenSUSE cloud images use kernel-default-base (minimal kernel without drivers).
+# For GPU passthrough we MUST install the full kernel-default, which includes
+# DRM/KMS modules for ALL GPU vendors (amdgpu, nouveau, i915, etc.).
+# Then vendor-specific userspace packages are installed based on common_gpu_vendor.
+
+# Enable GPU passthrough support (installs full kernel + vendor drivers)
+common_gpu_passthrough_enabled: true
+
+# GPU vendor: "amd", "nvidia", "intel", or "none"
+# Controls which userspace driver packages are installed.
+# "none" = install full kernel only (for manual driver setup or uncommon GPUs)
+common_gpu_vendor: "amd"
+
+# Auto-reboot after kernel upgrade (required for GPU passthrough to work)
+# If false, only a warning message is displayed
+common_gpu_reboot_after_kernel_upgrade: true
+
+# Vendor-specific userspace GPU packages
+# Override these to customize packages for your specific GPU model
+common_gpu_packages_amd:
+  - kernel-firmware-amdgpu    # AMD GPU firmware blobs
+  - xf86-video-amdgpu         # X11 DDX driver for AMD GPUs
+  - libvulkan_radeon           # Vulkan ICD (Mesa RADV)
+  - Mesa-libva                 # VA-API video acceleration
+  - libdrm_amdgpu1             # DRM library for AMD GPUs
+
+common_gpu_packages_nvidia:
+  - kernel-firmware-nvidia     # NVIDIA GPU firmware
+  # NOTE: For proprietary NVIDIA drivers, add the NVIDIA repo first:
+  #   zypper addrepo https://download.nvidia.com/opensuse/tumbleweed NVIDIA
+  # Then set this list to include: nvidia-open-driver-G06-signed-kmp-default
+  # Or for nouveau (open-source): no extra packages needed beyond kernel-default
+
+common_gpu_packages_intel:
+  - kernel-firmware-intel      # Intel GPU firmware
+  - xf86-video-intel           # X11 DDX driver for Intel GPUs (optional, modesetting preferred)
+  - intel-media-driver         # VA-API media driver for Intel Gen8+
+  - libdrm_intel1              # DRM library for Intel GPUs

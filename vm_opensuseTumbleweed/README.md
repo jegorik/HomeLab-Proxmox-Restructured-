@@ -68,7 +68,7 @@ graph TB
     end
     
     subgraph "VM Components"
-        F[Desktop Environment<br/>KDE Plasma/GNOME]
+        F[Desktop Environment<br/>XFCE]
         G[QEMU Guest Agent]
         H[Cloud-Init]
     end
@@ -105,7 +105,7 @@ graph TB
     K -->|Transit Engine| L
     
     style C fill:#73BA25,color:#fff
-    style F fill:#1d99f3,color:#fff
+    style F fill:#2e9afe,color:#fff
     style K fill:#28a745,color:#fff
     style L fill:#844fba,color:#fff
     style Z fill:#ff6600,color:#fff
@@ -160,9 +160,10 @@ Host (Proxmox)                          VM (Guest)
 
 ### Configuration (Ansible)
 
-- ✅ **KDE Plasma Desktop** with Wayland/X11 support
-- ✅ **X11 Display Server** (Xorg) with QXL video driver
-- ✅ **SDDM Display Manager** with graphical.target
+- ✅ **XFCE Desktop** - lightweight, stable, GPU passthrough compatible
+- ✅ **X11 Display Server** (Xorg) with modesetting driver
+- ✅ **LightDM Display Manager** with graphical.target
+- ✅ **GPU Passthrough Support** (full kernel + AMD drivers: amdgpu, Vulkan, VA-API)
 - ✅ **Software Package Management** (Brave, VSCode, Docker, Flatpak)
 - ✅ **System Hardening** (SSH, firewall configuration)
 - ✅ **User Management** with Ansible automation user
@@ -312,7 +313,7 @@ vm_opensuseTumbleweed/
         ├── persistence/              # VirtIO-FS mounts and /etc symlinks
         ├── common/                   # Base system (firewall, sudoers, packages, timezone)
         ├── software_installation/    # Flatpak, Brave, VSCode, Docker, development tools
-        └── desktop_environment/      # KDE Plasma (Xorg, SDDM, QXL driver, ZSH)
+        └── desktop_environment/      # XFCE (Xorg, LightDM, ZSH)
 ```
 
 ## 🔧 Configuration

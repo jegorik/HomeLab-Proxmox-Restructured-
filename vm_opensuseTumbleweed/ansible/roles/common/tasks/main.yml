@@ -1,40 +1,76 @@
 ---
-- name: Ensure system is updated
-  community.general.zypper:
-    name: "*"
-    state: latest
-    update_cache: true
+# =============================================================================
+# Tumbleweed 2025+ Compatibility Note:
+# =============================================================================
+# The community.general.zypper module uses --xmlout which breaks on
+# the new "Backend: classic_rpmtrans" prompt in recent Tumbleweed snapshots.
+# All package installations use ansible.builtin.command with zypper CLI
+# until the upstream module is patched.
+# =============================================================================
+
+- name: Ensure system is updated (Tumbleweed dist-upgrade)
+  ansible.builtin.command: zypper --non-interactive dup --no-recommends --auto-agree-with-licenses
   register: common_zypper_update
+  changed_when: "'Nothing to do' not in common_zypper_update.stdout"
+  until: common_zypper_update is success
   retries: 3
   delay: 10
 
 - name: Install base packages
-  community.general.zypper:
-    name:
-      - vim
-      - sudo
-      - curl
-      - wget
-      - git
-      - firewalld
-      - man
-    state: present
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    vim sudo curl wget git firewalld man python3-rpm dbus-1 dbus-broker
+  register: common_base_install
+  changed_when: common_base_install.rc == 0 and 'already installed' not in common_base_install.stdout
+  failed_when: common_base_install.rc not in [0, 4]
 
 - name: Install additional utility packages
-  community.general.zypper:
-    name: "{{ common_packages }}"
-    state: present
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    {{ common_packages | join(' ') }}
+  register: common_util_install
+  changed_when: common_util_install.rc == 0 and 'already installed' not in common_util_install.stdout
+  failed_when: common_util_install.rc not in [0, 4]
 
 - name: Set system timezone
   community.general.timezone:
     name: "{{ common_timezone }}"
+
+# -----------------------------------------------------------------------------
+# D-Bus & Firewall Configuration
+# -----------------------------------------------------------------------------
+# firewalld requires a working D-Bus. OpenSUSE cloud images may ship without
+# dbus-broker, causing systemd-logind and firewalld failures at boot.
+
+- name: Ensure dbus-broker is enabled and running
+  ansible.builtin.systemd:
+    name: dbus-broker.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: common_firewall_enabled
 
 - name: Ensure firewalld is running and enabled
   ansible.builtin.service:
     name: firewalld
     state: started
     enabled: true
+  register: common_firewalld_result
+  retries: 3
+  delay: 5
+  until: common_firewalld_result is success
   when: common_firewall_enabled
+  ignore_errors: true
+
+- name: Display firewalld warning if startup failed
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: firewalld failed to start. Firewall rules will not be configured.
+      Check 'systemctl status firewalld' and 'journalctl -xeu firewalld' on the VM.
+  when:
+    - common_firewall_enabled
+    - common_firewalld_result is defined
+    - common_firewalld_result is failed
 
 - name: Configure Firewall - Allow services
   ansible.posix.firewalld:
@@ -43,13 +79,11 @@
     state: enabled
     immediate: true
   loop: "{{ common_firewall_allowed_services }}"
-  when: common_firewall_enabled
+  when:
+    - common_firewall_enabled
+    - common_firewalld_result is defined
+    - common_firewalld_result is success
   notify: Reload firewalld
-
-- name: Ensure sudo package is installed
-  community.general.zypper:
-    name: sudo
-    state: present
 
 - name: Check if sudoers file exists
   ansible.builtin.stat:
@@ -83,3 +117,66 @@
     line: "%wheel ALL=(ALL:ALL) NOPASSWD: ALL"
     validate: "visudo -cf %s"
   when: common_sudoers_stat.stat.exists
+
+# -----------------------------------------------------------------------------
+# GPU Passthrough Support
+# -----------------------------------------------------------------------------
+# OpenSUSE cloud images ship kernel-default-base (minimal, no GPU drivers).
+# For GPU passthrough we MUST install the full kernel-default which includes
+# DRM/KMS kernel modules for ALL vendors (amdgpu, nouveau, i915, etc.).
+# Then vendor-specific userspace packages are installed based on common_gpu_vendor.
+
+- name: Check if full kernel-default is installed
+  ansible.builtin.command: rpm -q kernel-default
+  register: common_kernel_check
+  changed_when: false
+  failed_when: false
+  when: common_gpu_passthrough_enabled
+
+- name: Install full kernel-default (provides GPU kernel modules for all vendors)
+  ansible.builtin.command: >
+    zypper --non-interactive install --force-resolution --auto-agree-with-licenses
+    kernel-default
+  register: common_kernel_install
+  changed_when: common_kernel_install.rc == 0 and 'already installed' not in common_kernel_install.stdout
+  failed_when: common_kernel_install.rc not in [0, 4]
+  when:
+    - common_gpu_passthrough_enabled
+    - common_kernel_check.rc != 0
+  notify:
+    - Reboot for kernel upgrade
+
+- name: Verify kernel-default installation succeeded
+  ansible.builtin.command: rpm -q kernel-default
+  register: common_kernel_verify
+  changed_when: false
+  failed_when: common_kernel_verify.rc != 0
+  when:
+    - common_gpu_passthrough_enabled
+    - common_kernel_install is defined
+    - common_kernel_install is changed
+
+- name: Build vendor-specific GPU package list
+  ansible.builtin.set_fact:
+    common_gpu_packages: >-
+      {%- if common_gpu_vendor == "amd" -%}
+        {{ common_gpu_packages_amd }}
+      {%- elif common_gpu_vendor == "nvidia" -%}
+        {{ common_gpu_packages_nvidia }}
+      {%- elif common_gpu_vendor == "intel" -%}
+        {{ common_gpu_packages_intel }}
+      {%- else -%}
+        []
+      {%- endif -%}
+  when: common_gpu_passthrough_enabled
+
+- name: Install vendor-specific GPU driver packages ({{ common_gpu_vendor }})
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    {{ common_gpu_packages | join(' ') }}
+  register: common_gpu_install
+  changed_when: common_gpu_install.rc == 0 and 'already installed' not in common_gpu_install.stdout
+  failed_when: common_gpu_install.rc not in [0, 4]
+  when:
+    - common_gpu_passthrough_enabled
+    - common_gpu_packages | length > 0

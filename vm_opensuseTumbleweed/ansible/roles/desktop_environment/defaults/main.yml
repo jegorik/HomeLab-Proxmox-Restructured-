@@ -2,14 +2,24 @@
 # =============================================================================
 # Desktop Environment Role - Default Variables
 # =============================================================================
+# XFCE Desktop Environment - lightweight, stable, works with GPU passthrough
+
 desktop_environment_packages:
-  - patterns-kde-kde
-  - patterns-kde-kde_plasma
-  - sddm
+  - patterns-xfce-xfce
+  - lightdm
+  - lightdm-gtk-greeter
   - xorg-x11-server
-  - xf86-video-qxl
+  # Input drivers - REQUIRED for USB keyboard/mouse to work
+  - xf86-input-libinput
+  - xf86-input-evdev
+
+# Display manager configuration
+desktop_environment_display_manager: "lightdm"
+
+# Shell customization
 desktop_environment_configure_zsh: true
 desktop_environment_install_fonts: true
 desktop_environment_theme_p10k: true
+
 # Note: desktop_environment_target_user is set in group_vars/all.yml
 # to ensure consistency with Terraform vm_username

@@ -12,3 +12,21 @@
   ansible.builtin.systemd:
     name: sshd
     state: restarted
+
+- name: Reboot for kernel upgrade
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: "Rebooting: full kernel-default installed for GPU passthrough support"
+    post_reboot_delay: 15
+  when: common_gpu_reboot_after_kernel_upgrade | default(true)
+
+- name: Reboot for kernel upgrade warning
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  KERNEL UPDATED - REBOOT REQUIRED!
+      The full kernel (kernel-default) has been installed replacing kernel-default-base.
+      GPU passthrough will NOT work until the VM is rebooted.
+      Please reboot the VM manually:
+        sudo reboot
+      Or from Proxmox: qm reboot {{ inventory_hostname }}
+  when: not (common_gpu_reboot_after_kernel_upgrade | default(true))
