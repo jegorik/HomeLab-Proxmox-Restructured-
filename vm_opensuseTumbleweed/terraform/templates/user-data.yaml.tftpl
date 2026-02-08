@@ -15,7 +15,7 @@ users:
   - name: ${vm_username}
     uid: ${target_user_uid}
     sudo: ALL=(ALL) ALL
-    groups: wheel, admin
+    groups: wheel
     shell: /bin/bash
     ssh_authorized_keys:
       - ${root_ssh_key}
@@ -55,6 +55,8 @@ package_update: true
 package_upgrade: true
 packages:
   - qemu-guest-agent
+  - dbus-1
+  - dbus-broker
   - curl
   - wget
   - git
@@ -64,7 +66,7 @@ packages:
   - python3-pip
 
 # -------------------------------------------------------------------------
-# Write Files (Persistence Detection Script)
+# Write Files
 # -------------------------------------------------------------------------
 write_files:
   - path: /usr/local/bin/check-persistence-marker.sh
@@ -78,12 +80,21 @@ write_files:
       else
         echo "FRESH"
       fi
+  # Disable cloud-init network management permanently.
+  # Without this, cloud-init regenerates network config on every reboot,
+  # overriding the static IP set by Proxmox ip_config.
+  - path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    permissions: "0644"
+    content: |
+      network: {config: disabled}
 
 # -------------------------------------------------------------------------
 # Final Tasks
 # -------------------------------------------------------------------------
-network: {config: disabled}
 runcmd:
+  # D-Bus must be running before systemd-logind and firewalld
+  - systemctl daemon-reload
+  - systemctl enable --now dbus-broker.service || true
   - systemctl enable --now qemu-guest-agent
 %{ if virtiofs_home_enabled || virtiofs_etc_enabled ~}
   # SELinux: Set permissive mode for virtiofs mounts (required for write access)

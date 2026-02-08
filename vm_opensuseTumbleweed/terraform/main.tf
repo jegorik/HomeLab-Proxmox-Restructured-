@@ -154,7 +154,6 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
     limit        = var.vm_cpu_limit
     units        = var.vm_cpu_units
     numa         = var.vm_cpu_numa
-    flags        = var.vm_cpu_flags
   }
 
   # -------------------------------------------------------------------------
@@ -257,7 +256,7 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
 
   network_device {
     bridge       = var.vm_network_bridge
-    mac_address  = var.vm_network_mac_address
+    mac_address  = var.vm_network_mac_address != "" ? var.vm_network_mac_address : null
     model        = var.vm_network_model
     enabled      = var.vm_network_enabled
     firewall     = var.vm_network_firewall
@@ -349,30 +348,43 @@ resource "proxmox_virtual_environment_vm" "tumbleweed_vm" {
   # - Performance issues: Enable usb3 for high-bandwidth devices
   # - Device resets: Check power management settings in guest OS
   #
-  # Usage: Comment out unused USB blocks or set host to empty string ""
+  # Usage: Set host to empty string "" to disable a USB device slot
+  # Dynamic blocks prevent provider panic when host is empty/nil
 
   # USB Device 1: Keyboard or primary input
-  usb {
-    host = var.vm_usb_device_1_host # USB ID (e.g., "046d:c328" or "1-4")
-    usb3 = var.vm_usb_device_1_usb3 # false for keyboards (better compatibility)
+  dynamic "usb" {
+    for_each = var.vm_usb_device_1_host != "" ? [1] : []
+    content {
+      host = var.vm_usb_device_1_host
+      usb3 = var.vm_usb_device_1_usb3
+    }
   }
 
   # USB Device 2: Mouse or secondary input
-  usb {
-    host = var.vm_usb_device_2_host # USB ID (e.g., "413c:2113" or "4-2")
-    usb3 = var.vm_usb_device_2_usb3 # false for mice (better compatibility)
+  dynamic "usb" {
+    for_each = var.vm_usb_device_2_host != "" ? [1] : []
+    content {
+      host = var.vm_usb_device_2_host
+      usb3 = var.vm_usb_device_2_usb3
+    }
   }
 
   # USB Device 3: Additional peripheral or hub
-  usb {
-    host = var.vm_usb_device_3_host # USB ID (e.g., "0951:1666" or "4-2.3")
-    usb3 = var.vm_usb_device_3_usb3 # true for storage devices
+  dynamic "usb" {
+    for_each = var.vm_usb_device_3_host != "" ? [1] : []
+    content {
+      host = var.vm_usb_device_3_host
+      usb3 = var.vm_usb_device_3_usb3
+    }
   }
 
   # USB Device 4: Storage or additional device
-  usb {
-    host = var.vm_usb_device_4_host # USB ID or empty "" if not used
-    usb3 = var.vm_usb_device_4_usb3 # true for high-speed devices
+  dynamic "usb" {
+    for_each = var.vm_usb_device_4_host != "" ? [1] : []
+    content {
+      host = var.vm_usb_device_4_host
+      usb3 = var.vm_usb_device_4_usb3
+    }
   }
 
   # -------------------------------------------------------------------------

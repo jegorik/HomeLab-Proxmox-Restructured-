@@ -32,10 +32,16 @@ persistence_marker_file: "/home/.persistent_marker"
 # Subdirectories of /etc to symlink to /persistent/etc/<item>
 # On fresh install: copy current /etc/<item> to /persistent/etc/<item> if empty
 # On reconnect: create symlink /etc/<item> -> /persistent/etc/<item>
+#
+# WARNING: Do NOT add "systemd/system" here!
+# That directory is managed by systemd internally (service enable/disable
+# symlinks, socket units, etc.). Replacing it with a symlink breaks
+# dbus.socket and systemd-logind on every reboot.
+# To persist custom systemd units, place them in /etc/systemd/system/*.d/
+# drop-in directories or manage them via Ansible directly.
 
 persistence_etc_items:
   - "NetworkManager"
-  - "systemd/system"
 
 # -----------------------------------------------------------------------------
 # Persistence Behavior

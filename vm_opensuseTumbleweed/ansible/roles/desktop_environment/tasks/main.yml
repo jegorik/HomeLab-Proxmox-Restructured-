@@ -1,19 +1,21 @@
 ---
 # =============================================================================
-# Desktop Environment Role - Install KDE Plasma and configure desktop
+# Desktop Environment Role - Install XFCE and configure desktop
 # =============================================================================
-# This role installs KDE Plasma desktop environment with Wayland support,
-# configures SDDM display manager, and sets up ZSH with Powerlevel10k theme.
+# This role installs XFCE desktop environment, configures LightDM display
+# manager, and sets up ZSH with Powerlevel10k theme.
 
 # -----------------------------------------------------------------------------
-# KDE Plasma Desktop Installation
+# XFCE Desktop Installation
 # -----------------------------------------------------------------------------
 
-- name: Install KDE Plasma desktop environment packages
-  community.general.zypper:
-    name: "{{ desktop_environment_packages }}"
-    state: present
-  register: desktop_environment_kde_installed
+- name: Install XFCE desktop environment packages
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    {{ desktop_environment_packages | join(' ') }}
+  register: desktop_environment_xfce_installed
+  changed_when: desktop_environment_xfce_installed.rc == 0 and 'already installed' not in desktop_environment_xfce_installed.stdout
+  failed_when: desktop_environment_xfce_installed.rc not in [0, 4]
   retries: 3
   delay: 10
 
@@ -21,24 +23,21 @@
   ansible.builtin.stat:
     path: /etc/systemd/system/display-manager.service
   register: desktop_environment_dm_symlink
-  when: "'sddm' in desktop_environment_packages"
 
 - name: Remove legacy display-manager.service symlink if exists
   ansible.builtin.file:
     path: /etc/systemd/system/display-manager.service
     state: absent
   when:
-    - "'sddm' in desktop_environment_packages"
     - desktop_environment_dm_symlink.stat.exists | default(false)
     - desktop_environment_dm_symlink.stat.islnk | default(false)
     - "'display-manager-legacy' in (desktop_environment_dm_symlink.stat.lnk_source | default(''))"
 
-- name: Enable SDDM display manager
+- name: Enable LightDM display manager
   ansible.builtin.service:
-    name: sddm
+    name: "{{ desktop_environment_display_manager }}"
     enabled: true
     state: started
-  when: "'sddm' in desktop_environment_packages"
 
 - name: Set graphical.target as default boot target
   ansible.builtin.command: systemctl set-default graphical.target
@@ -49,23 +48,25 @@
 # -----------------------------------------------------------------------------
 
 - name: Install ZSH and font tools
-  community.general.zypper:
-    name:
-      - zsh
-      - tar
-      - gzip
-      - fontconfig
-    state: present
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    zsh tar gzip fontconfig
+  register: desktop_environment_zsh_install
+  changed_when: desktop_environment_zsh_install.rc == 0 and 'already installed' not in desktop_environment_zsh_install.stdout
+  failed_when: desktop_environment_zsh_install.rc not in [0, 4]
+  when: desktop_environment_configure_zsh
 
 - name: Change user shell to zsh
   ansible.builtin.user:
     name: "{{ desktop_environment_target_user }}"
     shell: /bin/zsh
+  when: desktop_environment_configure_zsh
 
 - name: Check for Oh My Zsh installation
   ansible.builtin.stat:
     path: "/home/{{ desktop_environment_target_user }}/.oh-my-zsh"
   register: desktop_environment_omz_folder
+  when: desktop_environment_configure_zsh
 
 - name: Install Oh My Zsh (via curl)
   ansible.builtin.shell: |
@@ -73,7 +74,10 @@
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   become: true
   become_user: "{{ desktop_environment_target_user }}"
-  when: not desktop_environment_omz_folder.stat.exists
+  when:
+    - desktop_environment_configure_zsh
+    - not desktop_environment_omz_folder.stat.exists
+    - dns_available | default(true) | bool
   changed_when: true
 
 - name: Clone Powerlevel10k theme
@@ -84,7 +88,9 @@
     version: master
   become: true
   become_user: "{{ desktop_environment_target_user }}"
-  when: desktop_environment_theme_p10k
+  when:
+    - desktop_environment_theme_p10k
+    - dns_available | default(true) | bool
 
 - name: Configure .zshrc
   ansible.builtin.lineinfile:

@@ -3,7 +3,9 @@
   ansible.builtin.rpm_key:
     key: https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
     state: present
-  when: software_installation_install_brave
+  when:
+    - software_installation_install_brave
+    - dns_available | default(true) | bool
 
 - name: Add Brave Browser repository
   community.general.zypper_repository:
@@ -11,14 +13,18 @@
     repo: "{{ software_installation_brave_repo_url }}"
     auto_import_keys: true
     state: present
-  when: software_installation_install_brave
+  when:
+    - software_installation_install_brave
+    - dns_available | default(true) | bool
   register: software_installation_brave_repo_added
 
 - name: Import Microsoft GPG key
   ansible.builtin.rpm_key:
     key: https://packages.microsoft.com/keys/microsoft.asc
     state: present
-  when: software_installation_install_vscode
+  when:
+    - software_installation_install_vscode
+    - dns_available | default(true) | bool
   register: software_installation_vscode_repo_result
 
 - name: Add VSCode repository
@@ -27,7 +33,9 @@
     repo: "{{ software_installation_vscode_repo_url }}"
     auto_import_keys: true
     state: present
-  when: software_installation_install_vscode
+  when:
+    - software_installation_install_vscode
+    - dns_available | default(true) | bool
   register: software_installation_vscode_repo_added
 
 - name: Refresh repositories (only if repos changed)
@@ -41,17 +49,19 @@
   ansible.builtin.set_fact:
     software_installation_packages_to_install: >-
       {{
-        (software_installation_install_brave | bool | ternary(['brave-browser'], [])) +
-        (software_installation_install_vscode | bool | ternary(['code'], [])) +
+        ((software_installation_install_brave | bool and (dns_available | default(true) | bool)) | ternary(['brave-browser'], [])) +
+        ((software_installation_install_vscode | bool and (dns_available | default(true) | bool)) | ternary(['code'], [])) +
         (software_installation_install_docker | bool | ternary(['docker'], [])) +
         (software_installation_install_flatpak | bool | ternary(['flatpak'], []))
       }}
 
 - name: Install software packages (System/Zypper)
-  community.general.zypper:
-    name: "{{ software_installation_packages_to_install }}"
-    state: present
-    update_cache: true
+  ansible.builtin.command: >
+    zypper --non-interactive install --no-recommends --auto-agree-with-licenses
+    {{ software_installation_packages_to_install | join(' ') }}
+  register: software_installation_zypper_result
+  changed_when: software_installation_zypper_result.rc == 0 and 'already installed' not in software_installation_zypper_result.stdout
+  failed_when: software_installation_zypper_result.rc not in [0, 4]
   when: software_installation_packages_to_install | length > 0
 
 - name: Enable and start Docker service
@@ -70,14 +80,19 @@
 
 - name: Add Flathub repository
   ansible.builtin.command: flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-  when: software_installation_install_flatpak
+  when:
+    - software_installation_install_flatpak
+    - dns_available | default(true) | bool
   changed_when: false
 
 - name: Check if Obsidian is already installed
   ansible.builtin.command: flatpak list --app --columns=application
   register: software_installation_flatpak_apps
   changed_when: false
-  when: software_installation_install_obsidian and software_installation_install_flatpak
+  when:
+    - software_installation_install_obsidian
+    - software_installation_install_flatpak
+    - dns_available | default(true) | bool
 
 - name: Install Obsidian via Flatpak
   ansible.builtin.command: flatpak install -y flathub md.obsidian.Obsidian
@@ -85,4 +100,5 @@
   when:
     - software_installation_install_obsidian
     - software_installation_install_flatpak
-    - "'md.obsidian.Obsidian' not in software_installation_flatpak_apps.stdout"
+    - dns_available | default(true) | bool
+    - "'md.obsidian.Obsidian' not in (software_installation_flatpak_apps.stdout | default(''))"

@@ -66,16 +66,16 @@ vault_check_configuration() {
 # Check Vault connectivity
 vault_check_connectivity() {
     log_info "Checking Vault connectivity..."
-    
-    if ! vault status &>/dev/null; then
-        log_error "Cannot connect to Vault at ${VAULT_ADDR}"
-        return 1
-    fi
 
     local sealed
     sealed=$(vault status -format=json 2>/dev/null | jq -r '.sealed')
     if [[ "${sealed}" == "true" ]]; then
         log_error "Vault is sealed. Run: vault operator unseal"
+        return 1
+    fi
+    
+    if ! vault status &>/dev/null; then
+        log_error "Cannot connect to Vault at ${VAULT_ADDR}"
         return 1
     fi
 

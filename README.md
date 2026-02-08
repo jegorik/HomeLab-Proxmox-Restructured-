@@ -503,7 +503,7 @@ sequenceDiagram
 
 ### 12. **vm_opensuseTumbleweed** - OpenSUSE Tumbleweed Workstation
 
-**Purpose**: Rolling-release Linux workstation VM with KDE Plasma desktop and persistent storage
+**Purpose**: Rolling-release Linux workstation VM with XFCE desktop and persistent storage
 
 **Status**: ✅ Production-ready with Vault integration
 
@@ -511,7 +511,7 @@ sequenceDiagram
 
 - **OpenSUSE Tumbleweed** rolling-release distribution
 - **UEFI/OVMF boot** for modern operating system support
-- **KDE Plasma Desktop** with Wayland/X11 support, SDDM display manager
+- **XFCE Desktop** with Wayland/X11 support, SDDM display manager
 - **VirtIO Display** (VirtIO-GPU) with USB tablet for noVNC/SPICE
 - **X11 Server** (Xorg) with QXL video driver for VM graphics
 - **VirtIO-FS Persistent Storage** (ZFS-backed /home and /etc, survives VM recreation)
