@@ -540,7 +540,39 @@ sequenceDiagram
 
 ---
 
-### 13. **Future Projects**
+### 13. **proxmox_bkup_client_script** - Automated PBS Backup for Proxmox Host
+
+**Purpose**: Automated file-level backup of Proxmox host directories (e.g., `/rpool/datastore/*` with LXC bind mount data) to Proxmox Backup Server with **client-side encryption**
+
+**Status**: ✅ Production-ready (host-level utility, fully tested)
+
+**Key Features**:
+
+- **Profile-based architecture** — multiple independent backup profiles
+- **Client-side encryption (AES-256-GCM)** — encrypt backups before transmission (protects against PBS compromise)
+- **Mount point traversal** — automatic `--include-dev` for bind mounts (includes LXC container data)
+- **Systemd-native scheduling** — `OnCalendar` timers with persistent and randomized delay
+- **Retention policies** — automatic pruning: keep-last, daily, weekly, monthly
+- **Security hardened** — no `eval`/`source`, credentials separated, strict 0600 permissions, keyfile cleanup traps
+- **Lock files** — PID-based locking prevents concurrent backup runs
+- **Config validation** — validate schedule, permissions, paths, and encryption before first run
+- **Management CLI** — `install`, `remove`, `status`, `test`, `run`, `validate`, `logs` commands
+- **Systemd service hardening** — `ProtectSystem=strict`, `PrivateTmp`, `ProtectKernelTunables`
+- **Comprehensive test suite** — 17 automated tests with mocked components (config parsing, encryption, security)
+
+**Documentation**: See [proxmox_bkup_client_script/README.md](proxmox_bkup_client_script/README.md)
+
+**Deployment Order**: 🔧 **Host Utility** - Runs on Proxmox host directly (requires `proxmox-backup-client` installed)
+
+**Prerequisites**:
+
+- Proxmox host with `proxmox-backup-client` installed
+- Running Proxmox Backup Server (lxc_PBS or standalone) with a configured datastore
+- PBS user/API token with `DatastoreBackup` + `DatastorePrune` permissions
+
+---
+
+### 14. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
