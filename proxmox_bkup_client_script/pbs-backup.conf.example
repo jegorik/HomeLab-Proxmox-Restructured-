@@ -1,0 +1,122 @@
+# =============================================================================
+# PBS Backup Client Configuration
+# =============================================================================
+#
+# Copy this file to /etc/pbs-backup/<profile>.conf and edit to match your
+# environment. Each profile represents a distinct backup job.
+#
+# Profile name is derived from the filename: "rpool.conf" → profile "rpool".
+#
+# SECURITY: Config files are readable only by root (chmod 600).
+#           Credentials are stored in a SEPARATE file for defense-in-depth.
+#
+# Documentation: See README.md for full usage instructions.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PBS Server Connection
+# -----------------------------------------------------------------------------
+
+# PBS server hostname or IP address (required)
+PBS_SERVER="192.168.1.181"
+
+# PBS server API port (default: 8007)
+PBS_PORT="8007"
+
+# PBS datastore name where backups are stored (required)
+PBS_DATASTORE="backups"
+
+# Authentication user (format: user@realm or user@realm!token-name)
+# For API tokens (recommended): "backup@pbs!automation"
+# For user/password:             "root@pam"
+PBS_AUTH_ID="root@pam"
+
+# SSL fingerprint of the PBS server certificate.
+# Obtain with: proxmox-backup-client login --repository <repo> (first time)
+# Or from PBS UI: Administration → Certificate Information
+# Leave empty to accept on first connection (NOT recommended for production).
+PBS_FINGERPRINT=""
+
+# -----------------------------------------------------------------------------
+# Backup Paths (required)
+# -----------------------------------------------------------------------------
+
+# Space-separated list of directories to back up.
+# Each path becomes a separate .pxar archive named after the directory.
+#
+# Example for Proxmox host rpool bind mount data:
+#   "/rpool/datastore/grafana /rpool/datastore/influxdb /rpool/datastore/pbs"
+#
+# Example for single directory:
+#   "/rpool"
+BACKUP_PATHS="/rpool/data"
+
+# Space-separated list of exclusion patterns (glob syntax).
+# These are passed as --exclude to proxmox-backup-client.
+#
+# Common exclusions:
+#   "lost+found .snapshots .cache tmp"
+EXCLUDE_PATTERNS="lost+found .snapshots .cache tmp"
+
+# -----------------------------------------------------------------------------
+# Schedule (systemd OnCalendar format)
+# -----------------------------------------------------------------------------
+# Controls when the systemd timer triggers the backup.
+#
+# Examples:
+#   "*-*-* 02:00:00"          → Daily at 02:00
+#   "*-*-* 02,14:00:00"       → Twice daily at 02:00 and 14:00
+#   "Sun *-*-* 03:00:00"      → Weekly on Sunday at 03:00
+#   "hourly"                  → Every hour
+#   "*-*-* *:00/30:00"        → Every 30 minutes
+#
+# See: systemd.time(7) for full syntax reference.
+BACKUP_SCHEDULE="*-*-* 02:00:00"
+
+# -----------------------------------------------------------------------------
+# Retention Policy
+# -----------------------------------------------------------------------------
+# How many backups to keep. Older backups beyond these limits are pruned.
+# Set to 0 to disable a specific retention tier.
+#
+# PBS evaluates retention in order: last → hourly → daily → weekly → monthly → yearly
+# A backup matching multiple tiers counts only once (no duplication).
+
+# Always keep the N most recent backups regardless of age
+KEEP_LAST=3
+
+# Keep one backup per day for the last N days
+KEEP_DAILY=7
+
+# Keep one backup per week for the last N weeks
+KEEP_WEEKLY=4
+
+# Keep one backup per month for the last N months
+KEEP_MONTHLY=3
+
+# -----------------------------------------------------------------------------
+# Advanced Options
+# -----------------------------------------------------------------------------
+
+# Change detection mode for incremental backups.
+# "metadata" (default) - uses file metadata (mtime, size) for fast detection
+# "data"               - reads file content (slower but catches metadata-only changes)
+CHANGE_DETECTION_MODE="metadata"
+
+# Skip lost+found directories automatically (true/false)
+SKIP_LOST_AND_FOUND="true"
+
+# Enable verbose output in backup logs (true/false)
+VERBOSE="false"
+
+# Maximum number of seconds to wait for lock before giving up (default: 300)
+LOCK_TIMEOUT=300
+
+# Notification command executed on backup failure.
+# The command receives the error message as $1.
+# Leave empty to disable notifications.
+#
+# Examples:
+#   "echo 'PBS backup failed: \$1' | mail -s 'Backup Alert' admin@example.com"
+#   "/usr/local/bin/notify-failure.sh"
+NOTIFY_ON_FAILURE=""
