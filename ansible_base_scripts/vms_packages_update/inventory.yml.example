@@ -1,0 +1,89 @@
+# =============================================================================
+# Ansible Inventory: System Package Update Playbook
+# =============================================================================
+#
+# Instructions:
+#   1. Copy this file to inventory.yml:
+#      cp inventory.yml.example inventory.yml
+#
+#   2. Update IP addresses, hostnames, and credentials to match your environment.
+#
+#   3. Test connectivity:
+#      ansible -i inventory.yml all -m ping
+#
+# Group hierarchy:
+#   all
+#   ├── containers    (LXC — reboot skipped, warning displayed)
+#   │   ├── vault       192.168.1.109
+#   │   ├── netbox      192.168.1.105
+#   │   ├── npm         192.168.1.100
+#   │   ├── grafana     192.168.1.106
+#   │   ├── influxdb    192.168.1.200
+#   │   ├── pbs         192.168.1.110
+#   │   └── semaphoreui 192.168.1.100
+#   └── vms            (Full VMs — reboot supported)
+#       ├── docker-pool       192.168.0.200 (Ubuntu)
+#       └── opensuse-tw       192.168.0.XXX (Tumbleweed)
+#
+# Usage examples:
+#   # Update all hosts
+#   ansible-playbook -i inventory.yml packages_update.yml
+#
+#   # Update only containers
+#   ansible-playbook -i inventory.yml packages_update.yml -l containers
+#
+#   # Update only VMs with reboot enabled
+#   ansible-playbook -i inventory.yml packages_update.yml -l vms -e "reboot_enabled=true"
+#
+#   # Update a single host
+#   ansible-playbook -i inventory.yml packages_update.yml -l grafana
+#
+#   # Security updates only
+#   ansible-playbook -i inventory.yml packages_update.yml -e "only_security_updates=true"
+#
+# =============================================================================
+
+all:
+  # Default variables for all hosts
+  vars:
+    ansible_user: ansible
+    ansible_ssh_private_key_file: ~/.ssh/ansible
+    ansible_python_interpreter: /usr/bin/python3
+
+  children:
+    # -----------------------------------------------------------------
+    # LXC Containers (Debian-based)
+    # ansible.builtin.reboot is incompatible with LXC — playbook
+    # detects container type automatically and skips reboot, showing
+    # a warning instead.
+    # -----------------------------------------------------------------
+    containers:
+      hosts:
+        vault:
+          ansible_host: 192.168.1.109
+        netbox:
+          ansible_host: 192.168.1.105
+        npm:
+          ansible_host: 192.168.1.100
+        grafana:
+          ansible_host: 192.168.1.106
+        influxdb:
+          ansible_host: 192.168.1.200
+        pbs:
+          ansible_host: 192.168.1.110
+        semaphoreui:
+          ansible_host: 192.168.1.100
+
+    # -----------------------------------------------------------------
+    # Virtual Machines
+    # -----------------------------------------------------------------
+    vms:
+      children:
+        debian_vms:
+          hosts:
+            docker-pool:
+              ansible_host: 192.168.1.200
+        suse_vms:
+          hosts:
+            opensuse-tw:
+              ansible_host: 192.168.1.XXX  # <-- UPDATE THIS

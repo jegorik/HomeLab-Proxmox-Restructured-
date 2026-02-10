@@ -1,0 +1,610 @@
+---
+# =============================================================================
+# Ansible Playbook: System Package Update
+# =============================================================================
+#
+# Description:
+#   Updates system packages on Debian/Ubuntu, RHEL/CentOS/Fedora/Rocky,
+#   OpenSUSE Leap, and OpenSUSE Tumbleweed hosts. Designed for Proxmox
+#   environments with mixed VMs and LXC containers.
+#
+# Features:
+#   - Multi-distribution support (Debian, Ubuntu, RHEL, CentOS, Fedora,
+#     Rocky, OpenSUSE Leap/Tumbleweed, SLES)
+#   - LXC container awareness (skips reboot, warns instead)
+#   - Security-only update mode (apt, dnf, zypper)
+#   - Conditional reboot only when required (VMs only)
+#   - Disk space pre-check before updates
+#   - OS-agnostic audit logging with rotation
+#   - Error handling via block/rescue
+#   - Idempotent cleanup operations
+#
+# Usage:
+#   # Dry run (check mode)
+#   ansible-playbook -i inventory.yml packages_update.yml --check
+#
+#   # Update all hosts
+#   ansible-playbook -i inventory.yml packages_update.yml
+#
+#   # Update specific group only
+#   ansible-playbook -i inventory.yml packages_update.yml -l containers
+#
+#   # Enable automatic reboot (VMs only, containers always skip)
+#   ansible-playbook -i inventory.yml packages_update.yml -e "reboot_enabled=true"
+#
+#   # Security updates only
+#   ansible-playbook -i inventory.yml packages_update.yml -e "only_security_updates=true"
+#
+# Tags:
+#   - pre-check   : Safety checks (disk space, connectivity)
+#   - update       : Package update tasks
+#   - cleanup      : Package cleanup tasks
+#   - reboot       : Reboot tasks
+#   - debian       : Debian/Ubuntu specific tasks
+#   - redhat       : RHEL/CentOS/Fedora/Rocky specific tasks
+#   - suse         : OpenSUSE/SLES specific tasks
+#   - leap         : OpenSUSE Leap specific tasks
+#   - tumbleweed   : OpenSUSE Tumbleweed specific tasks
+#
+# Variables (override with -e):
+#   reboot_enabled:         false  - Enable automatic reboot (default: false)
+#   reboot_timeout:         300    - Max wait time for reboot in seconds
+#   clean_packages:         true   - Remove unused packages after update
+#   only_security_updates:  false  - Apply only security updates
+#   enable_update_logging:  true   - Write audit logs to target hosts
+#   log_directory:          /var/log/ansible-updates
+#   log_retention_count:    30     - Number of log files to keep per host
+#   disk_space_min_mb:      500    - Minimum free disk space on / (MB)
+#
+# Author: HomeLab Infrastructure
+# Last Updated: February 2026
+# =============================================================================
+
+- name: System Package Update
+  hosts: all
+  become: true
+  gather_facts: true
+  gather_timeout: 30
+  timeout: 300
+
+  vars:
+    # -- Reboot (safe default: disabled) --
+    reboot_enabled: false
+    reboot_timeout: 300
+
+    # -- Cleanup --
+    clean_packages: true
+
+    # -- Update filtering --
+    only_security_updates: false
+
+    # -- Audit logging --
+    enable_update_logging: true
+    log_directory: "/var/log/ansible-updates"
+    log_retention_count: 30
+
+    # -- Safety thresholds --
+    disk_space_min_mb: 500
+
+  # ===========================================================================
+  # Pre-tasks: Safety checks and environment detection
+  # ===========================================================================
+  pre_tasks:
+    # -- Display target information --
+    - name: "[INFO] Display target system information"
+      ansible.builtin.debug:
+        msg: >-
+          Host: {{ inventory_hostname }} |
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }} |
+          Kernel: {{ ansible_kernel }} |
+          Arch: {{ ansible_architecture }} |
+          Virt: {{ ansible_virtualization_type | default('physical') }}
+      tags: [always]
+
+    # -- Detect LXC containers --
+    - name: "[PRE-CHECK] Detect virtualization type"
+      ansible.builtin.set_fact:
+        is_lxc_container: >-
+          {{ ansible_virtualization_type | default('') in ['lxc', 'container'] and
+            ansible_virtualization_role | default('') == 'guest' }}
+      tags: [always]
+
+    - name: "[INFO] LXC container detected — reboot will be skipped"
+      ansible.builtin.debug:
+        msg: >-
+          This host is an LXC container.
+          ansible.builtin.reboot is incompatible with LXC.
+          If a reboot is required, it will be reported but NOT performed.
+          Restart the container from the Proxmox host manually.
+      when: is_lxc_container | bool
+      tags: [always]
+
+    # -- Disk space safety check --
+    - name: "[PRE-CHECK] Verify sufficient disk space on /"
+      ansible.builtin.assert:
+        that:
+          - item.size_available > (disk_space_min_mb | int * 1048576)
+        fail_msg: >-
+          INSUFFICIENT DISK SPACE on {{ item.mount }}:
+          {{ (item.size_available / 1048576) | int }} MB available,
+          {{ disk_space_min_mb }} MB required.
+          Free up space before running updates.
+        quiet: true
+      loop: "{{ ansible_mounts | selectattr('mount', 'in', ['/', '/var']) | list }}"
+      loop_control:
+        label: "{{ item.mount }}"
+      tags: [pre-check, always]
+
+  # ===========================================================================
+  # Tasks
+  # ===========================================================================
+  tasks:
+    # =========================================================================
+    # Debian/Ubuntu (APT)
+    # =========================================================================
+    - name: "[Debian/Ubuntu] Package update"
+      when: ansible_os_family == "Debian"
+      tags: [update, cleanup, debian]
+      block:
+        # -- Update cache --
+        - name: "[Debian/Ubuntu] Update apt cache"
+          ansible.builtin.apt:
+            update_cache: true
+            cache_valid_time: 3600
+          tags: [update, debian]
+
+        # -- Full upgrade --
+        - name: "[Debian/Ubuntu] Upgrade all packages (dist-upgrade)"
+          ansible.builtin.apt:
+            upgrade: dist
+          register: apt_upgrade
+          when: not (only_security_updates | bool)
+          tags: [update, debian]
+
+        # -- Security-only upgrade --
+        - name: "[Debian/Ubuntu] Upgrade security packages only"
+          ansible.builtin.apt:
+            upgrade: dist
+            default_release: "{{ ansible_distribution_release }}-security"
+          register: apt_security_upgrade
+          when: only_security_updates | bool
+          tags: [update, debian]
+
+        # -- Combine results --
+        - name: "[Debian/Ubuntu] Set update result fact"
+          ansible.builtin.set_fact:
+            os_update_result: "{{ apt_upgrade if not (only_security_updates | bool) else apt_security_upgrade }}"
+          tags: [update, debian]
+
+        # -- Display results --
+        - name: "[Debian/Ubuntu] Display upgraded packages"
+          ansible.builtin.debug:
+            msg: "{{ os_update_result.stdout_lines | default(['No packages upgraded']) }}"
+          when: os_update_result.changed | default(false)
+          tags: [update, debian]
+
+        # -- Cleanup --
+        - name: "[Debian/Ubuntu] Remove unused dependencies and clean cache"
+          ansible.builtin.apt:
+            autoremove: true
+            autoclean: true
+            purge: true
+          when: clean_packages | bool
+          tags: [cleanup, debian]
+
+        # -- Reboot check --
+        - name: "[Debian/Ubuntu] Check if reboot is required"
+          ansible.builtin.stat:
+            path: /var/run/reboot-required
+          register: reboot_required_file
+          tags: [reboot, debian]
+
+      rescue:
+        - name: "[Debian/Ubuntu] ERROR — Package update failed"
+          ansible.builtin.set_fact:
+            update_failed: true
+            update_error_msg: "{{ ansible_failed_result.msg | default('Unknown apt error') }}"
+
+        - name: "[Debian/Ubuntu] Display error details"
+          ansible.builtin.debug:
+            msg: >-
+              UPDATE FAILED on {{ inventory_hostname }}:
+              {{ update_error_msg }}
+              Manual intervention may be required.
+              Try: apt-get update && apt-get dist-upgrade -f
+
+    # =========================================================================
+    # RHEL/CentOS/Fedora/Rocky (DNF/YUM)
+    # =========================================================================
+    - name: "[RedHat] Package update"
+      when: ansible_os_family == "RedHat"
+      tags: [update, cleanup, redhat]
+      block:
+        # -- Ensure needs-restarting is available --
+        - name: "[RedHat] Ensure dnf-utils is installed (for needs-restarting)"
+          ansible.builtin.dnf:
+            name: dnf-utils
+            state: present
+          when: ansible_pkg_mgr == "dnf"
+          tags: [update, redhat]
+
+        # -- DNF full upgrade --
+        - name: "[RedHat] Update all packages (dnf)"
+          ansible.builtin.dnf:
+            name: "*"
+            state: latest  # noqa: package-latest
+            update_cache: true
+            security: "{{ only_security_updates | bool }}"
+          register: dnf_upgrade
+          when: ansible_pkg_mgr == "dnf"
+          tags: [update, redhat]
+
+        # -- YUM full upgrade (legacy) --
+        - name: "[RedHat] Update all packages (yum)"
+          ansible.builtin.yum:
+            name: "*"
+            state: latest  # noqa: package-latest
+            update_cache: true
+            security: "{{ only_security_updates | bool }}"
+          register: yum_upgrade
+          when: ansible_pkg_mgr == "yum"
+          tags: [update, redhat]
+
+        # -- Combine results --
+        - name: "[RedHat] Set update result fact"
+          ansible.builtin.set_fact:
+            os_update_result: "{{ dnf_upgrade if ansible_pkg_mgr == 'dnf' else yum_upgrade }}"
+          tags: [update, redhat]
+
+        # -- Cleanup --
+        - name: "[RedHat] Remove unused dependencies"
+          ansible.builtin.dnf:
+            autoremove: true
+          when:
+            - ansible_pkg_mgr == "dnf"
+            - clean_packages | bool
+          tags: [cleanup, redhat]
+
+        - name: "[RedHat] Clean package cache"
+          ansible.builtin.command:
+            cmd: "{{ ansible_pkg_mgr }} clean all"
+          changed_when: false
+          when: clean_packages | bool
+          tags: [cleanup, redhat]
+
+        # -- Reboot check --
+        - name: "[RedHat] Check if reboot is required"
+          ansible.builtin.command:
+            cmd: needs-restarting -r
+          register: reboot_required_rhel
+          changed_when: false
+          failed_when: false
+          tags: [reboot, redhat]
+
+      rescue:
+        - name: "[RedHat] ERROR — Package update failed"
+          ansible.builtin.set_fact:
+            update_failed: true
+            update_error_msg: "{{ ansible_failed_result.msg | default('Unknown dnf/yum error') }}"
+
+        - name: "[RedHat] Display error details"
+          ansible.builtin.debug:
+            msg: >-
+              UPDATE FAILED on {{ inventory_hostname }}:
+              {{ update_error_msg }}
+              Manual intervention may be required.
+              Try: dnf update --refresh
+
+    # =========================================================================
+    # OpenSUSE/SLES (Zypper via CLI)
+    # =========================================================================
+    # NOTE: community.general.zypper uses --xmlout which breaks on
+    # Tumbleweed 2025+ due to "Backend: classic_rpmtrans" prompt.
+    # All zypper operations use ansible.builtin.command as workaround.
+    # See: vm_opensuseTumbleweed/ansible/roles/common/tasks/main.yml
+    # =========================================================================
+    - name: "[SUSE] Package update"
+      when: ansible_os_family == "Suse"
+      tags: [update, cleanup, suse]
+      block:
+        # -- Detect Leap vs Tumbleweed --
+        - name: "[SUSE] Detect system variant"
+          ansible.builtin.set_fact:
+            is_opensuse_tumbleweed: >-
+              {{ ansible_distribution_release | default('') | lower == 'tumbleweed'
+                or (ansible_distribution | default('') == 'openSUSE Tumbleweed') }}
+          tags: [update, suse]
+
+        # -- Clean cache before refresh --
+        - name: "[SUSE] Clean zypper cache"
+          ansible.builtin.command:
+            cmd: zypper clean --all
+          changed_when: false
+          failed_when: false
+          tags: [update, suse]
+
+        # -- Refresh repos with GPG auto-import --
+        - name: "[SUSE] Refresh repositories"
+          ansible.builtin.command:
+            cmd: zypper --gpg-auto-import-keys --non-interactive refresh
+          register: zypper_refresh
+          changed_when: false
+          failed_when: false
+          tags: [update, suse]
+
+        - name: "[SUSE] Warn if repository refresh had issues"
+          ansible.builtin.debug:
+            msg: >-
+              WARNING: zypper refresh returned rc={{ zypper_refresh.rc }}.
+              Some repositories may be unreachable.
+              Run 'zypper lr -d' to inspect.
+          when: zypper_refresh.rc | default(0) != 0
+          tags: [update, suse]
+
+        # ---------------------------------------------------------------
+        # OpenSUSE Leap: standard package update
+        # ---------------------------------------------------------------
+        - name: "[SUSE/Leap] Update all packages"
+          ansible.builtin.command:
+            cmd: >-
+              zypper --gpg-auto-import-keys --non-interactive
+              update --type package --auto-agree-with-licenses
+          register: zypper_upgrade_leap
+          changed_when: >-
+            'Nothing to do' not in zypper_upgrade_leap.stdout
+          failed_when: zypper_upgrade_leap.rc not in [0, 103]
+          when:
+            - not (is_opensuse_tumbleweed | bool)
+            - not (only_security_updates | bool)
+          tags: [update, suse, leap]
+
+        - name: "[SUSE/Leap] Apply security patches only"
+          ansible.builtin.command:
+            cmd: >-
+              zypper --gpg-auto-import-keys --non-interactive
+              patch --category security --auto-agree-with-licenses
+          register: zypper_security_leap
+          changed_when: >-
+            'Nothing to do' not in zypper_security_leap.stdout
+          failed_when: zypper_security_leap.rc not in [0, 103]
+          when:
+            - not (is_opensuse_tumbleweed | bool)
+            - only_security_updates | bool
+          tags: [update, suse, leap]
+
+        # ---------------------------------------------------------------
+        # OpenSUSE Tumbleweed: distribution upgrade via snapshots
+        # ---------------------------------------------------------------
+        - name: "[SUSE/Tumbleweed] Apply distribution upgrade (dup)"
+          ansible.builtin.command:
+            cmd: >-
+              zypper --gpg-auto-import-keys --non-interactive
+              dup --no-recommends --auto-agree-with-licenses --allow-vendor-change
+          register: zypper_dup
+          changed_when: >-
+            'Nothing to do' not in zypper_dup.stdout
+          failed_when: zypper_dup.rc not in [0, 103]
+          when:
+            - is_opensuse_tumbleweed | bool
+            - not (only_security_updates | bool)
+          tags: [update, suse, tumbleweed]
+
+        - name: "[SUSE/Tumbleweed] Apply security patches only"
+          ansible.builtin.command:
+            cmd: >-
+              zypper --gpg-auto-import-keys --non-interactive
+              patch --category security --auto-agree-with-licenses
+          register: zypper_security_tw
+          changed_when: >-
+            'Nothing to do' not in zypper_security_tw.stdout
+          failed_when: zypper_security_tw.rc not in [0, 103]
+          when:
+            - is_opensuse_tumbleweed | bool
+            - only_security_updates | bool
+          tags: [update, suse, tumbleweed]
+
+        # -- Combine results --
+        - name: "[SUSE] Set update result fact"
+          ansible.builtin.set_fact:
+            os_update_result: >-
+              {{
+                zypper_dup if (is_opensuse_tumbleweed | bool and not (only_security_updates | bool)) else
+                zypper_security_tw if (is_opensuse_tumbleweed | bool and (only_security_updates | bool)) else
+                zypper_security_leap if (not (is_opensuse_tumbleweed | bool) and (only_security_updates | bool)) else
+                zypper_upgrade_leap
+              }}
+          tags: [update, suse]
+
+        # -- Cleanup: remove orphaned packages --
+        - name: "[SUSE] Remove orphaned packages"
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              ORPHANS=$(zypper --non-interactive packages --orphaned 2>/dev/null \
+                | awk -F'|' 'NR>4 && NF>=3 {gsub(/^[ \t]+|[ \t]+$/, "", $3); if ($3 != "" && $3 != "Name") print $3}')
+              if [ -n "$ORPHANS" ]; then
+                echo "$ORPHANS" | xargs zypper --non-interactive remove --clean-deps
+              else
+                echo "No orphaned packages found"
+              fi
+            executable: /bin/bash
+          register: zypper_orphan_cleanup
+          changed_when: >-
+            'No orphaned packages found' not in zypper_orphan_cleanup.stdout
+            and zypper_orphan_cleanup.rc == 0
+          failed_when: false
+          when: clean_packages | bool
+          tags: [cleanup, suse]
+
+        - name: "[SUSE] Clean zypper cache after update"
+          ansible.builtin.command:
+            cmd: zypper clean --all
+          changed_when: false
+          when: clean_packages | bool
+          tags: [cleanup, suse]
+
+        # -- Reboot check --
+        - name: "[SUSE] Check if reboot is required (/run/reboot-needed)"
+          ansible.builtin.stat:
+            path: /run/reboot-needed
+          register: reboot_required_suse_run
+          tags: [reboot, suse]
+
+        - name: "[SUSE] Check if kernel purge requires reboot"
+          ansible.builtin.stat:
+            path: /boot/do_purge_kernels
+          register: reboot_required_suse_kernel
+          tags: [reboot, suse]
+
+      rescue:
+        - name: "[SUSE] ERROR — Package update failed"
+          ansible.builtin.set_fact:
+            update_failed: true
+            update_error_msg: "{{ ansible_failed_result.msg | default('Unknown zypper error') }}"
+
+        - name: "[SUSE] Display error details"
+          ansible.builtin.debug:
+            msg: >-
+              UPDATE FAILED on {{ inventory_hostname }}:
+              {{ update_error_msg }}
+              Manual intervention may be required.
+              Try: zypper refresh && zypper {{ 'dup' if (is_opensuse_tumbleweed | default(false) | bool) else 'update' }}
+
+    # =========================================================================
+    # Reboot Decision (All Systems)
+    # =========================================================================
+    - name: "[REBOOT] Determine reboot requirement"
+      ansible.builtin.set_fact:
+        system_reboot_required: >-
+          {{
+            (ansible_os_family == "Debian" and
+              (reboot_required_file.stat.exists | default(false))) or
+            (ansible_os_family == "RedHat" and
+              (reboot_required_rhel.rc | default(0) == 1)) or
+            (ansible_os_family == "Suse" and
+              ((reboot_required_suse_run.stat.exists | default(false)) or
+                (reboot_required_suse_kernel.stat.exists | default(false))))
+          }}
+      tags: [reboot]
+
+    - name: "[REBOOT] Display reboot status"
+      ansible.builtin.debug:
+        msg: >-
+          Reboot required: {{ system_reboot_required | bool }} |
+          Reboot enabled: {{ reboot_enabled | bool }} |
+          LXC container: {{ is_lxc_container | bool }}
+      tags: [reboot]
+
+    - name: "[REBOOT] Reboot VM"
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible for system updates"
+        connect_timeout: 10
+        reboot_timeout: "{{ reboot_timeout }}"
+        pre_reboot_delay: 5
+        post_reboot_delay: 30
+        test_command: uptime
+      when:
+        - reboot_enabled | bool
+        - system_reboot_required | bool
+        - not (is_lxc_container | bool)
+      tags: [reboot]
+
+    - name: "[REBOOT] WARNING — LXC container needs restart"
+      ansible.builtin.debug:
+        msg: >-
+          REBOOT REQUIRED but SKIPPED (LXC container).
+          ansible.builtin.reboot is incompatible with LXC.
+          Restart the container from the Proxmox host:
+            pct reboot <VMID>
+          Or restart affected services manually.
+      when:
+        - system_reboot_required | bool
+        - is_lxc_container | bool
+      tags: [reboot]
+
+  # ===========================================================================
+  # Post-tasks: Audit logging and summary
+  # ===========================================================================
+  post_tasks:
+    # -- Create log directory --
+    - name: "[AUDIT] Ensure log directory exists"
+      ansible.builtin.file:
+        path: "{{ log_directory }}"
+        state: directory
+        mode: "0750"
+        owner: root
+        group: root
+      when: enable_update_logging | bool
+      tags: [always]
+
+    # -- Write audit log (OS-agnostic) --
+    - name: "[AUDIT] Write update log"
+      ansible.builtin.copy:
+        content: |
+          =============================================
+          Update Summary — {{ inventory_hostname }}
+          =============================================
+          Date:         {{ ansible_date_time.iso8601 }}
+          OS:           {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel:       {{ ansible_kernel }}
+          Container:    {{ is_lxc_container | bool }}
+          Check mode:   {{ ansible_check_mode }}
+          Security-only: {{ only_security_updates | bool }}
+
+          Result:
+            Changed: {{ os_update_result.changed | default('N/A') }}
+            Failed:  {{ update_failed | default(false) }}
+            Error:   {{ update_error_msg | default('None') }}
+
+          Reboot:
+            Required: {{ system_reboot_required | default(false) | bool }}
+            Enabled:  {{ reboot_enabled | bool }}
+            Performed: {{ (reboot_enabled | bool and system_reboot_required | default(false) | bool and not (is_lxc_container | bool)) }}
+          =============================================
+        dest: "{{ log_directory }}/update-{{ ansible_date_time.date }}.log"
+        mode: "0640"
+        owner: root
+        group: root
+      when:
+        - enable_update_logging | bool
+        - not ansible_check_mode
+      tags: [always]
+
+    # -- Rotate old logs --
+    - name: "[AUDIT] Find old log files"
+      ansible.builtin.find:
+        paths: "{{ log_directory }}"
+        patterns: "update-*.log"
+        age: "{{ log_retention_count }}d"
+      register: old_logs
+      when:
+        - enable_update_logging | bool
+        - not ansible_check_mode
+      tags: [always]
+
+    - name: "[AUDIT] Remove old log files"
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_logs.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      when:
+        - enable_update_logging | bool
+        - not ansible_check_mode
+        - old_logs.files | default([]) | length > 0
+      tags: [always]
+
+    # -- Summary output --
+    - name: "[SUMMARY] Update complete"
+      ansible.builtin.debug:
+        msg: >-
+          [OK] {{ inventory_hostname }}
+          ({{ ansible_distribution }} {{ ansible_distribution_version }}) —
+          Changed: {{ os_update_result.changed | default('N/A') }} |
+          Failed: {{ update_failed | default(false) }} |
+          Reboot: {{ 'performed' if (reboot_enabled | bool and system_reboot_required | default(false) | bool and not (is_lxc_container | bool))
+                    else ('needed — container, skipped' if (system_reboot_required | default(false) | bool and is_lxc_container | bool)
+                    else ('needed — disabled' if (system_reboot_required | default(false) | bool and not reboot_enabled | bool)
+                    else 'not required')) }}
+      tags: [always]
