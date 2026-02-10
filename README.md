@@ -572,7 +572,47 @@ sequenceDiagram
 
 ---
 
-### 14. **Future Projects**
+### 14. **Ansible Base Scripts**
+
+Collection of reusable Ansible playbooks for infrastructure maintenance and operations across Proxmox VMs and LXC containers.
+
+#### 14.1 vms_packages_update
+
+Optimized multi-OS package update playbook with enhanced error handling, security-only modes, and LXC container awareness.
+
+**Purpose**: Automated OS package updates across heterogeneous Proxmox infrastructure (Debian, Ubuntu, RHEL, openSUSE)
+
+**Status**: ✅ **Production-Ready** (Validated via SemaphoreUI)
+
+**Key Features**:
+
+- **Multi-OS support** — Debian/Ubuntu (apt), RHEL/Rocky/Alma (dnf/yum), openSUSE (zypper)
+- **LXC container aware** — detects LXC containers and skips reboot operations (prevents provisioning errors)
+- **Security-only mode** — `security_only: true` installs only security patches (Debian/Ubuntu unattended-upgrades, RHEL security filters)
+- **Pre-deployment checks** — disk space validation (min 1GB free on `/`), network connectivity, Python interpreter verification
+- **Error handling** — block/rescue patterns with failure reporting, OS-agnostic audit logging
+- **Update statistics** — reports installed/upgraded/removed package counts per host
+- **Idempotent operations** — safe for repeated execution, check mode support (`--check`)
+- **Systemd service restarts** — automatic restart of services with updated packages (if `needrestart` installed)
+- **Audit logging** — `/var/log/ansible-updates.log` with automatic rotation (10MB max, 3 files)
+
+**Documentation**: See [ansible_base_scripts/vms_packages_update/README.md](ansible_base_scripts/vms_packages_update/README.md)
+
+**Deployment Order**: 🔧 **Maintenance Utility** - Run after services are deployed (requires SSH access to all hosts)
+
+**Prerequisites**:
+
+- Ansible 2.15+ on control machine
+- SSH access to all target VMs/containers with `ansible` user (or configured `ansible_user`)
+- Python 3.x on all target hosts
+- Sudo/root privileges on targets (for package installation)
+- Valid inventory configuration (see `ansible_base_scripts/vms_packages_update/inventory.yml.example`)
+
+**Integration**: Compatible with **SemaphoreUI** for scheduled task automation and execution logging
+
+---
+
+### 15. **Future Projects**
 
 Additional services will be added following the same patterns and deployment order dependencies.
 
