@@ -120,19 +120,27 @@
       tags: [always]
 
     # -- Disk space safety check --
+    # Uses df command instead of ansible_mounts filter because LXC containers
+    # may report mount points differently (overlay/rootfs), causing the
+    # selectattr filter to return an empty list and skip the check.
+    - name: "[PRE-CHECK] Get available disk space on /"
+      ansible.builtin.command:
+        cmd: df --output=avail -BM /
+      register: disk_space_root
+      changed_when: false
+      check_mode: false
+      tags: [pre-check, always]
+
     - name: "[PRE-CHECK] Verify sufficient disk space on /"
       ansible.builtin.assert:
         that:
-          - item.size_available > (disk_space_min_mb | int * 1048576)
+          - (disk_space_root.stdout_lines[-1] | trim | regex_replace('M$', '') | int) >= (disk_space_min_mb | int)
         fail_msg: >-
-          INSUFFICIENT DISK SPACE on {{ item.mount }}:
-          {{ (item.size_available / 1048576) | int }} MB available,
-          {{ disk_space_min_mb }} MB required.
+          INSUFFICIENT DISK SPACE on /:
+          {{ disk_space_root.stdout_lines[-1] | trim }} available,
+          {{ disk_space_min_mb }}M required.
           Free up space before running updates.
         quiet: true
-      loop: "{{ ansible_mounts | selectattr('mount', 'in', ['/', '/var']) | list }}"
-      loop_control:
-        label: "{{ item.mount }}"
       tags: [pre-check, always]
 
   # ===========================================================================
@@ -184,11 +192,18 @@
           tags: [update, debian]
 
         # -- Cleanup --
-        - name: "[Debian/Ubuntu] Remove unused dependencies and clean cache"
+        # NOTE: autoremove+purge and autoclean MUST be separate tasks.
+        # Debian 13+ apt-get does not accept --purge with autoclean subcommand.
+        - name: "[Debian/Ubuntu] Remove unused dependencies"
           ansible.builtin.apt:
             autoremove: true
-            autoclean: true
             purge: true
+          when: clean_packages | bool
+          tags: [cleanup, debian]
+
+        - name: "[Debian/Ubuntu] Clean apt package cache"
+          ansible.builtin.apt:
+            autoclean: true
           when: clean_packages | bool
           tags: [cleanup, debian]
 
@@ -315,21 +330,23 @@
                 or (ansible_distribution | default('') == 'openSUSE Tumbleweed') }}
           tags: [update, suse]
 
-        # -- Clean cache before refresh --
+        # -- Clean cache before refresh (safe in check mode) --
         - name: "[SUSE] Clean zypper cache"
           ansible.builtin.command:
             cmd: zypper clean --all
           changed_when: false
           failed_when: false
+          check_mode: false
           tags: [update, suse]
 
-        # -- Refresh repos with GPG auto-import --
+        # -- Refresh repos with GPG auto-import (safe in check mode) --
         - name: "[SUSE] Refresh repositories"
           ansible.builtin.command:
             cmd: zypper --gpg-auto-import-keys --non-interactive refresh
           register: zypper_refresh
           changed_when: false
           failed_when: false
+          check_mode: false
           tags: [update, suse]
 
         - name: "[SUSE] Warn if repository refresh had issues"
