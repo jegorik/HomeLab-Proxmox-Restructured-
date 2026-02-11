@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Ansible Functions for LXC Base Template
+# Ansible Functions for LXC SemaphoreUI
 # =============================================================================
 
 # Prevent multiple sourcing

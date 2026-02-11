@@ -1,9 +1,9 @@
 # =============================================================================
-# Terraform Provider Configuration - LXC Base Template
+# Terraform Provider Configuration - LXC PBS
 # =============================================================================
 #
 # This file configures the Terraform providers required for deploying
-# LXC containers in a Proxmox environment with S3 state backend.
+# the PBS LXC container in a Proxmox environment with S3 state backend.
 #
 # Providers Used:
 # - bpg/proxmox: Proxmox VE management (containers, VMs, storage)

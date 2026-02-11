@@ -1,5 +1,5 @@
 # =============================================================================
-# .gitignore for Terraform/OpenTofu Vault Project
+# .gitignore for Terraform/OpenTofu NetBox Project
 # =============================================================================
 
 # Terraform/OpenTofu State Files

@@ -12,7 +12,7 @@
 # Vault Configuration
 # -----------------------------------------------------------------------------
 
-vault_address         = "https://vault.example.local:8200"
+vault_address         = "https://vault.example.com:8200"
 vault_skip_tls_verify = true  # Set to false in production
 
 # -----------------------------------------------------------------------------
@@ -39,7 +39,7 @@ netbox_api_token_vault_path      = "your_netbox_api_token_vault_path"
 # NetBox Configuration
 # -----------------------------------------------------------------------------
 
-netbox_url      = "https://netbox.example.local:8000"
+netbox_url      = "https://netbox.example.com"
 netbox_insecure = true
 
 # -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-# LXC Base Template - Deployment Guide
+# LXC Grafana - Deployment Guide
 
 Step-by-step guide for deploying LXC containers using this Golden Template.
 
@@ -60,8 +60,8 @@ vim terraform/terraform.tfvars
 | ---------- | ------------- | --------- |
 | `vault_address` | Vault server URL | `https://vault.example.com:8200` |
 | `lxc_id` | LXC VMID | `106` |
-| `lxc_hostname` | Hostname | `base-template` |
-| `lxc_ip_address` | IP with CIDR | `192.168.1.50/24` |
+| `lxc_hostname` | Hostname | `grafana` |
+| `lxc_ip_address` | IP with CIDR | `192.0.2.50/24` |
 | `lxc_disk_storage` | Storage Pool | `local-lvm` |
 | `ansible_ssh_public_key_path` | SSH Public Key | `~/.ssh/ansible.pub` |
 
@@ -107,7 +107,7 @@ Then `deploy.sh` will automatically detect and use it.
 ./deploy.sh status
 
 # SSH into container
-ssh ansible@192.168.1.50
+ssh ansible@192.0.2.50
 
 # View in NetBox
 # Open: https://netbox.example.com/virtualization/virtual-machines/

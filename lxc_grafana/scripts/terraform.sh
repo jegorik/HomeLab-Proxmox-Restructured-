@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Terraform/OpenTofu Functions for LXC Base Template
+# Terraform/OpenTofu Functions for LXC Grafana
 # =============================================================================
 
 # Prevent multiple sourcing

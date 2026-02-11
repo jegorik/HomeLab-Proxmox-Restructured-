@@ -18,7 +18,7 @@ all:
     vault:
       hosts:
         vault-server:
-          ansible_host: 10.0.100.50
+          ansible_host: 203.0.113.50
           ansible_port: 22
           ansible_user: ansible
           ansible_python_interpreter: /usr/bin/python3
@@ -31,30 +31,30 @@ all:
     proxmox:
       hosts:
         pve:
-          ansible_host: 10.0.1.100
+          ansible_host: 203.0.113.100
           ansible_python_interpreter: /usr/bin/python3
 
     # Virtual Machines
     vms:
       hosts:
         ubuntu-server:
-          ansible_host: 10.0.100.10
+          ansible_host: 203.0.113.10
           # ansible_port: 22
 
         # Add more VMs here
         # another-vm:
-        #   ansible_host: 10.0.100.11
+        #   ansible_host: 203.0.113.11
 
     # LXC Containers
     lxc:
       hosts:
         vault-server:
         grafana:
-          ansible_host: 10.0.100.20
+          ansible_host: 203.0.113.20
 
         # Add more containers here
         # monitoring:
-        #   ansible_host: 10.0.100.21
+        #   ansible_host: 203.0.113.21
 
     # Group hosts by OS family (for conditional tasks)
     debian:

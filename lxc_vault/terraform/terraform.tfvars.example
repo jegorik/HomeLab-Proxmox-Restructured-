@@ -13,7 +13,7 @@
 # -----------------------------------------------------------------------------
 
 # Proxmox VE API endpoint
-# Example: "https://192.168.1.100:8006"
+# Example: "https://192.0.2.100:8006"
 proxmox_endpoint = "https://YOUR_PROXMOX_IP:8006"
 
 # API token: Create in Proxmox GUI -> Datacenter -> Permissions -> API Tokens
@@ -125,22 +125,22 @@ lxc_network_bridge = "vmbr0"
 # Network interface name inside container
 lxc_network_interface_name = "eth0"
 
-# IP address: "dhcp" or static with CIDR (e.g., "192.168.1.50/24")
+# IP address: "dhcp" or static with CIDR (e.g., "192.0.2.50/24")
 # Examples:
 #   "dhcp"              - for automatic IP assignment
-#   "192.168.1.50/24"   - for static IP
-#   "10.0.0.50/24"      - for different subnet
-lxc_ip_address = "192.168.1.50/24"
+#   "192.0.2.50/24"     - for static IP
+#   "203.0.113.50/24"   - for different subnet
+lxc_ip_address = "192.0.2.50/24"
 
 # Gateway (required only for static IP, leave empty for DHCP)
-# Example: "192.168.1.1"
-lxc_gateway = "192.168.1.1"
+# Example: "192.0.2.1"
+lxc_gateway = "192.0.2.1"
 
 # DNS servers (space-separated)
 # Examples:
 #   "8.8.8.8 8.8.4.4"           - Google DNS
 #   "1.1.1.1 1.0.0.1"           - Cloudflare DNS
-#   "192.168.1.1 8.8.8.8"       - Local router + Google
+#   "192.0.2.1 8.8.8.8"         - Local router + Google
 lxc_dns_servers = "8.8.8.8 8.8.4.4"
 
 # -----------------------------------------------------------------------------

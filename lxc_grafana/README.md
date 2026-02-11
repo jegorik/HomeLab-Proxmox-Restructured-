@@ -39,7 +39,7 @@ Grafana observability and visualization platform deployed in Proxmox LXC contain
 | -------- | ------- | ----------- |
 | `lxc_id` | `106` | Container VMID |
 | `lxc_hostname` | `grafana` | Container hostname |
-| `lxc_ip_address` | `192.168.0.106/24` | Static IP with CIDR |
+| `lxc_ip_address` | `192.0.2.106/24` | Static IP with CIDR |
 | `lxc_memory` | `1024` | RAM in MB (1GB recommended) |
 | `lxc_cpu_cores` | `2` | CPU cores |
 | `lxc_disk_size` | `10` | Root disk size in GB |

@@ -5,10 +5,13 @@
 # Then run: terraform init -backend-config=s3.backend.config
 
 bucket         = "your-terraform-state-bucket"
-key            = "lxc_base_template/terraform.tfstate"
+key            = "lxc_grafana/terraform.tfstate"
 region         = "us-east-1"
 encrypt        = true
-dynamodb_table = "terraform-state-lock"
+
+# S3 native state locking (no DynamoDB needed since Terraform v1.10+/OpenTofu)
+use_lockfile = true
+lock_tags    = {"lock-owner":"opentofu"}
 
 # For MinIO or other S3-compatible storage:
 # endpoint                    = "https://minio.example.com:9000"

@@ -1,5 +1,5 @@
 # =============================================================================
-# LXC Base Template - NetBox Registration
+# LXC Semaphore UI - NetBox Registration
 # =============================================================================
 # Automatically registers the container in NetBox for DCIM/IPAM tracking
 
@@ -42,7 +42,7 @@ resource "netbox_virtual_machine" "lxc" {
   status = "active"
 
   comments = <<-EOT
-    LXC Container deployed by lxc_base_template
+    LXC Container deployed by lxc_semaphoreUI
     Proxmox Node: ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
     VMID: ${var.lxc_id}
     Created: ${timestamp()}
@@ -87,7 +87,7 @@ resource "netbox_ip_address" "primary" {
   # If DHCP, we don't know the IP yet, so we might skip this or use a placeholder?
   # Only applying if lxc_ip_address is not "dhcp" (checked in main.tf)
   # But main.tf allows "dhcp". NetBox resource fails if invalid IP.
-  # Assuming for now lxc_base_template encourages static IPs for infrastructure.
+  # Assuming for now lxc_semaphoreUI encourages static IPs for infrastructure.
   # If "dhcp" is passed, this might fail validation. 
   # Adding a condition or simple assignment assuming valid CIDR if set.
   ip_address = var.lxc_ip_address == "dhcp" ? null : var.lxc_ip_address

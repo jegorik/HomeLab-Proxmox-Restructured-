@@ -328,8 +328,8 @@ Essential settings to customize:
 # VM Identity
 vm_id = 400
 vm_hostname = \"opensuseTumbleweed-vm\"
-vm_ip_address = \"192.168.0.210/24\"
-vm_gateway = \"192.168.0.1\"
+vm_ip_address = \"198.51.100.210/24\"
+vm_gateway = \"198.51.100.1\"
 
 # Resources
 vm_cpu_cores = 2
@@ -344,7 +344,7 @@ vm_usb_device_3_host = \"4-2.4\"      # Additional device
 vm_usb_device_4_host = \"046d:c328\"  # Another device
 
 # Vault Integration
-vault_address = \"http://192.168.1.50:8200\"
+vault_address = \"http://192.0.2.50:8200\"
 transit_key_name = \"vm-opensuse-tumbleweed\"
 ```
 
@@ -356,7 +356,7 @@ all:
     opensuse_vms:
       hosts:
         opensuse-workstation:
-          ansible_host: 192.168.0.210
+          ansible_host: 198.51.100.210
           ansible_user: ansible
           ansible_ssh_private_key_file: ~/.ssh/ansible
       vars:

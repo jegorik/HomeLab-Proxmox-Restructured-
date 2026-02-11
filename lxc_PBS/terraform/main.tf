@@ -1,9 +1,9 @@
 # =============================================================================
-# LXC Base Template - Main Terraform Configuration
+# LXC PBS - Main Terraform Configuration
 # =============================================================================
-# Deploys a standard LXC container on Proxmox
+# Deploys Proxmox Backup Server in an LXC container on Proxmox
 #
-# Last Updated: January 2026
+# Last Updated: February 2026
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -16,6 +16,9 @@ locals {
 
   # Extract IP address without CIDR notation for SSH connection
   container_ip = var.lxc_ip_address == "dhcp" ? "" : split("/", var.lxc_ip_address)[0]
+
+  # Extract Proxmox host from API endpoint URL (avoids regex duplication)
+  proxmox_host = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
 }
 
 # -----------------------------------------------------------------------------
@@ -229,7 +232,7 @@ resource "terraform_data" "fix_bind_mount_permissions_config" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }
@@ -246,7 +249,7 @@ resource "terraform_data" "fix_bind_mount_permissions_config" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }
@@ -272,7 +275,7 @@ resource "terraform_data" "fix_bind_mount_permissions_datastore" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }
@@ -289,7 +292,7 @@ resource "terraform_data" "fix_bind_mount_permissions_datastore" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }
@@ -315,7 +318,7 @@ resource "terraform_data" "fix_bind_mount_permissions_s3" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }
@@ -332,7 +335,7 @@ resource "terraform_data" "fix_bind_mount_permissions_s3" {
       type        = "ssh"
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      host        = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
+      host        = local.proxmox_host
       timeout     = "2m"
     }
   }

@@ -1,0 +1,38 @@
+# =============================================================================
+# lxc_grafana_loki - Git Ignore
+# =============================================================================
+
+# Terraform/OpenTofu
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/crash.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json
+terraform/.terraform.lock.hcl
+
+# Sensitive configuration files
+terraform/terraform.tfvars
+terraform/s3.backend.config
+terraform/*.auto.tfvars
+
+# Ansible
+ansible/inventory.yml
+ansible/*.retry
+
+# Logs
+logs/
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.iml

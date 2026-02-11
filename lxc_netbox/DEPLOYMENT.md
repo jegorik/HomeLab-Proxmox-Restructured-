@@ -115,7 +115,7 @@ vault secrets enable -path=secrets kv-v2
 
 # Store Proxmox credentials
 vault kv put secrets/proxmox/credentials \
-  endpoint="https://192.168.1.100:8006" \
+  endpoint="https://192.0.2.100:8006" \
   node="pve" \
   password="your-proxmox-password"
 
@@ -575,7 +575,7 @@ vault login -method=userpass username=netbox-automation
 ```bash
 # Create missing secrets
 vault kv put secrets/proxmox/credentials \
-  endpoint="https://192.168.1.100:8006" \
+  endpoint="https://192.0.2.100:8006" \
   node="pve" \
   password="your-password"
 
@@ -852,7 +852,7 @@ The script is designed to work in automated environments:
 deploy_netbox:
   before_script:
     # Vault authentication
-    - export VAULT_ADDR="https://vault.internal:8200"
+    - export VAULT_ADDR="https://vault.example.com:8200"
     - export VAULT_TOKEN="${CI_VAULT_TOKEN}"
     
   script:

@@ -29,7 +29,7 @@ all:
   children:
     container:
       hosts:
-        base-template:
+        pbs-server:
           ansible_host: ${container_ip}
           ansible_port: 22
           ansible_user: ansible

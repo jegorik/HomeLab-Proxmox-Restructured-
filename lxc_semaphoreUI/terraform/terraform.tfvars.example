@@ -87,9 +87,9 @@ lxc_semaphore_data_mount_volume = "/rpool/data/semaphore"
 # -----------------------------------------------------------------------------
 
 lxc_network_bridge = "vmbr0"
-lxc_ip_address     = "192.168.1.100/24"
-lxc_gateway        = "192.168.1.1"
-lxc_dns_servers    = "192.168.1.3"
+lxc_ip_address     = "192.0.2.100/24"
+lxc_gateway        = "192.0.2.1"
+lxc_dns_servers    = "192.0.2.3"
 
 # -----------------------------------------------------------------------------
 # Ansible User

@@ -59,7 +59,7 @@ You can override these variables in your playbook:
     - role: netbox
       vars:
         netbox_version: v4.5.0
-        netbox_allowed_hosts: ['netbox.example.com', '192.168.1.100']
+        netbox_allowed_hosts: ['netbox.example.com', '192.0.2.100']
 ```
 
 ## Dependencies
@@ -220,7 +220,7 @@ Restarts the NetBox systemd service when configuration changes.
     netbox_version: v4.5.0
     netbox_allowed_hosts:
       - 'netbox.internal'
-      - '192.168.1.100'
+      - '192.0.2.100'
     netbox_superuser_name: root
     netbox_superuser_email: root@example.com
 

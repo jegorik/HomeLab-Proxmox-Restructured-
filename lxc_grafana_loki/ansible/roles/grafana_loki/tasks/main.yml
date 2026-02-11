@@ -1,0 +1,227 @@
+---
+# =============================================================================
+# Grafana Loki Role - Main Tasks
+# =============================================================================
+# Installs Grafana Loki and Promtail, performs initial configuration
+#
+# Last Updated: February 2026
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Service User Setup (Unprivileged Container Support)
+# -----------------------------------------------------------------------------
+# Pre-create the user to ensure UID/GID matches the host mapping (900 -> 100900).
+# This is critical for bind mount permissions in unprivileged containers.
+
+- name: Create Loki group with fixed GID
+  ansible.builtin.group:
+    name: "{{ loki_group }}"
+    gid: "{{ loki_gid }}"
+    state: present
+  tags: [grafana_loki, install]
+
+- name: Create Loki user with fixed UID
+  ansible.builtin.user:
+    name: "{{ loki_user }}"
+    uid: "{{ loki_uid }}"
+    group: "{{ loki_group }}"
+    home: "{{ loki_data_dir }}"
+    create_home: false
+    shell: /bin/false
+    state: present
+  tags: [grafana_loki, install]
+
+# -----------------------------------------------------------------------------
+# GPG Key and Repository Setup
+# -----------------------------------------------------------------------------
+
+- name: Install prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - wget
+      - gnupg
+    state: present
+    update_cache: true
+  tags: [grafana_loki, install]
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  tags: [grafana_loki, install]
+
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: "0644"
+  tags: [grafana_loki, install]
+
+- name: Dearmor and install Grafana GPG key
+  ansible.builtin.shell: |
+    gpg --dearmor < /tmp/grafana.gpg.key > /etc/apt/keyrings/grafana.gpg
+    chmod 644 /etc/apt/keyrings/grafana.gpg
+  args:
+    creates: /etc/apt/keyrings/grafana.gpg
+  tags: [grafana_loki, install]
+
+- name: Remove temporary GPG key file
+  ansible.builtin.file:
+    path: /tmp/grafana.gpg.key
+    state: absent
+  tags: [grafana_loki, install]
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+  tags: [grafana_loki, install]
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  tags: [grafana_loki, install]
+
+# -----------------------------------------------------------------------------
+# Grafana Loki Installation
+# -----------------------------------------------------------------------------
+
+- name: Install Loki and Promtail packages
+  ansible.builtin.apt:
+    name:
+      - loki
+      - promtail
+    state: present
+  notify:
+    - Restart loki
+    - Restart promtail
+  tags: [grafana_loki, install]
+
+# -----------------------------------------------------------------------------
+# Data Directory Permissions
+# -----------------------------------------------------------------------------
+
+- name: Ensure Loki data directory has correct ownership
+  ansible.builtin.file:
+    path: "{{ loki_data_dir }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+    recurse: true
+  tags: [grafana_loki, install]
+
+- name: Ensure Loki chunks directory has correct ownership
+  ansible.builtin.file:
+    path: "{{ loki_chunks_dir }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  tags: [grafana_loki, install]
+
+- name: Ensure Loki rules directory has correct ownership
+  ansible.builtin.file:
+    path: "{{ loki_rules_dir }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  tags: [grafana_loki, install]
+
+- name: Ensure Loki WAL directory exists
+  ansible.builtin.file:
+    path: "{{ loki_wal_dir }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  tags: [grafana_loki, install]
+
+- name: Ensure Loki log directory exists
+  ansible.builtin.file:
+    path: "{{ loki_log_dir }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  tags: [grafana_loki, install]
+
+# -----------------------------------------------------------------------------
+# Loki Configuration
+# -----------------------------------------------------------------------------
+
+- name: Ensure Loki config directory exists
+  ansible.builtin.file:
+    path: "{{ loki_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ loki_group }}"
+    mode: "0755"
+  tags: [grafana_loki, config]
+
+- name: Deploy Loki configuration
+  ansible.builtin.template:
+    src: loki-config.yml.j2
+    dest: "{{ loki_config_dir }}/config.yml"
+    owner: root
+    group: "{{ loki_group }}"
+    mode: "0640"
+  notify: Restart loki
+  tags: [grafana_loki, config]
+
+# -----------------------------------------------------------------------------
+# Promtail Configuration
+# -----------------------------------------------------------------------------
+
+- name: Ensure Promtail config directory exists
+  ansible.builtin.file:
+    path: "{{ promtail_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [grafana_loki, config, promtail]
+
+- name: Deploy Promtail configuration
+  ansible.builtin.template:
+    src: promtail-config.yml.j2
+    dest: "{{ promtail_config_dir }}/config.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart promtail
+  tags: [grafana_loki, config, promtail]
+
+# -----------------------------------------------------------------------------
+# Service Management
+# -----------------------------------------------------------------------------
+
+- name: Enable and start Loki service
+  ansible.builtin.service:
+    name: loki
+    state: started
+    enabled: true
+  tags: [grafana_loki, service]
+
+- name: Enable and start Promtail service
+  ansible.builtin.service:
+    name: promtail
+    state: started
+    enabled: true
+  tags: [grafana_loki, service, promtail]
+
+# -----------------------------------------------------------------------------
+# Firewall Configuration
+# -----------------------------------------------------------------------------
+
+- name: Allow Loki HTTP API port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ loki_http_port }}"
+    proto: tcp
+    comment: "Loki HTTP API"
+  tags: [grafana_loki, firewall]

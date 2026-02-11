@@ -89,16 +89,16 @@ The playbook uses group-based targeting. See `inventory.yml.example` for the ful
 ```text
 all
 ├── containers         # LXC — reboot skipped automatically
-│   ├── vault          (192.168.1.109)
-│   ├── netbox         (192.168.1.105)
-│   ├── npm            (192.168.1.100)
-│   ├── grafana        (192.168.1.106)
-│   ├── influxdb       (192.168.1.200)
-│   ├── pbs            (192.168.1.110)
-│   └── semaphoreui    (192.168.1.100)
+│   ├── vault          (192.0.2.109)
+│   ├── netbox         (192.0.2.105)
+│   ├── npm            (192.0.2.100)
+│   ├── grafana        (192.0.2.106)
+│   ├── influxdb       (192.0.2.200)
+│   ├── pbs            (192.0.2.110)
+│   └── semaphoreui    (192.0.2.100)
 └── vms                # Full VMs — reboot supported
-    ├── docker-pool    (192.168.1.200, Ubuntu)
-    └── opensuse-tw    (192.168.1.XXX, Tumbleweed)
+    ├── docker-pool    (198.51.100.200, Ubuntu)
+    └── opensuse-tw    (198.51.100.210, Tumbleweed)
 ```
 
 ## Tags

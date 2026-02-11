@@ -151,7 +151,7 @@ vault secrets enable transit
 vault write -f transit/keys/vm-opensuse-tumbleweed
 
 # 3. Required secrets stored
-vault kv put secret/proxmox/endpoint endpoint="https://192.168.1.100:8006"
+vault kv put secret/proxmox/endpoint endpoint="https://192.0.2.100:8006"
 vault kv put secret/proxmox/node node_name="pve"
 vault kv put secret/proxmox/root username="root@pam"
 vault kv put secret/ssh/root public_key="ssh-ed25519 AAAA..."
@@ -220,8 +220,8 @@ vim terraform.tfvars
 # VM Identity
 vm_id = 400                              # Unique VM ID
 vm_hostname = "opensuseTumbleweed-vm"    # VM hostname
-vm_ip_address = "192.168.0.210/24"       # Static IP with CIDR
-vm_gateway = "192.168.0.1"               # Default gateway
+vm_ip_address = "198.51.100.210/24"       # Static IP with CIDR
+vm_gateway = "198.51.100.1"               # Default gateway
 
 # Resources
 vm_cpu_cores = 2                         # CPU cores
@@ -236,7 +236,7 @@ virtiofs_etc_mapping = "workstation_etc"    # Proxmox mapping ID for /persistent
 target_user_uid = 1000                      # Fixed UID (must match ZFS ownership)
 
 # Vault Configuration
-vault_address = "http://192.168.1.50:8200"
+vault_address = "http://192.0.2.50:8200"
 transit_key_name = "vm-opensuse-tumbleweed"
 
 # USB Passthrough (find devices with 'lsusb' on Proxmox host)
@@ -321,9 +321,9 @@ Apply complete! Resources: X added, 0 changed, 0 destroyed.
 Outputs:
 
 vm_id = 400
-vm_ip_address = "192.168.0.210"
+vm_ip_address = "198.51.100.210"
 vm_hostname = "opensuseTumbleweed-vm"
-ssh_command = "ssh ansible@192.168.0.210"
+ssh_command = "ssh ansible@198.51.100.210"
 ```
 
 ### Step 5: Verify VM is Running
@@ -333,7 +333,7 @@ ssh_command = "ssh ansible@192.168.0.210"
 tofu output
 
 # Test SSH connectivity
-ssh ansible@192.168.0.210
+ssh ansible@198.51.100.210
 
 # Or check in Proxmox web UI
 # Navigate to: Datacenter → Node → VM 400
@@ -360,7 +360,7 @@ all:
     opensuse_vms:
       hosts:
         opensuse-workstation:
-          ansible_host: 192.168.0.210  # Use your VM IP
+          ansible_host: 198.51.100.210  # Use your VM IP
           ansible_user: ansible
           ansible_ssh_private_key_file: ~/.ssh/ansible
       vars:
@@ -417,7 +417,7 @@ opensuse-workstation : ok=XX   changed=YY   unreachable=0    failed=0
 
 ```bash
 # SSH into VM
-ssh ansible@192.168.0.210
+ssh ansible@198.51.100.210
 
 # Check system information
 cat /etc/os-release
@@ -458,7 +458,7 @@ Verify VirtIO-FS mounts are active and persistent data is accessible:
 
 ```bash
 # SSH into VM
-ssh ansible@192.168.0.210
+ssh ansible@198.51.100.210
 
 # Verify VirtIO-FS mounts
 mount | grep virtiofs
@@ -528,7 +528,7 @@ tofu output vm_id
 
 ```bash
 # SSH into VM
-ssh ansible@192.168.0.210
+ssh ansible@198.51.100.210
 
 # 1. Check system information
 cat /etc/os-release

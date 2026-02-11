@@ -7,7 +7,7 @@ Ubuntu Server 24.04.3 LTS VM with Docker, Docker Compose, and Portainer for cont
 | Property | Value |
 | ---------- | ------- |
 | **VMID** | 300 |
-| **IP Address** | 192.168.0.200/24 |
+| **IP Address** | 198.51.100.200/24 |
 | **OS** | Ubuntu Server 24.04.3 LTS |
 | **CPU** | 2 cores |
 | **Memory** | 4096 MB |
@@ -38,7 +38,7 @@ chmod +x deploy.sh
 ./deploy.sh deploy
 
 # 3. Access Portainer
-# Open https://192.168.0.200:9443
+# Open https://198.51.100.200:9443
 # Create admin user on first access
 ```
 

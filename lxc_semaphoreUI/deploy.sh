@@ -242,7 +242,7 @@ show_menu() {
     clear
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════╗"
-    echo "║       LXC Base Template - Deployment                 ║"
+    echo "║       LXC SemaphoreUI - Deployment                 ║"
     echo "║       OpenTofu/Terraform + Ansible + Vault           ║"
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"

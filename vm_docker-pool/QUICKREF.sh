@@ -80,13 +80,13 @@
 # -----------------------------------------------------------------------------
 
 # SSH to VM
-# ssh ansible@192.168.0.200
+# ssh ansible@198.51.100.200
 
 # SSH with specific key
-# ssh -i ~/.ssh/ansible ansible@192.168.0.200
+# ssh -i ~/.ssh/ansible ansible@198.51.100.200
 
 # Copy file to VM
-# scp -i ~/.ssh/ansible localfile ansible@192.168.0.200:/tmp/
+# scp -i ~/.ssh/ansible localfile ansible@198.51.100.200:/tmp/
 
 # -----------------------------------------------------------------------------
 # Docker Commands (on VM)
@@ -124,10 +124,10 @@
 # -----------------------------------------------------------------------------
 
 # Portainer Web UI (HTTPS)
-# https://192.168.0.200:9443
+# https://198.51.100.200:9443
 
 # Portainer API
-# https://192.168.0.200:9443/api
+# https://198.51.100.200:9443/api
 
 # -----------------------------------------------------------------------------
 # Vault Commands

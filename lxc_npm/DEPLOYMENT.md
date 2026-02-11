@@ -60,7 +60,7 @@ Key variables to configure:
 | ---------- | ------------- | --------- |
 | `container_hostname` | Container name | `npm` |
 | `container_id` | Proxmox VM ID | `110` |
-| `network_ip` | Static IP | `192.168.1.110/24` |
+| `network_ip` | Static IP | `192.0.2.110/24` |
 | `container_memory` | RAM in MB | `2048` |
 
 ## Step 3: Configure S3 Backend
@@ -72,7 +72,8 @@ bucket         = "your-terraform-state-bucket"
 key            = "lxc_npm/terraform.tfstate"
 region         = "us-east-1"
 encrypt        = true
-dynamodb_table = "terraform-locks"  # Optional
+use_lockfile   = true
+lock_tags      = {"lock-owner":"opentofu"}
 ```
 
 ## Step 4: Deploy

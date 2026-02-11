@@ -19,7 +19,7 @@ This project deploys [Semaphore UI](https://semaphoreui.com/), a modern UI for A
 
 - **Terraform/OpenTofu**: Provisions the LXC container.
   - VMID: `108`
-  - IP: `192.168.1.100/24`
+  - IP: `192.0.2.100/24`
   - RAM: `2048 MB`
   - Access: SSH Key (Root), Passwordless Sudo (Ansible User)
 - **Ansible**: Configures the software.
@@ -51,7 +51,7 @@ This project deploys [Semaphore UI](https://semaphoreui.com/), a modern UI for A
 
 ### Access
 
-- **Web UI**: <http://192.168.1.100:3000>
+- **Web UI**: <http://192.0.2.100:3000>
 - **Default Admin User**: `admin` (password set during deployment)
 
 ## Data Persistence

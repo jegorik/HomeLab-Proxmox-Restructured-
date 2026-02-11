@@ -233,7 +233,7 @@ create_test_config() {
     local with_encryption="${2:-false}"
     
     cat > "$TEST_TMPDIR/etc/pbs-backup/${profile}.conf" << EOF
-PBS_SERVER="192.168.0.107"
+PBS_SERVER="198.51.100.107"
 PBS_PORT="8007"
 PBS_DATASTORE="backups"
 PBS_AUTH_ID="backup_user@pbs!backup_token"
@@ -309,7 +309,7 @@ test_config_parsing() {
     
     parse_config "$TEST_TMPDIR/etc/pbs-backup/test1.conf"
     
-    assert_equals "192.168.0.107" "$PBS_SERVER" "PBS_SERVER parsed correctly"
+    assert_equals "198.51.100.107" "$PBS_SERVER" "PBS_SERVER parsed correctly"
     assert_equals "backups" "$PBS_DATASTORE" "PBS_DATASTORE parsed correctly"
     assert_equals "backup_user@pbs!backup_token" "$PBS_AUTH_ID" "PBS_AUTH_ID parsed correctly"
     assert_contains "$BACKUP_PATHS" "backup-data" "BACKUP_PATHS contains backup-data"
@@ -514,7 +514,7 @@ test_config_file_injection_protection() {
     
     # Create malicious config
     cat > "$TEST_TMPDIR/etc/pbs-backup/malicious.conf" << 'EOF'
-PBS_SERVER="192.168.0.107"
+PBS_SERVER="198.51.100.107"
 PBS_DATASTORE="backups"
 PBS_AUTH_ID="user@pam"
 MALICIOUS_CODE="$(rm -rf /tmp/attack)"
@@ -535,7 +535,7 @@ EOF
     
     # Check that malicious code was NOT executed
     assert_equals "" "$MALICIOUS_CODE" "Malicious code variable not set (ignored)"
-    assert_equals "192.168.0.107" "$PBS_SERVER" "Valid config still parsed"
+    assert_equals "198.51.100.107" "$PBS_SERVER" "Valid config still parsed"
     
     echo
 }

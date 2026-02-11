@@ -1,5 +1,5 @@
 # =============================================================================
-# .gitignore for Terraform/OpenTofu Vault Project
+# netbox_settings_template - Git Ignore
 # =============================================================================
 
 # Terraform/OpenTofu State Files

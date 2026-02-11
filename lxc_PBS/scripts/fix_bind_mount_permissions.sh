@@ -30,9 +30,15 @@ if [[ -z "${MOUNT_PATH}" || -z "${TARGET_UID}" ]]; then
 fi
 
 if [[ ! "${MOUNT_PATH}" =~ ^/rpool/(datastore|data)/.* ]]; then
-    echo "ERROR: Path must be under /rpool/datastore/ or /rpool/data/ for safety."
-    echo "Received: ${MOUNT_PATH}"
-    exit 1
+    # Allow other /rpool/ paths with a warning
+    if [[ "${MOUNT_PATH}" =~ ^/rpool/.* ]]; then
+        echo "WARNING: Path '${MOUNT_PATH}' is outside standard /rpool/datastore/ or /rpool/data/ directories."
+        echo "Proceeding, but verify this path is intentional."
+    else
+        echo "ERROR: Path must be under /rpool/ for safety."
+        echo "Received: ${MOUNT_PATH}"
+        exit 1
+    fi
 fi
 
 # Calculate host ID

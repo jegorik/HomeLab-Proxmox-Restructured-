@@ -1,6 +1,6 @@
 # # Uncomment this file and apply with terraform after lxc_netbox_template is deployed
 # # =============================================================================
-# # LXC Base Template - NetBox Registration
+# # LXC NetBox - NetBox Registration
 # # =============================================================================
 # # Automatically registers the container in NetBox for DCIM/IPAM tracking
 
@@ -38,7 +38,7 @@
 #   status = "active"
 
 #   comments = <<-EOT
-#     LXC Container deployed by lxc_vault_module  
+#     LXC Container deployed by lxc_netbox
 #     Proxmox Node: ${data.vault_generic_secret.proxmox_node_name.data["node_name"]}
 #     VMID: ${var.lxc_id}
 #     Created: ${timestamp()}

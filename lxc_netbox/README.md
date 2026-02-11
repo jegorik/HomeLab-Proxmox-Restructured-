@@ -485,7 +485,7 @@ tofu output netbox_admin_user
 vault kv get -field=django_superuser_password secrets/proxmox/netbox
 
 # Open NetBox UI in browser
-# Example: http://10.0.100.60:80 or http://10.0.100.60:8300
+# Example: http://203.0.113.60:80 or http://203.0.113.60:8300
 ```
 
 #### 6. Post-Deployment
@@ -602,9 +602,9 @@ export VAULT_TOKEN=$(vault print token)
 **Optional (can be set in terraform.tfvars):**
 
 ```bash
-export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
-export TF_VAR_lxc_ip_address="10.0.100.60/24"
-export TF_VAR_lxc_gateway="10.0.100.1"
+export TF_VAR_proxmox_endpoint="https://192.0.2.100:8006"
+export TF_VAR_lxc_ip_address="203.0.113.60/24"
+export TF_VAR_lxc_gateway="203.0.113.1"
 ```
 
 ### Logging
@@ -775,13 +775,13 @@ Key variables in `terraform.tfvars`:
 
 ```hcl
 # Proxmox Connection (stored in Vault)
-proxmox_endpoint = "https://192.168.1.100:8006"
+proxmox_endpoint = "https://192.0.2.100:8006"
 
 # LXC Container Configuration
 lxc_id          = 201
 lxc_description = "NetBox DCIM/IPAM Platform"
-lxc_ip_address  = "10.0.100.60/24"
-lxc_gateway     = "10.0.100.1"
+lxc_ip_address  = "203.0.113.60/24"
+lxc_gateway     = "203.0.113.1"
 
 # Resources
 lxc_cpu_cores   = 2

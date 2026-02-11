@@ -74,7 +74,7 @@ sudo nano /etc/pbs-backup/rpool.credentials
 **Example `/etc/pbs-backup/rpool.conf`:**
 
 ```ini
-PBS_SERVER="192.168.1.181"
+PBS_SERVER="192.0.2.181"
 PBS_PORT="8007"
 PBS_DATASTORE="backups"
 PBS_AUTH_ID="root@pam"
@@ -226,7 +226,7 @@ journalctl -u pbs-backup-rpool.service -f
 tail -f /var/log/pbs-backup/rpool.log
 
 # List backups on PBS server
-export PBS_REPOSITORY="root@pam@192.168.1.181:8007:backups"
+export PBS_REPOSITORY="root@pam@192.0.2.181:8007:backups"
 proxmox-backup-client snapshot list
 ```
 

@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# Grafana Loki Role - Default Variables
+# =============================================================================
+
+# Loki Server Configuration
+loki_http_port: 3100
+loki_grpc_port: 9096
+
+# Loki Service User
+loki_user: "loki"
+loki_group: "loki"
+loki_uid: 900
+loki_gid: 900
+
+# Loki Paths
+loki_config_dir: "/etc/loki"
+loki_data_dir: "/var/lib/loki"
+loki_log_dir: "/var/log/loki"
+loki_chunks_dir: "/var/lib/loki/chunks"
+loki_rules_dir: "/var/lib/loki/rules"
+loki_wal_dir: "/var/lib/loki/wal"
+
+# Loki Retention
+loki_retention_period: "744h"  # 31 days
+
+# Promtail Configuration
+promtail_http_port: 9080
+promtail_config_dir: "/etc/promtail"
+promtail_positions_file: "/tmp/positions.yaml"

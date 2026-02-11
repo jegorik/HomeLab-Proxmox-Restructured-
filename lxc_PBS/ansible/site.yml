@@ -1,10 +1,10 @@
 ---
 # =============================================================================
-# LXC Base Template - Main Ansible Playbook
+# LXC PBS - Main Ansible Playbook
 # =============================================================================
-# Configures the base LXC container with essential packages and settings
+# Configures Proxmox Backup Server LXC container
 
-- name: Configure LXC Container
+- name: Configure PBS Container
   hosts: all
   become: true
   gather_facts: true

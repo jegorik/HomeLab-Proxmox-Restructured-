@@ -59,6 +59,11 @@ output "netbox_vm_url" {
   value       = "${var.netbox_url}/virtualization/virtual-machines/${netbox_virtual_machine.lxc.id}/"
 }
 
+output "root_password" {
+  value     = random_password.root_password.result
+  sensitive = true
+}
+
 # -----------------------------------------------------------------------------
 # Deployment Summary
 # -----------------------------------------------------------------------------
@@ -68,7 +73,7 @@ output "deployment_summary" {
   value       = <<-EOT
     
     ╔══════════════════════════════════════════════════════╗
-    ║              LXC Container Deployed                  ║
+    ║           InfluxDB Container Deployed                  ║
     ╚══════════════════════════════════════════════════════╝
     
     Container:  ${var.lxc_hostname} (VMID: ${proxmox_virtual_environment_container.influxdb.vm_id})

@@ -373,16 +373,16 @@ Outputs:
 
 ansible_inventory_entry = <<EOT
 vault:
-  ansible_host: 10.0.100.50
+  ansible_host: 203.0.113.50
   ansible_user: ansible
   ansible_ssh_private_key_file: ~/.ssh/ansible
   ansible_python_interpreter: /usr/bin/python3
 EOT
 lxc_hostname = "vault"
 lxc_id = 109
-lxc_ip_address = "10.0.100.50/24"
-ssh_command = "ssh root@10.0.100.50"
-vault_url = "http://10.0.100.50:8200"
+lxc_ip_address = "203.0.113.50/24"
+ssh_command = "ssh root@203.0.113.50"
+vault_url = "http://203.0.113.50:8200"
 ```
 
 ### Container Lifecycle Management
@@ -412,7 +412,7 @@ tofu refresh
 
 | Variable | Type | Required | Default | Description |
 | ---------- | ------ | ---------- | --------- | ------------- |
-| `proxmox_endpoint` | string | ✅ | - | Proxmox API endpoint (e.g., `https://192.168.1.100:8006`) |
+| `proxmox_endpoint` | string | ✅ | - | Proxmox API endpoint (e.g., `https://192.0.2.100:8006`) |
 | `proxmox_api_token` | string | ✅ | - | API token: `user@realm!token_id=secret` |
 | `proxmox_node` | string | ❌ | `"pve"` | Proxmox node name |
 | `connection_insecure` | bool | ❌ | `true` | Skip TLS verification (for self-signed certs) |
@@ -440,7 +440,7 @@ tofu refresh
 
 | Variable | Type | Required | Default | Description |
 | -------- | ---- | -------- | ------- | ----------- |
-| `lxc_ip_address` | string | ❌ | `"dhcp"` | IP with CIDR (e.g., `10.0.100.50/24`) or `dhcp` |
+| `lxc_ip_address` | string | ❌ | `"dhcp"` | IP with CIDR (e.g., `203.0.113.50/24`) or `dhcp` |
 | `lxc_gateway` | string | ❌ | `""` | Gateway IP (required for static IP) |
 | `lxc_dns_servers` | string | ❌ | `"8.8.8.8 8.8.4.4"` | Space-separated DNS servers |
 | `lxc_network_bridge` | string | ❌ | `"vmbr0"` | Network bridge name |

@@ -88,7 +88,7 @@ lxc_base_template/
 | ---------- | ------------- | --------- |
 | `lxc_id` | Proxmox VMID | `106` |
 | `lxc_hostname` | Container hostname | `base-template` |
-| `lxc_ip_address` | IPv4/CIDR (e.g., `192.168.1.50/24`) | `dhcp` |
+| `lxc_ip_address` | IPv4/CIDR (e.g., `192.0.2.50/24`) | `dhcp` |
 | `lxc_disk_storage` | Storage pool | `local-lvm` |
 | `lxc_disk_size` | Disk size (GB) | `8` |
 | `lxc_memory` | RAM (MB) | `512` |

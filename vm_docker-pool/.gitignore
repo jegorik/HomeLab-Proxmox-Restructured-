@@ -1,5 +1,5 @@
 # =============================================================================
-# .gitignore for Terraform/OpenTofu Vault Project
+# vm_docker-pool - Git Ignore
 # =============================================================================
 
 # Terraform/OpenTofu State Files

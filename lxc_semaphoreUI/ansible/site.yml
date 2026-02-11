@@ -1,10 +1,10 @@
 ---
 # =============================================================================
-# LXC Base Template - Main Ansible Playbook
+# LXC SemaphoreUI - Main Ansible Playbook
 # =============================================================================
 # Configures the base LXC container with essential packages and settings
 
-- name: Configure LXC Container
+- name: Configure Semaphore UI Container
   hosts: all
   become: true
   gather_facts: true

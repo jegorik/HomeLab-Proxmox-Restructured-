@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 
 variable "proxmox_endpoint" {
-  description = "Proxmox VE API endpoint URL (e.g., https://192.168.1.100:8006)"
+  description = "Proxmox VE API endpoint URL (e.g., https://192.0.2.100:8006)"
   type        = string
 
   validation {
@@ -235,7 +235,7 @@ variable "lxc_network_interface_name" {
 }
 
 variable "lxc_ip_address" {
-  description = "IPv4 address with CIDR (e.g., 192.168.1.50/24) or 'dhcp'"
+  description = "IPv4 address with CIDR (e.g., 192.0.2.50/24) or 'dhcp'"
   type        = string
   default     = "dhcp"
 }

@@ -80,8 +80,8 @@ Key variables to configure:
 | `vault_address` | Vault server URL | `https://vault.local:8200` |
 | `vm_id` | Unique VM ID | `300` |
 | `vm_hostname` | VM hostname | `docker-pool` |
-| `vm_ip_address` | Static IP with CIDR | `192.168.0.200/24` |
-| `vm_gateway` | Default gateway | `192.168.0.1` |
+| `vm_ip_address` | Static IP with CIDR | `198.51.100.200/24` |
+| `vm_gateway` | Default gateway | `198.51.100.1` |
 | `vm_cpu_cores` | CPU cores | `2` |
 | `vm_memory` | Memory in MB | `4096` |
 | `vm_disk_size` | Disk size in GB | `32` |
@@ -109,7 +109,7 @@ chmod +x deploy.sh
 ./deploy.sh status
 
 # SSH to VM
-ssh ansible@192.168.0.200
+ssh ansible@198.51.100.200
 
 # Verify Docker
 docker --version
@@ -121,7 +121,7 @@ docker ps | grep portainer
 
 ### Step 4: Configure Portainer
 
-1. Open https://192.168.0.200:9443 in your browser
+1. Open https://198.51.100.200:9443 in your browser
 2. Accept the self-signed certificate warning
 3. Create an admin user and strong password
 4. Select "Docker - Manage the local Docker environment"
@@ -138,7 +138,7 @@ To access Portainer via HTTPS with a valid certificate:
 1. Login to Nginx Proxy Manager (lxc_npm)
 2. Add a new Proxy Host:
    - Domain: `portainer.example.local`
-   - Forward Hostname: `192.168.0.200`
+   - Forward Hostname: `198.51.100.200`
    - Forward Port: `9443`
    - Enable SSL with Let's Encrypt
 
@@ -190,7 +190,7 @@ tar -czvf portainer-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/portainer
 
 1. Verify VM IP is correct in inventory.yml
 2. Check SSH key permissions: `chmod 600 ~/.ssh/ansible`
-3. Test manually: `ssh -i ~/.ssh/ansible ansible@192.168.0.200`
+3. Test manually: `ssh -i ~/.ssh/ansible ansible@198.51.100.200`
 
 ### Portainer Not Accessible
 
