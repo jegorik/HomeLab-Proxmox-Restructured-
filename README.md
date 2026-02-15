@@ -63,6 +63,9 @@ graph TB
         INFLUX1[Bind Mounts]
         GRAFANA[lxc_grafana<br/>Grafana OSS<br/>:3000]
         GRAFANA1[Bind Mounts]
+        LOKI[lxc_grafana_loki<br/>Grafana Loki<br/>:3100]
+        LOKI1[Bind Mounts]
+        LOKI2[Authentik SSO]
         SEMA[lxc_semaphoreUI<br/>Semaphore UI<br/>:3000]
         SEMA1[Bind Mounts]
     end
@@ -415,6 +418,37 @@ sequenceDiagram
 
 ---
 
+### 9. **lxc_grafana_loki** - Log Aggregation System
+
+**Purpose**: Centralized log aggregation and querying with Authentik SSO integration
+
+**Status**: ✅ Production-ready with multi-layer security
+
+**Key Features**:
+
+- Grafana Loki from official APT repository
+- Data persistence via bind mounts (`/var/lib/loki/chunks`, `/var/lib/loki/rules`)
+- **Authentik SSO** integration via Nginx Proxy Manager Forward Auth
+- **Basic Auth** for Promtail agents (htpasswd)
+- **UFW firewall** with IP whitelist (NPM + Grafana only)
+- **Unprivileged container** with UID 900 → 100900 mapping
+- Promtail agent for local log collection
+- Web API on port 3100 (behind reverse proxy)
+
+**Documentation**: See [lxc_grafana_loki/README.md](lxc_grafana_loki/README.md)
+
+**Deployment Order**: 🥈 **Deploy After Vault** - Requires lxc_vault, lxc_npm, Authentik
+
+**Prerequisites**:
+
+- lxc_vault must be deployed and configured
+- lxc_npm deployed with domain configured
+- Authentik deployed via Docker with admin access
+- Host paths for bind mounts must exist
+- Domain name for HTTPS (Let's Encrypt via NPM)
+
+---
+
 ### 9. **lxc_semaphoreUI** - Semaphore UI Automation
 
 **Purpose**: Modern UI for Ansible, Terraform, and OpenTofu automation
@@ -609,6 +643,46 @@ Optimized multi-OS package update playbook with enhanced error handling, securit
 - Valid inventory configuration (see `ansible_base_scripts/vms_packages_update/inventory.yml.example`)
 
 **Integration**: Compatible with **SemaphoreUI** for scheduled task automation and execution logging
+
+---
+
+#### 14.2 promtail_remote_install
+
+Automated Promtail deployment playbook for remote log collection to secured Grafana Loki instance.
+
+**Purpose**: Install and configure Promtail agents on remote hosts to push logs to Loki via HTTPS + Basic Auth
+
+**Status**: ✅ **Production-Ready** (Integrated with lxc_grafana_loki security architecture)
+
+**Key Features**:
+
+- **Automated installation** — Promtail from official Grafana APT repository
+- **Secure configuration** — HTTPS + Basic Auth for Loki push endpoint
+- **Flexible inventory** — Per-host job names and custom log paths
+- **Idempotent operations** — Safe for repeated execution
+- **Password management** — Secure password file creation with proper permissions (0600)
+- **Service management** — Automatic Promtail service enable/start with systemd
+
+**Documentation**: See [ansible_base_scripts/promtail_remote_install/README.md](ansible_base_scripts/promtail_remote_install/README.md)
+
+**Deployment Order**: 🔧 **Maintenance Utility** - Run after lxc_grafana_loki is deployed and secured
+
+**Prerequisites**:
+
+- Ansible 2.15+ on control machine
+- SSH access to target hosts (Debian/Ubuntu)
+- lxc_grafana_loki deployed with NPM + Basic Auth configured
+- Basic Auth password from NPM htpasswd file
+- Target hosts running Debian/Ubuntu with sudo privileges
+
+**Usage Example**:
+
+```bash
+cd ansible_base_scripts/promtail_remote_install
+ansible-playbook -i inventory.yml playbook.yml \
+  -e promtail_loki_url=https://loki.example.com \
+  -e promtail_basic_auth_password=<password>
+```
 
 ---
 

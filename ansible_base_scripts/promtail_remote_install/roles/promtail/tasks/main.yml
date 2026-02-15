@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# Promtail Role - Main Tasks
+# =============================================================================
+
+- name: Add Grafana APT key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: "0644"
+
+- name: Dearmor Grafana GPG key
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /etc/apt/keyrings/grafana.gpg /tmp/grafana.gpg.key
+    creates: /etc/apt/keyrings/grafana.gpg
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+
+- name: Update APT cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Promtail
+  ansible.builtin.apt:
+    name: promtail
+    state: present
+
+- name: Create Promtail config directory
+  ansible.builtin.file:
+    path: "{{ promtail_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Promtail configuration
+  ansible.builtin.template:
+    src: promtail-config.yml.j2
+    dest: "{{ promtail_config_dir }}/config.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Promtail
+
+- name: Create Loki password file
+  ansible.builtin.copy:
+    content: "{{ promtail_basic_auth_password }}"
+    dest: "{{ promtail_password_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart Promtail
+
+- name: Enable and start Promtail service
+  ansible.builtin.systemd:
+    name: promtail
+    enabled: true
+    state: started

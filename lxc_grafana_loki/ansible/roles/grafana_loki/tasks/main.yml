@@ -218,10 +218,21 @@
 # Firewall Configuration
 # -----------------------------------------------------------------------------
 
-- name: Allow Loki HTTP API port through UFW
+- name: Allow Loki API from localhost (same-host Promtail)
   community.general.ufw:
     rule: allow
-    port: "{{ loki_http_port }}"
+    from_ip: "127.0.0.1"
+    to_port: "{{ loki_http_port }}"
     proto: tcp
-    comment: "Loki HTTP API"
+    comment: "Loki - localhost Promtail"
+  tags: [grafana_loki, firewall]
+
+- name: Allow Loki API from trusted sources
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ item.ip }}"
+    to_port: "{{ loki_http_port }}"
+    proto: tcp
+    comment: "Loki - {{ item.comment }}"
+  loop: "{{ loki_firewall_allowed_sources }}"
   tags: [grafana_loki, firewall]

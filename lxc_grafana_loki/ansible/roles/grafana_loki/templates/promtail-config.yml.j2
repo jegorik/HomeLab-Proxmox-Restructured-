@@ -12,7 +12,12 @@ positions:
   filename: {{ promtail_positions_file }}
 
 clients:
-  - url: http://localhost:{{ loki_http_port }}/loki/api/v1/push
+  - url: {{ promtail_loki_url | default('http://localhost:' ~ loki_http_port) }}/loki/api/v1/push
+{% if promtail_basic_auth_user is defined %}
+    basic_auth:
+      username: {{ promtail_basic_auth_user }}
+      password_file: {{ promtail_basic_auth_password_file }}
+{% endif %}
 
 scrape_configs:
   # Collect system log files

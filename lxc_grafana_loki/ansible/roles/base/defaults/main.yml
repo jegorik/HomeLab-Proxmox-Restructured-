@@ -30,4 +30,3 @@ base_ssh_pubkey_authentication: "yes"
 base_enable_firewall: true
 base_firewall_allowed_ports:
   - "22/tcp"
-  - "3100/tcp"

@@ -566,3 +566,19 @@ variable "service_user_gid" {
     error_message = "Service user GID must be between 100 and 65535."
   }
 }
+
+# -----------------------------------------------------------------------------
+# UFW Whitelisted IP Addresses
+# -----------------------------------------------------------------------------
+
+variable "npm_ip_address" {
+  description = "IP address of the NPM server"
+  type        = string
+  default     = "192.0.2.105"
+}
+
+variable "grafana_ip_address" {
+  description = "IP address of the Grafana server"
+  type        = string
+  default     = "192.0.2.106"
+}

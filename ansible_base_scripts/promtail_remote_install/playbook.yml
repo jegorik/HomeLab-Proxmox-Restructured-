@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# Remote Promtail Installation - Playbook
+# =============================================================================
+# Installs Promtail on remote hosts and configures them to push logs to
+# a secured Loki instance via HTTPS with Basic Authentication.
+#
+# Usage:
+#   ansible-playbook -i inventory.yml playbook.yml \
+#     -e promtail_loki_url=https://loki.example.com \
+#     -e promtail_basic_auth_password=<password>
+# =============================================================================
+
+- name: Install and Configure Promtail
+  hosts: all
+  become: true
+
+  roles:
+    - promtail

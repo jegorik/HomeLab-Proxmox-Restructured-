@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# Promtail Configuration Template
+# =============================================================================
+# Configured to push logs to secured Loki instance via HTTPS + Basic Auth
+# =============================================================================
+
+server:
+  http_listen_port: {{ promtail_http_port }}
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ promtail_positions_file }}
+
+clients:
+  - url: {{ promtail_loki_url }}/loki/api/v1/push
+    basic_auth:
+      username: {{ promtail_basic_auth_user }}
+      password_file: {{ promtail_password_file }}
+
+scrape_configs:
+  - job_name: {{ promtail_job_name }}
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: {{ promtail_job_name }}
+          host: {{ ansible_hostname }}
+          __path__: {{ promtail_log_paths | join(',') }}
