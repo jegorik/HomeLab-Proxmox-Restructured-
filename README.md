@@ -96,6 +96,7 @@ graph TB
     A -->|Provision| PBS
     A -->|Provision| INFLUX
     A -->|Provision| GRAFANA
+    A -->|Provision| LOKI
     A -->|State| G
     G -->|Encrypted| H
     
@@ -105,6 +106,7 @@ graph TB
     B -->|Configure| PBS
     B -->|Configure| INFLUX
     B -->|Configure| GRAFANA
+    B -->|Configure| LOKI
     B -->|Configure| OPENSUSE
     
     C -->|Automate| A
@@ -116,6 +118,7 @@ graph TB
     E -->|Secrets & Encryption| PBS
     E -->|Secrets & Encryption| INFLUX
     E -->|Secrets & Encryption| GRAFANA
+    E -->|Secrets & Encryption| LOKI
     E -->|Secrets & Encryption| DOCKER
     E -->|Secrets & Encryption| OPENSUSE
     
@@ -133,6 +136,19 @@ graph TB
     
     GRAFANA --> GRAFANA1
     
+    LOKI --> LOKI1
+    LOKI -->|Data Source| GRAFANA
+    LOKI --> LOKI2
+    
+    F -.->|Promtail Logs| LOKI
+    NPM -.->|Promtail Logs| LOKI
+    PBS -.->|Promtail Logs| LOKI
+    INFLUX -.->|Promtail Logs| LOKI
+    GRAFANA -.->|Promtail Logs| LOKI
+    SEMA -.->|Promtail Logs| LOKI
+    DOCKER -.->|Promtail Logs| LOKI
+    OPENSUSE -.->|Promtail Logs| LOKI
+    
     SEMA --> SEMA1
     
     DOCKER --> DOCKER1
@@ -148,6 +164,7 @@ graph TB
     AUTH -.->|SSO| INFLUX
     AUTH -.->|SSO| NPM
     AUTH -.->|SSO| E
+    AUTH -.->|Forward Auth| LOKI
     AUTH -.->|SSO| F
     
     D -->|Network| E
