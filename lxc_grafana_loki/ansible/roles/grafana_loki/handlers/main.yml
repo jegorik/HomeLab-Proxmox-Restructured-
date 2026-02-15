@@ -1,0 +1,12 @@
+---
+# Grafana Loki Role - Handlers
+
+- name: Restart loki
+  ansible.builtin.service:
+    name: loki
+    state: restarted
+
+- name: Restart promtail
+  ansible.builtin.service:
+    name: promtail
+    state: restarted

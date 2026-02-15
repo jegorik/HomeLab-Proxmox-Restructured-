@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# Grafana Loki Role - Default Variables
+# =============================================================================
+
+# Loki Server Configuration
+loki_http_port: 3100
+loki_grpc_port: 9096
+
+# Loki Service User
+loki_user: "loki"
+loki_group: "loki"
+loki_uid: 900
+loki_gid: 900
+
+# Loki Paths
+loki_config_dir: "/etc/loki"
+loki_data_dir: "/var/lib/loki"
+loki_log_dir: "/var/log/loki"
+loki_chunks_dir: "/var/lib/loki/chunks"
+loki_rules_dir: "/var/lib/loki/rules"
+loki_wal_dir: "/var/lib/loki/wal"
+
+# Loki Retention
+loki_retention_period: "744h" # 31 days
+
+# Firewall whitelist — override with real IPs in inventory/group_vars
+# Uses RFC 5737 documentation IPs as safe placeholders
+loki_firewall_allowed_sources:
+  - ip: "192.0.2.105"
+    comment: "NPM reverse proxy"
+  - ip: "192.0.2.106"
+    comment: "Grafana data source"
+
+# Promtail Configuration
+promtail_http_port: 9080
+promtail_config_dir: "/etc/promtail"
+promtail_positions_file: "/tmp/positions.yaml"
+
+# Remote Promtail (optional — override in inventory for remote hosts)
+# promtail_loki_url: "https://loki.example.com"
+# promtail_basic_auth_user: "promtail"
+# promtail_basic_auth_password_file: "/etc/promtail/.loki-password"

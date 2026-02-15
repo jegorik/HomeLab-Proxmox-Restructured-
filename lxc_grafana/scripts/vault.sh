@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for LXC Base Template
+# Vault Functions for LXC NPM Deployment
 # =============================================================================
 
 # Prevent multiple sourcing
@@ -118,8 +118,8 @@ vault_authenticate() {
     fi
 
     local vault_token
-        vault_token=$(vault token lookup -format=json | jq -r '.data.id')
-        export VAULT_TOKEN="${vault_token}"
+    vault_token=$(vault token lookup -format=json | jq -r '.data.id')
+    export VAULT_TOKEN="${vault_token}"
     export TF_VAR_vault_password="${VAULT_PASSWORD}"
     log_success "Authenticated successfully"
     return 0
@@ -131,23 +131,22 @@ vault_generate_aws_credentials() {
     
     unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_SESSION_TOKEN
     
+    local creds
     if ! creds=$(vault read -format=json aws/proxmox/creds/"${AWS_ROLE}" 2>&1); then
         log_error "Failed to generate AWS credentials"
         log_error "${creds}"
         return 1
     fi
 
-    local access_key
+    local access_key secret_key lease_duration lease_id
     access_key=$(echo "${creds}" | jq -r '.data.access_key')
-    export AWS_ACCESS_KEY_ID="${access_key}"
-    local secret_key
     secret_key=$(echo "${creds}" | jq -r '.data.secret_key')
-    export AWS_SECRET_ACCESS_KEY="${secret_key}"
-    local lease_duration
     lease_duration=$(echo "${creds}" | jq -r '.lease_duration')
-    export LEASE_DURATION="${lease_duration}"
-    local lease_id
     lease_id=$(echo "${creds}" | jq -r '.lease_id')
+
+    export AWS_ACCESS_KEY_ID="${access_key}"
+    export AWS_SECRET_ACCESS_KEY="${secret_key}"
+    export LEASE_DURATION="${lease_duration}"
     export LEASE_ID="${lease_id}"
 
     if [[ -z "${AWS_ACCESS_KEY_ID}" || "${AWS_ACCESS_KEY_ID}" == "null" ]]; then

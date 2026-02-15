@@ -1,7 +1,7 @@
 # Proxmox Backup Server (LXC)
 
 Project for deploying Proxmox Backup Server (PBS) in a Proxmox LXC container using OpenTofu/Terraform and Ansible.
-Based on `lxc_base_template`.
+Based on [`lxc_base_template`](../lxc_base_template/).
 
 ## Features
 

@@ -440,7 +440,7 @@ ssh ansible@<container-ip> sudo cat /root/vault-keys.txt
 ```bash
 # Open Vault UI in browser
 # URL from: tofu output vault_url
-# Example: http://10.0.100.50:8200
+# Example: http://203.0.113.50:8200
 
 # Or use CLI
 export VAULT_ADDR='http://<container-ip>:8200'
@@ -551,11 +551,11 @@ export TF_VAR_pve_root_password="your-password"
 **Optional (can be set in terraform.tfvars):**
 
 ```bash
-export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
+export TF_VAR_proxmox_endpoint="https://192.0.2.100:8006"
 export TF_VAR_proxmox_api_token="user@pam!token=secret"
 export TF_VAR_proxmox_node="pve"
-export TF_VAR_lxc_ip_address="10.0.100.50/24"
-export TF_VAR_lxc_gateway="10.0.100.1"
+export TF_VAR_lxc_ip_address="203.0.113.50/24"
+export TF_VAR_lxc_gateway="203.0.113.1"
 ```
 
 **State Encryption:**
@@ -693,8 +693,8 @@ proxmox_node = "pve"
 # Container settings
 lxc_id = 109
 lxc_hostname = "vault"
-lxc_ip_address = "10.0.100.50/24"
-lxc_gateway = "10.0.100.1"
+lxc_ip_address = "203.0.113.50/24"
+lxc_gateway = "203.0.113.1"
 
 # Resources
 lxc_cpu_cores = 1
@@ -720,7 +720,7 @@ all:
     vault:
       hosts:
         vault-server:
-          ansible_host: 10.0.100.50
+          ansible_host: 203.0.113.50
           ansible_user: ansible
           ansible_ssh_private_key_file: ~/.ssh/ansible
       vars:

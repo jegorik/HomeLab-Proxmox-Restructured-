@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Common Functions and Variables for LXC Base Template
+# Common Functions and Variables for LXC SemaphoreUI
 # =============================================================================
 
 # Prevent multiple sourcing

@@ -1,5 +1,5 @@
 # =============================================================================
-# LXC Base Template - Terraform Outputs
+# LXC Grafana - Terraform Outputs
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -57,6 +57,11 @@ output "netbox_vm_id" {
 output "netbox_vm_url" {
   description = "NetBox virtual machine URL"
   value       = "${var.netbox_url}/virtualization/virtual-machines/${netbox_virtual_machine.lxc.id}/"
+}
+
+output "root_password" {
+  value     = random_password.root_password.result
+  sensitive = true
 }
 
 # -----------------------------------------------------------------------------

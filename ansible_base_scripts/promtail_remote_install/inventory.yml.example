@@ -1,0 +1,30 @@
+# =============================================================================
+# Remote Promtail Installation - Inventory Example
+# =============================================================================
+# Copy this file to inventory.yml and customize with your target hosts.
+#
+# Usage:
+#   cp inventory.yml.example inventory.yml
+#   vim inventory.yml  # Edit with your hosts
+# =============================================================================
+
+all:
+  hosts:
+    # Example LXC container
+    example-lxc:
+      ansible_host: 192.0.2.100
+      ansible_user: ansible
+      ansible_ssh_private_key_file: ~/.ssh/ansible
+      promtail_job_name: example_lxc
+    
+    # Example VM
+    example-vm:
+      ansible_host: 192.0.2.101
+      ansible_user: admin
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa
+      promtail_job_name: example_vm
+  
+  vars:
+    ansible_become: true
+    ansible_become_method: sudo
+    ansible_python_interpreter: /usr/bin/python3

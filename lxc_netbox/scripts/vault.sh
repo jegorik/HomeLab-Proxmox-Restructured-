@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for LXC Base Template
+# Vault Functions for LXC NetBox
 # =============================================================================
 
 # Prevent multiple sourcing

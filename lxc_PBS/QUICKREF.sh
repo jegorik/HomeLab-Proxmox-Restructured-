@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LXC Base Template - Quick Reference
+# LXC PBS- Quick Reference
 # =============================================================================
 # Common commands and operations for quick access
 # Run with: source ./QUICKREF.sh or just view for reference
@@ -95,7 +95,7 @@ vault-read-netbox() {
 # Quick Setup
 # -----------------------------------------------------------------------------
 
-echo "LXC Base Template Quick Reference loaded!"
+echo "LXC PBS Quick Reference loaded!"
 echo ""
 echo "Commands:"
 echo "  lxc-deploy       - Interactive deployment menu"

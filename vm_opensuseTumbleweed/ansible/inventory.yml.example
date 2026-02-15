@@ -6,13 +6,13 @@
 # You can create it manually for standalone Ansible runs.
 #
 # For deploy.sh: copy is created at ansible/inventory.yml (or ansible/inventory/inventory.yml).
-# Replace 192.168.0.210 with your VM IP (e.g. from: tofu output -raw vm_ip_address).
+# Replace 198.51.100.210 with your VM IP (e.g. from: tofu output -raw vm_ip_address).
 # =============================================================================
 
 all:
   hosts:
     opensuseTumbleweed-vm:
-      ansible_host: 192.168.0.210
+      ansible_host: 198.51.100.210
       ansible_user: ansible
       ansible_ssh_private_key_file: ~/.ssh/ansible
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no'

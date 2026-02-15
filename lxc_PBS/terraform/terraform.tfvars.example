@@ -1,5 +1,5 @@
 # =============================================================================
-# LXC Base Template - Example terraform.tfvars
+# LXC PBS - Example terraform.tfvars
 # =============================================================================
 # Copy this file to terraform.tfvars and fill in your values.
 # DO NOT commit terraform.tfvars to version control!
@@ -80,8 +80,8 @@ lxc_pbs_datastore_mount_volume = "/rpool/data/pbs-backups"
 # -----------------------------------------------------------------------------
 
 lxc_network_bridge  = "vmbr0"
-lxc_ip_address      = "192.168.1.110/24"
-lxc_gateway         = "192.168.1.1"
+lxc_ip_address      = "192.0.2.110/24"
+lxc_gateway         = "192.0.2.1"
 lxc_dns_servers     = "8.8.8.8"
 
 # -----------------------------------------------------------------------------

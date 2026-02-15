@@ -1,0 +1,10 @@
+---
+# =============================================================================
+# Base Role - Handlers
+# =============================================================================
+
+- name: Restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+    enabled: true

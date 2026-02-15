@@ -18,7 +18,7 @@
 # -----------------------------------------------------------------------------
 
 # PBS server hostname or IP address (required)
-PBS_SERVER="192.168.1.181"
+PBS_SERVER="192.0.2.181"
 
 # PBS server API port (default: 8007)
 PBS_PORT="8007"

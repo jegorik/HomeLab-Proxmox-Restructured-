@@ -16,7 +16,7 @@
 all:
   hosts:
     docker-pool:
-      ansible_host: 192.168.X.200  # Replace with your VM IP
+      ansible_host: 198.51.100.200  # Replace with your VM IP
       ansible_user: ansible
       ansible_ssh_private_key_file: ~/.ssh/ansible_key
       ansible_python_interpreter: /usr/bin/python3

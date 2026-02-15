@@ -1,0 +1,9 @@
+---
+# =============================================================================
+# Promtail Role - Handlers
+# =============================================================================
+
+- name: Restart Promtail
+  ansible.builtin.systemd:
+    name: promtail
+    state: restarted

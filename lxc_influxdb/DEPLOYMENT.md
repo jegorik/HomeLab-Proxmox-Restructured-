@@ -34,7 +34,7 @@ Ensure the following are configured in Vault:
 
    ```bash
    # Proxmox credentials
-   vault kv put secrets/proxmox/proxmox_endpoint url="https://192.168.1.100:8006"
+   vault kv put secrets/proxmox/proxmox_endpoint url="https://192.0.2.100:8006"
    vault kv put secrets/proxmox/proxmox_node_name node_name="pve"
    vault kv put secrets/proxmox/pve_root_password password="..."
    
@@ -93,8 +93,8 @@ vault_username = "tofu_admin"
 # Container
 lxc_id         = 102
 lxc_hostname   = "influxdb"
-lxc_ip_address = "192.168.0.102/24"
-lxc_gateway    = "192.168.0.1"
+lxc_ip_address = "198.51.100.102/24"
+lxc_gateway    = "198.51.100.1"
 
 # Bind mount (adjust path for your setup)
 lxc_influxdb_data_mount_volume = "/rpool/datastore/influxdb"

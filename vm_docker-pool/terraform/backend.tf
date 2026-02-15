@@ -8,7 +8,7 @@
 # Backend Configuration:
 # - State stored in S3 bucket with versioning
 # - Encryption via Vault Transit engine (configured in s3.backend.config)
-# - State locking via DynamoDB (if configured)
+# - State locking via use_lockfile (S3 native locking)
 #
 # Usage:
 #   tofu init -backend-config=s3.backend.config

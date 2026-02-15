@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LXC Base Template - Deployment Script
+# LXC Grafana - Deployment Script
 # =============================================================================
 # Simplified deployment using modular scripts
 #
@@ -242,7 +242,7 @@ show_menu() {
     clear
     echo -e "${BOLD}${CYAN}"
     echo "╔══════════════════════════════════════════════════════╗"
-    echo "║       LXC Base Template - Deployment                 ║"
+    echo "║       LXC Grafana - Deployment                 ║"
     echo "║       OpenTofu/Terraform + Ansible + Vault           ║"
     echo "╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"

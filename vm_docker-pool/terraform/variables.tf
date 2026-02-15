@@ -277,20 +277,20 @@ variable "vm_machine_type" {
 # -----------------------------------------------------------------------------
 
 variable "vm_ip_address" {
-  description = "IPv4 address with CIDR (e.g., 192.168.0.200/24)"
+  description = "IPv4 address with CIDR (e.g., 198.51.100.200/24)"
   type        = string
-  default     = "192.168.0.200/24"
+  default     = "198.51.100.200/24"
 
   validation {
     condition     = can(regex("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$", var.vm_ip_address))
-    error_message = "IP address must be in CIDR format (e.g., 192.168.0.200/24)."
+    error_message = "IP address must be in CIDR format (e.g., 198.51.100.200/24)."
   }
 }
 
 variable "vm_gateway" {
   description = "Default gateway IP address"
   type        = string
-  default     = "192.168.0.1"
+  default     = "198.51.100.1"
 }
 
 variable "vm_dns_servers" {

@@ -47,7 +47,7 @@ tenant_name  = "tenant_01"
 
 lxc_id          = 200
 lxc_hostname    = "example-container"
-lxc_description = "Example LXC container deployed with lxc_base_template"
+lxc_description = "Example LXC container deployed with lxc_influxdb"
 lxc_template_file = "debian-13-standard_13.1-2_amd64.tar.zst"
 
 lxc_start_on_boot = true
@@ -76,8 +76,8 @@ lxc_influxdb_data_mount_path   = "/var/lib/influxdb"
 # -----------------------------------------------------------------------------
 
 lxc_network_bridge  = "vmbr0"
-lxc_ip_address      = "192.168.1.200/24"
-lxc_gateway         = "192.168.1.1"
+lxc_ip_address      = "192.0.2.200/24"
+lxc_gateway         = "192.0.2.1"
 lxc_dns_servers     = "8.8.8.8"
 
 # -----------------------------------------------------------------------------
@@ -91,4 +91,4 @@ ansible_ssh_public_key_path = "~/.ssh/ansible_rsa.pub"
 # Tags
 # -----------------------------------------------------------------------------
 
-lxc_tags = ["lxc", "template", "example"]
+lxc_tags = ["lxc", "influxdb", "database"]

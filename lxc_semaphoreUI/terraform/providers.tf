@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform Provider Configuration - LXC Base Template
+# Terraform Provider Configuration - LXC Semaphore UI
 # =============================================================================
 #
 # This file configures the Terraform providers required for deploying

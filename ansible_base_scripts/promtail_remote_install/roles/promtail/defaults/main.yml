@@ -1,0 +1,22 @@
+---
+# =============================================================================
+# Promtail Role - Default Variables
+# =============================================================================
+
+# Loki Configuration (override via -e or inventory)
+promtail_loki_url: "https://loki.example.com"
+promtail_basic_auth_user: "promtail"
+promtail_basic_auth_password: "" # REQUIRED: pass via -e
+
+# Promtail Configuration
+promtail_http_port: 9080
+promtail_config_dir: "/etc/promtail"
+promtail_positions_file: "/tmp/positions.yaml"
+promtail_password_file: "/etc/promtail/.loki-password"
+
+# Job Configuration (override per-host in inventory)
+promtail_job_name: "{{ ansible_hostname }}"
+promtail_log_paths:
+  - /var/log/*.log
+  - /var/log/syslog
+  - /var/log/auth.log

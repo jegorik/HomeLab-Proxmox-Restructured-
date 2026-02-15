@@ -129,7 +129,7 @@ variable "ssh_agent_enabled" {
 variable "lxc_id" {
   description = "Unique container ID (VMID) in Proxmox"
   type        = number
-  default     = 106
+  default     = 102
 
   validation {
     condition     = var.lxc_id >= 100 && var.lxc_id <= 999999999
@@ -140,7 +140,7 @@ variable "lxc_id" {
 variable "lxc_hostname" {
   description = "Container hostname"
   type        = string
-  default     = "base-template"
+  default     = "influxdb"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{0,62}$", var.lxc_hostname))
@@ -151,13 +151,13 @@ variable "lxc_hostname" {
 variable "lxc_description" {
   description = "Container description shown in Proxmox GUI"
   type        = string
-  default     = "LXC Base Template - Managed by OpenTofu"
+  default     = "LXC InfluxDB - Managed by OpenTofu"
 }
 
 variable "lxc_tags" {
   description = "Tags for container organization in Proxmox"
   type        = list(string)
-  default     = ["lxc", "template", "tofu-managed"]
+  default     = ["lxc", "influxdb", "database", "tofu-managed"]
 }
 
 # -----------------------------------------------------------------------------
@@ -284,7 +284,7 @@ variable "lxc_network_interface_name" {
 }
 
 variable "lxc_ip_address" {
-  description = "IPv4 address with CIDR (e.g., 192.168.1.105/24) or 'dhcp'"
+  description = "IPv4 address with CIDR (e.g., 192.0.2.105/24) or 'dhcp'"
   type        = string
   default     = "dhcp"
 }

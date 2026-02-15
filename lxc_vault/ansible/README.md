@@ -86,7 +86,7 @@ all:
     vault:
       hosts:
         vault-server:
-          ansible_host: 10.0.100.50
+          ansible_host: 203.0.113.50
           ansible_port: 22
           ansible_user: ansible
           ansible_ssh_private_key_file: ~/.ssh/ansible
@@ -320,7 +320,7 @@ EOF
 vault:
   hosts:
     vault-server:
-      ansible_host: 10.0.100.50
+      ansible_host: 203.0.113.50
       vault_ui_port: 8300  # Host-specific override
 ```
 
@@ -719,7 +719,7 @@ sudo journalctl -u vault -f
    ```bash
    # Example: Allow only specific IPs to Vault port
    ansible vault -m apt -a "name=ufw state=present" -b
-   ansible vault -m ufw -a "rule=allow port=8200 from_ip=10.0.100.0/24" -b
+   ansible vault -m ufw -a "rule=allow port=8200 from_ip=203.0.113.0/24" -b
    ```
 
 3. **Enable Audit Logging**:

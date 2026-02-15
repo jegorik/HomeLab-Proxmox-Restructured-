@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vault Functions for LXC Base Template
+# Vault Functions for LXC NPM Deployment
 # =============================================================================
 
 # Prevent multiple sourcing

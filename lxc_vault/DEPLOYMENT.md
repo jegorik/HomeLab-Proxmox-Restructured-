@@ -269,7 +269,7 @@ chmod 600 ~/.ssh/pve_root_password
 ```bash
 # Set environment variables
 export TF_VAR_pve_root_password="your-password"
-export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
+export TF_VAR_proxmox_endpoint="https://192.0.2.100:8006"
 export TF_VAR_proxmox_node="pve"
 
 # Run deployment
@@ -467,7 +467,7 @@ vim terraform.tfvars  # Edit with your values
 Or use environment variables:
 
 ```bash
-export TF_VAR_proxmox_endpoint="https://192.168.1.100:8006"
+export TF_VAR_proxmox_endpoint="https://192.0.2.100:8006"
 export TF_VAR_pve_root_password="your-password"
 export TF_VAR_proxmox_node="pve"
 ./deploy.sh deploy

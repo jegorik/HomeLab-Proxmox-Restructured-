@@ -1,8 +1,8 @@
 # =============================================================================
-# LXC Base Template - Terraform Variables
+# LXC PBS - Terraform Variables
 # =============================================================================
 #
-# Last Updated: January 2026
+# Last Updated: February 2026
 # =============================================================================
 
 # =============================================================================
@@ -308,7 +308,7 @@ variable "lxc_network_interface_name" {
 }
 
 variable "lxc_ip_address" {
-  description = "IPv4 address with CIDR (e.g., 192.168.1.105/24) or 'dhcp'"
+  description = "IPv4 address with CIDR (e.g., 192.0.2.105/24) or 'dhcp'"
   type        = string
   default     = "dhcp"
 }

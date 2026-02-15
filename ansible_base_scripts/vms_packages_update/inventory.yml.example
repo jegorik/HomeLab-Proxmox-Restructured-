@@ -14,16 +14,16 @@
 # Group hierarchy:
 #   all
 #   ├── containers    (LXC — reboot skipped, warning displayed)
-#   │   ├── vault       192.168.1.109
-#   │   ├── netbox      192.168.1.105
-#   │   ├── npm         192.168.1.100
-#   │   ├── grafana     192.168.1.106
-#   │   ├── influxdb    192.168.1.200
-#   │   ├── pbs         192.168.1.110
-#   │   └── semaphoreui 192.168.1.100
+#   │   ├── vault       192.0.2.109
+#   │   ├── netbox      192.0.2.105
+#   │   ├── npm         192.0.2.100
+#   │   ├── grafana     192.0.2.106
+#   │   ├── influxdb    192.0.2.200
+#   │   ├── pbs         192.0.2.110
+#   │   └── semaphoreui 192.0.2.100
 #   └── vms            (Full VMs — reboot supported)
-#       ├── docker-pool       192.168.0.200 (Ubuntu)
-#       └── opensuse-tw       192.168.0.XXX (Tumbleweed)
+#       ├── docker-pool       198.51.100.200 (Ubuntu)
+#       └── opensuse-tw       198.51.100.210 (Tumbleweed)
 #
 # Usage examples:
 #   # Update all hosts
@@ -60,19 +60,19 @@ all:
     containers:
       hosts:
         vault:
-          ansible_host: 192.168.1.109
+          ansible_host: 192.0.2.109
         netbox:
-          ansible_host: 192.168.1.105
+          ansible_host: 192.0.2.105
         npm:
-          ansible_host: 192.168.1.100
+          ansible_host: 192.0.2.100
         grafana:
-          ansible_host: 192.168.1.106
+          ansible_host: 192.0.2.106
         influxdb:
-          ansible_host: 192.168.1.200
+          ansible_host: 192.0.2.200
         pbs:
-          ansible_host: 192.168.1.110
+          ansible_host: 192.0.2.110
         semaphoreui:
-          ansible_host: 192.168.1.100
+          ansible_host: 192.0.2.100
 
     # -----------------------------------------------------------------
     # Virtual Machines
@@ -82,8 +82,8 @@ all:
         debian_vms:
           hosts:
             docker-pool:
-              ansible_host: 192.168.1.200
+              ansible_host: 198.51.100.200
         suse_vms:
           hosts:
             opensuse-tw:
-              ansible_host: 192.168.1.XXX  # <-- UPDATE THIS
+              ansible_host: 198.51.100.210  # <-- UPDATE THIS

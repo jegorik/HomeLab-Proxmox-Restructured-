@@ -17,7 +17,7 @@
 # -----------------------------------------------------------------------------
 # HashiCorp Vault server for secrets management
 
-vault_address         = "https://vault.example.local:8200"
+vault_address         = "https://vault.example.com:8200"
 vault_skip_tls_verify = true  # Set to false in production with valid certs
 
 # -----------------------------------------------------------------------------
@@ -50,7 +50,7 @@ transit_key_length  = 32
 # -----------------------------------------------------------------------------
 # NetBox server for DCIM/IPAM registration
 
-netbox_url      = "https://netbox.example.local:8000"
+netbox_url      = "https://netbox.example.com"
 netbox_insecure = true  # Set to false with valid TLS certificate
 
 # netbox_api_token_vault_path = "netbox/api_token"
@@ -99,8 +99,8 @@ vm_machine_type    = "q35"
 # -----------------------------------------------------------------------------
 # Network configuration for the VM
 
-vm_ip_address    = "192.168.X.200/24"  # Replace X with your subnet
-vm_gateway       = "192.168.X.1"        # Replace X with your subnet
+vm_ip_address    = "198.51.100.200/24"  # Replace with your subnet
+vm_gateway       = "198.51.100.1"        # Replace with your gateway
 vm_dns_servers   = ["1.1.1.1", "8.8.8.8"]
 vm_network_bridge = "vmbr0"
 

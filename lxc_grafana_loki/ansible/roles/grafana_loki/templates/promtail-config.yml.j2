@@ -1,0 +1,52 @@
+# =============================================================================
+# Promtail Configuration
+# =============================================================================
+# Managed by Ansible - Do not edit manually
+# Template: promtail-config.yml.j2
+
+server:
+  http_listen_port: {{ promtail_http_port }}
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ promtail_positions_file }}
+
+clients:
+  - url: {{ promtail_loki_url | default('http://localhost:' ~ loki_http_port) }}/loki/api/v1/push
+{% if promtail_basic_auth_user is defined %}
+    basic_auth:
+      username: {{ promtail_basic_auth_user }}
+      password_file: {{ promtail_basic_auth_password_file }}
+{% endif %}
+
+scrape_configs:
+  # Collect system log files
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: {{ ansible_hostname }}
+          __path__: /var/log/*.log
+
+  # Collect syslog
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          host: {{ ansible_hostname }}
+          __path__: /var/log/syslog
+
+  # Collect systemd journal
+  - job_name: journal
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: {{ ansible_hostname }}
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'unit'

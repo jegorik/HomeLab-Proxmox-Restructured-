@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LXC Base Template - Deployment Script
+# LXC PBS - Deployment Script
 # =============================================================================
 # Simplified deployment using modular scripts
 #

@@ -1,9 +1,9 @@
 # =============================================================================
-# Terraform Provider Configuration - LXC Base Template
+# Terraform Provider Configuration - LXC InfluxDB
 # =============================================================================
 #
 # This file configures the Terraform providers required for deploying
-# LXC containers in a Proxmox environment with S3 state backend.
+# the InfluxDB LXC container in a Proxmox environment with S3 state backend.
 #
 # Providers Used:
 # - bpg/proxmox: Proxmox VE management (containers, VMs, storage)

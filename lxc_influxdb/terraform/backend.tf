@@ -1,5 +1,5 @@
 # =============================================================================
-# LXC Base Template - State Backend Configuration
+# LXC InfluxDB - State Backend Configuration
 # =============================================================================
 # This file configures where Terraform state is stored.
 # Uncomment and configure ONE backend option.

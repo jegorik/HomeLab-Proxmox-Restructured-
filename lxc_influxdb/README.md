@@ -5,7 +5,7 @@
 [![Proxmox](https://img.shields.io/badge/Proxmox-8.x-E57000.svg)](https://www.proxmox.com/)
 [![Vault](https://img.shields.io/badge/HashiCorp_Vault-Required-844fba.svg)](https://www.vaultproject.io/)
 
-Project for deploying InfluxDB 2.x time-series database in a Proxmox LXC container using OpenTofu/Terraform and Ansible. Based on `lxc_base_template`.
+Project for deploying InfluxDB 2.x time-series database in a Proxmox LXC container using OpenTofu/Terraform and Ansible. Based on [`lxc_base_template`](../lxc_base_template/).
 
 ## Features
 

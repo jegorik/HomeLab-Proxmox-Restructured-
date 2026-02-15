@@ -75,7 +75,7 @@ vim terraform/terraform.tfvars
 | `vault_address` | Vault server URL | `https://vault.example.com:8200` |
 | `lxc_id` | LXC VMID | `107` |
 | `lxc_hostname` | Hostname | `pbs` |
-| `lxc_ip_address` | IP with CIDR | `192.168.1.107/24` |
+| `lxc_ip_address` | IP with CIDR | `192.0.2.107/24` |
 | `lxc_disk_storage` | Storage Pool | `local-zfs` |
 | `lxc_pbs_config_mount_volume` | Host path for PBS config | `/rpool/data/pbs-config` |
 | `lxc_pbs_datastore_mount_volume` | Host path for backups | `/rpool/data/pbs-backups` |
@@ -122,7 +122,7 @@ Then `deploy.sh` will automatically detect and use it.
 ./deploy.sh status
 
 # SSH into container
-ssh ansible@192.168.1.107
+ssh ansible@192.0.2.107
 
 # Check PBS services
 systemctl status proxmox-backup proxmox-backup-proxy
