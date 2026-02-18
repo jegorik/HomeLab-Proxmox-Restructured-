@@ -247,24 +247,47 @@ ansible-playbook -i inventory.yml playbook.yml \
 
 ### Manual Installation
 
-1. **Install Promtail** on target host:
+Works on any Linux distribution (Debian, Ubuntu, RHEL, OpenSUSE, etc.).
+
+1. **Download Promtail binary** (replace version and arch as needed: `amd64`, `arm64`, `arm`):
 
    ```bash
-   wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
-   echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | \
-     sudo tee /etc/apt/sources.list.d/grafana.list
-   sudo apt update && sudo apt install promtail
+   PROMTAIL_VERSION="3.3.2"
+   ARCH="amd64"  # or arm64, arm
+
+   curl -fsSL -o /tmp/promtail.zip \
+     https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-${ARCH}.zip
+
+   sudo apt install unzip 2>/dev/null || sudo zypper install unzip 2>/dev/null || sudo yum install unzip
+   unzip /tmp/promtail.zip -d /tmp/
+   sudo mv /tmp/promtail-linux-${ARCH} /usr/local/bin/promtail
+   sudo chmod +x /usr/local/bin/promtail
    ```
 
-2. **Configure Promtail** (`/etc/promtail/config.yml`):
+2. **Create user and directories**:
+
+   ```bash
+   sudo useradd --system --no-create-home --shell /sbin/nologin promtail
+   sudo mkdir -p /etc/promtail /var/lib/promtail
+   sudo chown promtail:promtail /etc/promtail /var/lib/promtail
+   ```
+
+3. **Configure Promtail** (`/etc/promtail/config.yml`):
 
    ```yaml
+   server:
+     http_listen_port: 9080
+     grpc_listen_port: 0
+
+   positions:
+     filename: /var/lib/promtail/positions.yaml
+
    clients:
      - url: https://loki.example.com/loki/api/v1/push
        basic_auth:
          username: promtail
          password_file: /etc/promtail/.loki-password
-   
+
    scrape_configs:
      - job_name: system
        static_configs:
@@ -275,16 +298,35 @@ ansible-playbook -i inventory.yml playbook.yml \
              __path__: /var/log/*.log
    ```
 
-3. **Create password file**:
+4. **Create password file**:
 
    ```bash
    echo "<password>" | sudo tee /etc/promtail/.loki-password
    sudo chmod 600 /etc/promtail/.loki-password
+   sudo chown promtail:promtail /etc/promtail/.loki-password
    ```
 
-4. **Start Promtail**:
+5. **Create systemd service** (`/etc/systemd/system/promtail.service`):
+
+   ```ini
+   [Unit]
+   Description=Promtail - Grafana Loki log shipping agent
+   After=network-online.target
+
+   [Service]
+   Type=simple
+   User=promtail
+   ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
+   Restart=on-failure
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+6. **Start Promtail**:
 
    ```bash
+   sudo systemctl daemon-reload
    sudo systemctl enable --now promtail
    ```
 

@@ -3,7 +3,13 @@
 # Promtail Role - Handlers
 # =============================================================================
 
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
 - name: Restart Promtail
   ansible.builtin.systemd:
     name: promtail
     state: restarted
+  ignore_errors: "{{ ansible_check_mode }}"

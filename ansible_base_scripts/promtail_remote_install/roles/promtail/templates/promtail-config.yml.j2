@@ -25,5 +25,22 @@ scrape_configs:
           - localhost
         labels:
           job: {{ promtail_job_name }}
-          host: {{ ansible_hostname }}
-          __path__: {{ promtail_log_paths | join(',') }}
+          host: {{ ansible_facts['hostname'] }}
+          os: {{ ansible_facts['distribution'] }}
+          __path__: /placeholder  # replaced by file_sd below
+
+    # Collect all configured log paths
+    file_sd_configs: []
+
+  # Separate static config for each log path
+  - job_name: {{ promtail_job_name }}_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: {{ promtail_job_name }}
+          host: {{ ansible_facts['hostname'] }}
+          os: {{ ansible_facts['distribution'] }}
+{% for path in promtail_log_paths %}
+          __path__: {{ path }}
+{% endfor %}

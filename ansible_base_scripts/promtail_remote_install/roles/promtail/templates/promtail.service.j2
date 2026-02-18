@@ -1,0 +1,46 @@
+[Unit]
+Description=Promtail - Grafana Loki log shipping agent
+Documentation=https://grafana.com/docs/loki/latest/clients/promtail/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ promtail_user }}
+Group={{ promtail_group }}
+# Only groups confirmed to exist on this host are listed here.
+# Dynamically resolved by Ansible to avoid systemd exit-code 216/GROUP.
+{% if promtail_existing_extra_groups | length > 0 %}
+SupplementaryGroups={{ promtail_existing_extra_groups | join(' ') }}
+{% endif %}
+
+ExecStart={{ promtail_binary }} \
+  -config.file={{ promtail_config_dir }}/config.yml
+
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# Allow reading all logs, writing only to own dirs
+ReadOnlyPaths=/var/log
+ReadWritePaths={{ promtail_data_dir }} {{ promtail_log_dir }} /run/log/journal
+
+# CAP_DAC_READ_SEARCH allows promtail to read log files regardless of DAC permissions.
+# Required on distros where supplementary log groups (e.g. 'adm') do not exist
+# (openSUSE, Alpine, minimal RHEL images) — files are root:root 640/600 and
+# are unreadable without this capability.
+# AmbientCapabilities: inherited by the process (works with NoNewPrivileges=true).
+# CapabilityBoundingSet: hard limit — process can NEVER gain any other capability.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_DAC_READ_SEARCH
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=promtail
+
+[Install]
+WantedBy=multi-user.target
