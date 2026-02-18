@@ -48,6 +48,10 @@ crash.*.log
 vault-keys.txt
 *.backup
 
+# Promtail deploy config (contains vault address / username)
+deploy.conf
+ansible_base_scripts/promtail_remote_install/deploy.conf
+
 # Editor and IDE Files
 .vscode/
 .idea/
