@@ -2,63 +2,162 @@
 # =============================================================================
 # Promtail Role - Main Tasks
 # =============================================================================
+# Universal installation via GitHub Releases binary.
+# Supports: Debian, Ubuntu, RHEL, Rocky, Alma, OpenSUSE, Alpine, and any
+#           other Linux distribution with systemd.
+# =============================================================================
 
-- name: Add Grafana APT key
-  ansible.builtin.get_url:
-    url: https://apt.grafana.com/gpg.key
-    dest: /tmp/grafana.gpg.key
-    mode: "0644"
+# --- Resolve architecture ---------------------------------------------------
 
-- name: Dearmor Grafana GPG key
-  ansible.builtin.command:
-    cmd: gpg --dearmor -o /etc/apt/keyrings/grafana.gpg /tmp/grafana.gpg.key
-    creates: /etc/apt/keyrings/grafana.gpg
+- name: Set promtail architecture
+  ansible.builtin.set_fact:
+    promtail_arch: "{{ promtail_arch_map[ansible_facts['architecture']] | default('amd64') }}"
 
-- name: Add Grafana APT repository
-  ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
-    filename: grafana
+# --- Create user and directories --------------------------------------------
+
+- name: Create promtail system group
+  ansible.builtin.group:
+    name: "{{ promtail_group }}"
+    system: true
     state: present
 
-- name: Update APT cache
-  ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
-
-- name: Install Promtail
-  ansible.builtin.apt:
-    name: promtail
+- name: Create promtail system user
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    system: true
+    shell: /sbin/nologin
+    home: "{{ promtail_data_dir }}"
+    create_home: false
     state: present
 
-- name: Create Promtail config directory
+- name: Collect existing log-reading groups on this host
+  ansible.builtin.getent:
+    database: group
+    key: "{{ item }}"
+    fail_key: false
+  loop: "{{ promtail_extra_groups }}"
+  register: _promtail_group_check
+
+- name: Build list of supplementary groups that actually exist
+  # getent sets value=null for groups not found (fail_key=false).
+  # We flatten all getent_group dicts and keep only keys with non-null values.
+  ansible.builtin.set_fact:
+    promtail_existing_extra_groups: >-
+      {{ _promtail_group_check.results
+         | map(attribute='ansible_facts.getent_group')
+         | map('dict2items')
+         | flatten
+         | selectattr('value', 'ne', None)
+         | map(attribute='key')
+         | list }}
+
+- name: Add promtail to log-reading groups (skip missing)
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    groups: "{{ item }}"
+    append: true
+  loop: "{{ promtail_existing_extra_groups }}"
+
+- name: Create required directories
   ansible.builtin.file:
-    path: "{{ promtail_config_dir }}"
+    path: "{{ item.path }}"
     state: directory
+    owner: "{{ item.owner | default(promtail_user) }}"
+    group: "{{ promtail_group }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - { path: "{{ promtail_config_dir }}", mode: "0750" }
+    - { path: "{{ promtail_data_dir }}" }
+    - { path: "{{ promtail_log_dir }}" }
+
+# --- Download and install binary --------------------------------------------
+
+- name: Download Promtail binary from GitHub Releases
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/promtail-linux-{{ promtail_arch }}.zip
+    dest: "/tmp/promtail-linux-{{ promtail_arch }}.zip"
+    mode: "0644"
+  register: promtail_download
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Ensure unzip is available
+  ansible.builtin.package:
+    name: unzip
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Extract Promtail binary
+  ansible.builtin.unarchive:
+    src: "/tmp/promtail-linux-{{ promtail_arch }}.zip"
+    dest: "{{ promtail_install_dir }}"
+    remote_src: true
+    creates: "{{ promtail_binary }}"
+  when: not ansible_check_mode
+  notify: Restart Promtail
+
+- name: Rename extracted binary to 'promtail'
+  ansible.builtin.command:
+    cmd: >
+      mv {{ promtail_install_dir }}/promtail-linux-{{ promtail_arch }}
+         {{ promtail_binary }}
+    creates: "{{ promtail_binary }}"
+  when: not ansible_check_mode
+  notify: Restart Promtail
+
+- name: Set binary permissions
+  ansible.builtin.file:
+    path: "{{ promtail_binary }}"
     owner: root
     group: root
     mode: "0755"
+  when: not ansible_check_mode
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/promtail-linux-{{ promtail_arch }}.zip"
+    state: absent
+  when: not ansible_check_mode
+
+# --- Configure Promtail -----------------------------------------------------
 
 - name: Deploy Promtail configuration
   ansible.builtin.template:
     src: promtail-config.yml.j2
     dest: "{{ promtail_config_dir }}/config.yml"
-    owner: root
-    group: root
-    mode: "0644"
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: "0640"
   notify: Restart Promtail
 
 - name: Create Loki password file
   ansible.builtin.copy:
     content: "{{ promtail_basic_auth_password }}"
     dest: "{{ promtail_password_file }}"
-    owner: root
-    group: root
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
     mode: "0600"
   no_log: true
   notify: Restart Promtail
+
+# --- Install systemd service -------------------------------------------------
+
+- name: Deploy systemd service unit
+  ansible.builtin.template:
+    src: promtail.service.j2
+    dest: /etc/systemd/system/promtail.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart Promtail
 
 - name: Enable and start Promtail service
   ansible.builtin.systemd:
     name: promtail
     enabled: true
     state: started
+    daemon_reload: true
+  ignore_errors: "{{ ansible_check_mode }}"

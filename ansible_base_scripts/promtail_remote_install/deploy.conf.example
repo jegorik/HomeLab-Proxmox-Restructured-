@@ -1,0 +1,34 @@
+# =============================================================================
+# deploy.conf — optional configuration for deploy.sh
+# =============================================================================
+# Copy this file to deploy.conf and fill in your values.
+# Variables here are used as defaults; environment variables always take
+# precedence, and interactive prompts are shown for any still-missing value.
+#
+# This file is in .gitignore — never commit the real deploy.conf.
+# =============================================================================
+
+# Vault server address
+vault_addr=https://vault.example.com:8200
+
+# Vault userpass username
+vault_username=operator
+
+# KV path to the secret that contains the Loki password.
+# Use the path exactly as shown by 'vault read <path>'.
+# Only 'password' is required in the secret; 'url' and 'username' are optional.
+#
+# Examples:
+#   secrets/proxmox/promtail   ← KV v2 mount 'secrets/proxmox', key 'promtail'
+#   secret/promtail/loki       ← KV v2 mount 'secret', key 'promtail/loki'
+#
+# Verify your path with:
+#   vault read -format=json secrets/proxmox/data/promtail
+vault_secret_path=secrets/proxmox/promtail
+
+# Loki push URL — used when 'url' is not stored in the Vault secret
+loki_url=https://loki.example.com
+
+# Loki Basic Auth username — used when 'username' is not in the Vault secret
+# Default: promtail
+loki_username=promtail

@@ -8,15 +8,40 @@ promtail_loki_url: "https://loki.example.com"
 promtail_basic_auth_user: "promtail"
 promtail_basic_auth_password: "" # REQUIRED: pass via -e
 
-# Promtail Configuration
-promtail_http_port: 9080
+# Promtail Version - set to specific version or "latest"
+# Example: "3.3.2"
+promtail_version: "3.3.2"
+
+# Architecture mapping (auto-detected from ansible_facts)
+# Override if needed: amd64, arm64, arm
+promtail_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+  armv7l: "arm"
+  armv6l: "arm"
+
+# Installation paths
+promtail_install_dir: "/usr/local/bin"
+promtail_binary: "{{ promtail_install_dir }}/promtail"
 promtail_config_dir: "/etc/promtail"
-promtail_positions_file: "/tmp/positions.yaml"
-promtail_password_file: "/etc/promtail/.loki-password"
+promtail_data_dir: "/var/lib/promtail"
+promtail_log_dir: "/var/log/promtail"
+
+# Runtime
+# User and groups
+promtail_user: "promtail"
+promtail_group: "promtail"
+# Extra groups for log read access (ignore_errors if group doesn't exist on distro):
+#   adm            - Debian/Ubuntu: grants access to /var/log files owned by adm group
+#   systemd-journal - All distros: grants access to systemd journal
+promtail_extra_groups:
+  - adm
+  - systemd-journal
+promtail_http_port: 9080
+promtail_positions_file: "{{ promtail_data_dir }}/positions.yaml"
+promtail_password_file: "{{ promtail_config_dir }}/.loki-password"
 
 # Job Configuration (override per-host in inventory)
-promtail_job_name: "{{ ansible_hostname }}"
+promtail_job_name: "{{ ansible_facts['hostname'] }}"
 promtail_log_paths:
   - /var/log/*.log
-  - /var/log/syslog
-  - /var/log/auth.log
