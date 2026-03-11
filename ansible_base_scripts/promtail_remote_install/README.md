@@ -86,7 +86,11 @@ export VAULT_TOKEN=$(vault print token)   # if already authenticated
 > **Security warning**: This method passes the password on the command line.
 > It is visible in shell history and `ps` output. Use the Vault method above in production.
 
-
+```bash
+ansible-playbook -i inventory.yml playbook.yml \
+  -e "promtail_loki_url=https://loki.example.com" \
+  -e "promtail_basic_auth_password=changeme"
+```
 
 ## Configuration
 
@@ -219,12 +223,10 @@ curl -I https://loki.example.com/ready
 ## Uninstall
 
 ```bash
-# Stop and disable service
-ansible -i inventory.yml all -m systemd -a "name=promtail state=stopped enabled=false" -b
+# Remove binary
+ansible -i inventory.yml all -m file -a "path=/usr/local/bin/promtail state=absent" -b
 
-# Remove files
-ansible -i inventory.yml all -m file -a "path={{ item }} state=absent" -b \
-  -e '{"item": "/usr/local/bin/promtail"}'
+# Remove config and service files
 ansible -i inventory.yml all -m file -a "path=/etc/promtail state=absent" -b
 ansible -i inventory.yml all -m file -a "path=/etc/systemd/system/promtail.service state=absent" -b
 ansible -i inventory.yml all -m user -a "name=promtail state=absent remove=true" -b
@@ -233,4 +235,5 @@ ansible -i inventory.yml all -m user -a "name=promtail state=absent remove=true"
 ## Related Documentation
 
 - [lxc_vault](../../lxc_vault/README.md) – Vault deployment (required for secure password retrieval)
+- [lxc_grafana_loki](../../lxc_grafana_loki/README.md) – Loki + Grafana deployment (Loki endpoint secured with NPM + Basic Auth)
 - [Promtail GitHub Releases](https://github.com/grafana/loki/releases) – Available versions
