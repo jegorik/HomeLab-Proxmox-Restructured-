@@ -7,6 +7,7 @@
   ansible.builtin.lineinfile:
     path: /usr/local/openresty/nginx/nginx.conf
     regexp: '^(daemon.*)'
+
     line: '# \1'
     backrefs: true
 
@@ -16,6 +17,7 @@
     tmpfile=$(mktemp)
     awk '!(/^\s*server_tokens\s/ && ++cnt > 1)' /usr/local/openresty/nginx/nginx.conf > "$tmpfile"
     mv -f "$tmpfile" /usr/local/openresty/nginx/nginx.conf
+
     after=$(md5sum /usr/local/openresty/nginx/nginx.conf)
     [[ "$before" != "$after" ]] && echo changed || echo unchanged
   register: server_tokens_fix

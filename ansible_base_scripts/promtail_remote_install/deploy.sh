@@ -40,7 +40,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# Always log completion time and final exit status, even on error.
 # on_exit logs the script's completion timestamp and final exit status when the shell exits.
+
 on_exit() {
     local rc=$?
     if [[ $rc -eq 0 ]]; then
@@ -173,6 +175,7 @@ ansible_run() {
     existing_exit_trap="$(trap -p EXIT)"
 
     # Install a cleanup function that removes the vars file then re-invokes
+    # whatever EXIT handler was previously registered.
     # _vars_cleanup removes the temporary Promtail vars file and restores the previously registered EXIT trap.
     _vars_cleanup() {
         rm -f "${PROMTAIL_VARS_FILE}"
