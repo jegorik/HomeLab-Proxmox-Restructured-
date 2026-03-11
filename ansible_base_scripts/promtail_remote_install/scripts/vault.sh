@@ -27,13 +27,9 @@
 [[ -n "${_VAULT_SH_LOADED:-}" ]] && return 0
 _VAULT_SH_LOADED=1
 
-# Default secret path — override via PROMTAIL_VAULT_SECRET_PATH env var
-# or vault_secret_path= in deploy.conf
-PROMTAIL_VAULT_SECRET_PATH="${PROMTAIL_VAULT_SECRET_PATH:-secrets/proxmox/promtail}"
-
 # ---------------------------------------------------------------------------
 # Read a variable from the optional config file (deploy.conf)
-# ---------------------------------------------------------------------------
+# _conf_read reads a key from deploy.conf in SCRIPT_DIR, strips surrounding quotes/whitespace and comments, echoes the matching value if found, or echoes the provided default.
 _conf_read() {
     local key="$1"
     local default="${2:-}"
@@ -41,11 +37,17 @@ _conf_read() {
 
     if [[ -f "${conf}" ]]; then
         local val
-        val=$(grep -E "^${key}\\s*=" "${conf}" 2>/dev/null \
-              | head -1 \
-              | sed 's/[^=]*=\s*//' \
-              | tr -d '"'"'" \
-              | tr -d '\r')
+        # Use awk for exact key matching (grep -E would treat key as a regex).
+        val=$(awk -F= -v k="${key}" '
+            /^[[:space:]]*#/ { next }
+            $1 ~ /^[[:space:]]*/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1) }
+            $1 == k {
+                sub(/^[^=]*=[[:space:]]*/, "")
+                gsub(/["'\''\r]/, "")
+                print
+                exit
+            }
+        ' "${conf}" 2>/dev/null)
         [[ -n "${val}" ]] && { echo "${val}"; return 0; }
     fi
     echo "${default}"
@@ -118,17 +120,18 @@ vault_check_connectivity() {
 
 # ---------------------------------------------------------------------------
 # Authenticate with Vault (userpass). Reuses existing valid token.
-# ---------------------------------------------------------------------------
+# vault_authenticate checks for an existing valid Vault token and, if none is found, prompts for the user's Vault password and logs in via the userpass method, exporting VAULT_TOKEN on success.
 vault_authenticate() {
     log_info "Checking Vault authentication..."
 
     # Reuse existing valid token
-    if vault token lookup &>/dev/null; then
+    local token_json
+    if token_json=$(vault token lookup -format=json 2>/dev/null); then
         local display_name ttl
-        display_name=$(vault token lookup -format=json | jq -r '.data.display_name')
-        ttl=$(vault token lookup -format=json | jq -r '.data.ttl')
+        display_name=$(jq -r '.data.display_name' <<< "${token_json}")
+        ttl=$(jq -r '.data.ttl' <<< "${token_json}")
         log_success "Already authenticated as '${display_name}' (TTL: ${ttl}s)"
-        VAULT_TOKEN=$(vault token lookup -format=json | jq -r '.data.id')
+        VAULT_TOKEN=$(jq -r '.data.id' <<< "${token_json}")
         export VAULT_TOKEN
         return 0
     fi
@@ -141,15 +144,12 @@ vault_authenticate() {
     local vault_token
     if ! vault_token=$(echo "${VAULT_PASSWORD}" | \
             vault login -method=userpass username="${VAULT_USERNAME}" password=- \
-            -token-only -format=json 2>/dev/null | jq -r '.auth.client_token // .'); then
+            -format=json 2>/dev/null | jq -r '.auth.client_token'); then
+        unset VAULT_PASSWORD
         log_error "Authentication failed"
         return 1
     fi
-
-    # Fallback: token-only flag returns raw token string, not JSON
-    if [[ "${vault_token}" == "{"* ]]; then
-        vault_token=$(echo "${vault_token}" | jq -r '.auth.client_token')
-    fi
+    unset VAULT_PASSWORD
 
     if [[ -z "${vault_token}" || "${vault_token}" == "null" ]]; then
         log_error "Authentication failed — empty token"
