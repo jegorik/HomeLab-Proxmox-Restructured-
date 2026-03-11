@@ -29,7 +29,7 @@ _VAULT_SH_LOADED=1
 
 # ---------------------------------------------------------------------------
 # Read a variable from the optional config file (deploy.conf)
-# ---------------------------------------------------------------------------
+# _conf_read reads a key from deploy.conf in SCRIPT_DIR, strips surrounding quotes/whitespace and comments, echoes the matching value if found, or echoes the provided default.
 _conf_read() {
     local key="$1"
     local default="${2:-}"
@@ -120,7 +120,7 @@ vault_check_connectivity() {
 
 # ---------------------------------------------------------------------------
 # Authenticate with Vault (userpass). Reuses existing valid token.
-# ---------------------------------------------------------------------------
+# vault_authenticate checks for an existing valid Vault token and, if none is found, prompts for the user's Vault password and logs in via the userpass method, exporting VAULT_TOKEN on success.
 vault_authenticate() {
     log_info "Checking Vault authentication..."
 

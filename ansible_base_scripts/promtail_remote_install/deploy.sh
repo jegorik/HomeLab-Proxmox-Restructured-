@@ -41,6 +41,8 @@ set -o nounset
 set -o pipefail
 
 # Always log completion time and final exit status, even on error.
+# on_exit logs the script's completion timestamp and final exit status when the shell exits.
+
 on_exit() {
     local rc=$?
     if [[ $rc -eq 0 ]]; then
@@ -120,7 +122,7 @@ ansible_ping() {
 
 # Write Loki credentials to a temp vars file.
 # Sets global PROMTAIL_VARS_FILE — must NOT be called in a subshell,
-# because the trap EXIT would delete the file before the caller reads it.
+# _create_vars_file creates a secure temporary YAML file with Loki credentials for Ansible and sets PROMTAIL_VARS_FILE to its path.
 _create_vars_file() {
     local loki_url="${PROMTAIL_LOKI_URL:-}"
     local loki_user="${PROMTAIL_LOKI_USER:-promtail}"
@@ -159,7 +161,7 @@ sys.stdout.write(yaml.safe_dump(data, default_flow_style=False))
 PYEOF
 }
 
-# Run the playbook
+# ansible_run runs the Ansible playbook in ANSIBLE_DIR using a temporary vars file containing Loki credentials; if given a non-empty argument it runs in check (dry-run) mode and ensures the vars file is securely created and removed while preserving and restoring any existing EXIT trap.
 ansible_run() {
     local check_mode="${1:-}"
     log_header "Running Ansible Playbook${check_mode:+ (check mode)}"
@@ -174,6 +176,7 @@ ansible_run() {
 
     # Install a cleanup function that removes the vars file then re-invokes
     # whatever EXIT handler was previously registered.
+    # _vars_cleanup removes the temporary Promtail vars file and restores the previously registered EXIT trap.
     _vars_cleanup() {
         rm -f "${PROMTAIL_VARS_FILE}"
         # Restore the saved trap: eval re-registers it (or clears it if empty).
@@ -270,6 +273,7 @@ show_menu() {
     echo ""
 }
 
+# interactive_menu displays an interactive text menu, reads the user's selection, runs the corresponding workflow (run, dry-run, status), logs an error if the workflow exits non-zero, and returns to the menu until the user chooses to exit.
 interactive_menu() {
     while true; do
         show_menu
@@ -344,7 +348,8 @@ EOF
 
 # =============================================================================
 # Main
-# =============================================================================
+# main initializes logging, dispatches the chosen workflow or launches the interactive menu, and exits on unknown commands.
+# main logs start time and log file location, runs interactive_menu when no arguments are given, or maps the first argument to `run`, `check`, `status`, or `help` (logging an error and exiting with code 1 for unknown commands).
 
 main() {
     log_info "Started at $(date)"

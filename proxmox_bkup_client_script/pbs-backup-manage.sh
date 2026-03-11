@@ -214,7 +214,7 @@ cmd_list() {
 }
 
 # cmd_install - Install a new backup profile.
-# Arguments: $1 - profile name
+# cmd_install installs a PBS backup profile: creates the config and credentials (with restrictive permissions), optionally generates and stores an encryption key, installs the backup runner and log directory, and creates the systemd service and timer units for the given profile.
 cmd_install() {
     local profile="$1"
     validate_profile_name "$profile" || exit 1
