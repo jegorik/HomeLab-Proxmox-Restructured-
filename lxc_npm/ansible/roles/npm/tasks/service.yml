@@ -7,7 +7,7 @@
   ansible.builtin.lineinfile:
     path: /usr/local/openresty/nginx/nginx.conf
     regexp: '^(daemon.*)'
-    line: '#\1'
+    line: '# \1'
     backrefs: true
 
 - name: Ensure single server_tokens directive in live nginx.conf
@@ -15,8 +15,7 @@
     before=$(md5sum /usr/local/openresty/nginx/nginx.conf)
     tmpfile=$(mktemp)
     awk '!(/^\s*server_tokens\s/ && ++cnt > 1)' /usr/local/openresty/nginx/nginx.conf > "$tmpfile"
-    cat "$tmpfile" > /usr/local/openresty/nginx/nginx.conf
-    rm -f "$tmpfile"
+    mv -f "$tmpfile" /usr/local/openresty/nginx/nginx.conf
     after=$(md5sum /usr/local/openresty/nginx/nginx.conf)
     [[ "$before" != "$after" ]] && echo changed || echo unchanged
   register: server_tokens_fix
