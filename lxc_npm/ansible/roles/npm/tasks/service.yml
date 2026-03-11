@@ -3,15 +3,40 @@
 # NPM Role - Service Configuration
 # =============================================================================
 
+- name: Disable daemon in live nginx.conf
+  ansible.builtin.lineinfile:
+    path: /usr/local/openresty/nginx/nginx.conf
+    regexp: '^(daemon.*)'
+    line: '# \1'
+    backrefs: true
+
+- name: Ensure single server_tokens directive in live nginx.conf
+  ansible.builtin.shell: |
+    before=$(md5sum /usr/local/openresty/nginx/nginx.conf)
+    tmpfile=$(mktemp)
+    awk '!(/^\s*server_tokens\s/ && ++cnt > 1)' /usr/local/openresty/nginx/nginx.conf > "$tmpfile"
+    mv -f "$tmpfile" /usr/local/openresty/nginx/nginx.conf
+    after=$(md5sum /usr/local/openresty/nginx/nginx.conf)
+    [[ "$before" != "$after" ]] && echo changed || echo unchanged
+  register: server_tokens_fix
+  changed_when: "'changed' in server_tokens_fix.stdout"
+
+- name: Hide Nginx version in live nginx.conf
+  ansible.builtin.lineinfile:
+    path: /usr/local/openresty/nginx/nginx.conf
+    regexp: '^\s*server_tokens\s+'
+    line: '        server_tokens                 off;'
+    state: present
+
 - name: Configure OpenResty nginx.conf for root user
   ansible.builtin.replace:
-    path: /usr/local/openresty/nginx/conf/nginx.conf
+    path: /usr/local/openresty/nginx/nginx.conf
     regexp: "user npm"
     replace: "user root"
 
 - name: Disable pid in nginx.conf
   ansible.builtin.replace:
-    path: /usr/local/openresty/nginx/conf/nginx.conf
+    path: /usr/local/openresty/nginx/nginx.conf
     regexp: '^(pid\s+.*)$'
     replace: '#\1'
 

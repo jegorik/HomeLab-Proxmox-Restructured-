@@ -129,19 +129,6 @@
     regexp: '"node-sass" *: *"([^"]*)"'
     replace: '"sass": "\1"'
 
-- name: Disable daemon in nginx.conf
-  ansible.builtin.lineinfile:
-    path: "{{ npm_install_dir }}/docker/rootfs/etc/nginx/nginx.conf"
-    regexp: "^daemon"
-    line: "#daemon"
-
-- name: Hide Nginx version
-  ansible.builtin.lineinfile:
-    path: "{{ npm_install_dir }}/docker/rootfs/etc/nginx/nginx.conf"
-    insertafter: '^http {'
-    line: '    server_tokens off;'
-    state: present
-
 - name: Copy docker rootfs files
   ansible.builtin.shell: |
     cp -r {{ npm_install_dir }}/docker/rootfs/var/www/html/* /var/www/html/
