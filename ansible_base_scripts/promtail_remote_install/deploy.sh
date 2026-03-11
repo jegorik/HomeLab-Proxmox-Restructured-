@@ -40,6 +40,17 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# on_exit logs the script's completion timestamp and final exit status when the shell exits.
+on_exit() {
+    local rc=$?
+    if [[ $rc -eq 0 ]]; then
+        log_info "Completed successfully at $(date)"
+    else
+        log_info "Exited with error (exit code: ${rc}) at $(date)"
+    fi
+}
+trap 'on_exit' EXIT
+
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_DIR="${SCRIPT_DIR}"
@@ -109,7 +120,7 @@ ansible_ping() {
 
 # Write Loki credentials to a temp vars file.
 # Sets global PROMTAIL_VARS_FILE — must NOT be called in a subshell,
-# because the trap EXIT would delete the file before the caller reads it.
+# _create_vars_file creates a secure temporary YAML file with Loki credentials for Ansible and sets PROMTAIL_VARS_FILE to its path.
 _create_vars_file() {
     local loki_url="${PROMTAIL_LOKI_URL:-}"
     local loki_user="${PROMTAIL_LOKI_USER:-promtail}"
@@ -131,15 +142,24 @@ _create_vars_file() {
     # Create temp file in the current shell (NOT a subshell) so that the
     # caller can register the trap and the file survives until ansible-playbook finishes.
     PROMTAIL_VARS_FILE=$(mktemp /tmp/promtail_vars_XXXXXX.yml)
+    # Restrict immediately — before writing any credentials.
+    chmod 600 "${PROMTAIL_VARS_FILE}"
 
-    cat > "${PROMTAIL_VARS_FILE}" <<YAML
-promtail_loki_url: "${loki_url}"
-promtail_basic_auth_user: "${loki_user}"
-promtail_basic_auth_password: "${loki_pass}"
-YAML
+    # Use Python yaml.safe_dump so special characters (quotes, backslashes,
+    # newlines, $) in credentials are safely serialised without YAML injection.
+    # Values are passed as positional arguments, never interpolated into code.
+    python3 - "${loki_url}" "${loki_user}" "${loki_pass}" > "${PROMTAIL_VARS_FILE}" <<'PYEOF'
+import sys, yaml
+data = {
+    "promtail_loki_url":            sys.argv[1],
+    "promtail_basic_auth_user":     sys.argv[2],
+    "promtail_basic_auth_password": sys.argv[3],
+}
+sys.stdout.write(yaml.safe_dump(data, default_flow_style=False))
+PYEOF
 }
 
-# Run the playbook
+# ansible_run runs the Ansible playbook in ANSIBLE_DIR using a temporary vars file containing Loki credentials; if given a non-empty argument it runs in check (dry-run) mode and ensures the vars file is securely created and removed while preserving and restoring any existing EXIT trap.
 ansible_run() {
     local check_mode="${1:-}"
     log_header "Running Ansible Playbook${check_mode:+ (check mode)}"
@@ -148,12 +168,22 @@ ansible_run() {
     # _create_vars_file sets PROMTAIL_VARS_FILE in the current shell
     _create_vars_file || return 1
 
-    # Ensure cleanup even on unexpected exit
-    # shellcheck disable=SC2064
-    trap "rm -f '${PROMTAIL_VARS_FILE}'" EXIT
+    # Save the existing EXIT trap (e.g., on_exit) so we can restore it afterward.
+    local existing_exit_trap
+    existing_exit_trap="$(trap -p EXIT)"
 
-    local extra_args=()
-    [[ -n "${check_mode}" ]] && extra_args+=("--check")
+    # Install a cleanup function that removes the vars file then re-invokes
+    # _vars_cleanup removes the temporary Promtail vars file and restores the previously registered EXIT trap.
+    _vars_cleanup() {
+        rm -f "${PROMTAIL_VARS_FILE}"
+        # Restore the saved trap: eval re-registers it (or clears it if empty).
+        if [[ -n "${existing_exit_trap}" ]]; then
+            eval "${existing_exit_trap}"
+        else
+            trap - EXIT
+        fi
+    }
+    trap '_vars_cleanup' EXIT
 
     # Password is passed via @file — never on the command line
     log_info "Inventory : inventory.yml"
@@ -165,14 +195,18 @@ ansible_run() {
         -i inventory.yml \
         playbook.yml \
         -e "@${PROMTAIL_VARS_FILE}" \
-        "${extra_args[@]}" \
+        ${check_mode:+--check} \
         2>&1 | tee -a "${LOG_FILE}"
     local rc=${PIPESTATUS[0]}
     set -e
 
     rm -f "${PROMTAIL_VARS_FILE}"
-    # Reset trap
-    trap - EXIT
+    # Restore the original EXIT trap now that cleanup is done.
+    if [[ -n "${existing_exit_trap}" ]]; then
+        eval "${existing_exit_trap}"
+    else
+        trap - EXIT
+    fi
 
     if [[ ${rc} -eq 0 ]]; then
         log_success "Playbook completed successfully"
@@ -236,6 +270,7 @@ show_menu() {
     echo ""
 }
 
+# interactive_menu displays an interactive text menu, reads the user's selection, runs the corresponding workflow (run, dry-run, status), logs an error if the workflow exits non-zero, and returns to the menu until the user chooses to exit.
 interactive_menu() {
     while true; do
         show_menu
@@ -244,9 +279,21 @@ interactive_menu() {
         echo ""
 
         case "${choice}" in
-            1) workflow_run;    read -r -p "Press Enter to continue..." ;;
-            2) workflow_check;  read -r -p "Press Enter to continue..." ;;
-            3) workflow_status; read -r -p "Press Enter to continue..." ;;
+            1)
+                workflow_run;    rc=$?
+                [[ $rc -ne 0 ]] && log_error "Run failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
+            2)
+                workflow_check;  rc=$?
+                [[ $rc -ne 0 ]] && log_error "Dry-run failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
+            3)
+                workflow_status; rc=$?
+                [[ $rc -ne 0 ]] && log_error "Status check failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
             0) exit 0 ;;
             *) log_error "Invalid option '${choice}'"; sleep 1 ;;
         esac
@@ -298,7 +345,8 @@ EOF
 
 # =============================================================================
 # Main
-# =============================================================================
+# main initializes logging, dispatches the chosen workflow or launches the interactive menu, and exits on unknown commands.
+# main logs start time and log file location, runs interactive_menu when no arguments are given, or maps the first argument to `run`, `check`, `status`, or `help` (logging an error and exiting with code 1 for unknown commands).
 
 main() {
     log_info "Started at $(date)"
@@ -316,8 +364,6 @@ main() {
             *) log_error "Unknown command: $1"; echo ""; show_help; exit 1 ;;
         esac
     fi
-
-    log_info "Completed at $(date)"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

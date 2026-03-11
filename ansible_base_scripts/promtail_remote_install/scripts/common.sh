@@ -7,21 +7,29 @@
 [[ -n "${_COMMON_SH_LOADED:-}" ]] && return 0
 _COMMON_SH_LOADED=1
 
-# Color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Color codes — only emit ANSI sequences when writing to an interactive terminal
+if [[ -t 1 && "${TERM:-}" != "dumb" && -z "${NO_COLOR:-}" ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    BOLD='\033[1m'
+    NC='\033[0m'
+else
+    RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' NC=''
+fi
 
-# Logging functions
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"    | tee -a "${LOG_FILE:-/dev/null}"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" | tee -a "${LOG_FILE:-/dev/null}"; }
-log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1" | tee -a "${LOG_FILE:-/dev/null}"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1"    | tee -a "${LOG_FILE:-/dev/null}"; }
+# log_info writes an "[INFO]" message to stdout (rendered in blue when colors are enabled) and appends the message to LOG_FILE (defaults to /dev/null).
+log_info()    { echo -e "${BLUE}[INFO]${NC} ${1}"    | tee -a "${LOG_FILE:-/dev/null}"; }
+# log_success writes a SUCCESS-level message prefixed with `[SUCCESS]` to stdout (colorized when color variables are set) and appends it to LOG_FILE (defaults to /dev/null).
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} ${1}" | tee -a "${LOG_FILE:-/dev/null}"; }
+# log_warning prints a WARNING-prefixed message to stdout and appends the same output to LOG_FILE (defaults to /dev/null), using the YELLOW/NC color codes when they are defined.
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} ${1}" | tee -a "${LOG_FILE:-/dev/null}"; }
+# log_error writes an ERROR-level message prefixed with "[ERROR]" to stdout (colorized when supported) and appends it to LOG_FILE (default /dev/null).
+log_error()   { echo -e "${RED}[ERROR]${NC} ${1}"    | tee -a "${LOG_FILE:-/dev/null}"; }
 
+# log_header renders a formatted header block using its first argument as the title, writes the header to stdout and appends it to LOG_FILE (defaults to /dev/null).
 log_header() {
     echo -e "\n${BOLD}${CYAN}========================================${NC}" | tee -a "${LOG_FILE:-/dev/null}"
     echo -e "${BOLD}${CYAN}$1${NC}"                                         | tee -a "${LOG_FILE:-/dev/null}"
