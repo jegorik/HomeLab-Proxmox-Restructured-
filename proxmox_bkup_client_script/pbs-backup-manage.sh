@@ -358,6 +358,8 @@ SyslogIdentifier=pbs-backup-${profile}
 # Security hardening
 ProtectSystem=strict
 ReadWritePaths=${LOG_DIR} /run/lock/pbs-backup
+RuntimeDirectory=lock/pbs-backup
+RuntimeDirectoryPreserve=yes
 PrivateTmp=true
 NoNewPrivileges=false
 ProtectKernelTunables=true
