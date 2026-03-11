@@ -258,7 +258,20 @@ Works on any Linux distribution (Debian, Ubuntu, RHEL, OpenSUSE, etc.).
    curl -fsSL -o /tmp/promtail.zip \
      https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-${ARCH}.zip
 
-   sudo apt install unzip 2>/dev/null || sudo zypper install unzip 2>/dev/null || sudo yum install unzip
+   # Verify checksum
+   curl -fsSL -o /tmp/promtail-SHA256SUMS \
+     https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/SHA256SUMS
+   grep "promtail-linux-${ARCH}.zip" /tmp/promtail-SHA256SUMS | \
+     (cd /tmp && sha256sum -c --strict) || { echo 'ERROR: checksum verification failed' >&2; exit 1; }
+
+   if command -v apt-get &>/dev/null; then
+     sudo apt-get install -y unzip
+   elif command -v zypper &>/dev/null; then
+     sudo zypper install -y unzip
+   elif command -v yum &>/dev/null; then
+     sudo yum install -y unzip
+   fi
+   command -v unzip &>/dev/null || { echo 'ERROR: unzip is not available after install attempt' >&2; exit 1; }
    unzip /tmp/promtail.zip -d /tmp/
    sudo mv /tmp/promtail-linux-${ARCH} /usr/local/bin/promtail
    sudo chmod +x /usr/local/bin/promtail
@@ -267,9 +280,9 @@ Works on any Linux distribution (Debian, Ubuntu, RHEL, OpenSUSE, etc.).
 2. **Create user and directories**:
 
    ```bash
-   sudo useradd --system --no-create-home --shell /sbin/nologin promtail
-   sudo mkdir -p /etc/promtail /var/lib/promtail
-   sudo chown promtail:promtail /etc/promtail /var/lib/promtail
+   sudo useradd --system --no-create-home --shell "$(command -v nologin || echo /usr/sbin/nologin || echo /sbin/nologin)" promtail
+   sudo mkdir -p /etc/promtail /var/lib/promtail /var/log/promtail
+   sudo chown promtail:promtail /etc/promtail /var/lib/promtail /var/log/promtail
    ```
 
 3. **Configure Promtail** (`/etc/promtail/config.yml`):
@@ -312,12 +325,24 @@ Works on any Linux distribution (Debian, Ubuntu, RHEL, OpenSUSE, etc.).
    [Unit]
    Description=Promtail - Grafana Loki log shipping agent
    After=network-online.target
+   Wants=network-online.target
 
    [Service]
    Type=simple
    User=promtail
    ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
    Restart=on-failure
+   RestartSec=5s
+
+   # Hardening
+   NoNewPrivileges=yes
+   PrivateTmp=yes
+   ProtectSystem=strict
+   ProtectHome=yes
+   ReadWritePaths=/var/lib/promtail /var/log/promtail
+   ReadOnlyPaths=/etc/promtail
+   CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+   AmbientCapabilities=CAP_DAC_READ_SEARCH
 
    [Install]
    WantedBy=multi-user.target

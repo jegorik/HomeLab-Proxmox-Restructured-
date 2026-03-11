@@ -40,6 +40,17 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# Always log completion time and final exit status, even on error.
+on_exit() {
+    local rc=$?
+    if [[ $rc -eq 0 ]]; then
+        log_info "Completed successfully at $(date)"
+    else
+        log_info "Exited with error (exit code: ${rc}) at $(date)"
+    fi
+}
+trap 'on_exit' EXIT
+
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_DIR="${SCRIPT_DIR}"
@@ -131,12 +142,21 @@ _create_vars_file() {
     # Create temp file in the current shell (NOT a subshell) so that the
     # caller can register the trap and the file survives until ansible-playbook finishes.
     PROMTAIL_VARS_FILE=$(mktemp /tmp/promtail_vars_XXXXXX.yml)
+    # Restrict immediately — before writing any credentials.
+    chmod 600 "${PROMTAIL_VARS_FILE}"
 
-    cat > "${PROMTAIL_VARS_FILE}" <<YAML
-promtail_loki_url: "${loki_url}"
-promtail_basic_auth_user: "${loki_user}"
-promtail_basic_auth_password: "${loki_pass}"
-YAML
+    # Use Python yaml.safe_dump so special characters (quotes, backslashes,
+    # newlines, $) in credentials are safely serialised without YAML injection.
+    # Values are passed as positional arguments, never interpolated into code.
+    python3 - "${loki_url}" "${loki_user}" "${loki_pass}" > "${PROMTAIL_VARS_FILE}" <<'PYEOF'
+import sys, yaml
+data = {
+    "promtail_loki_url":            sys.argv[1],
+    "promtail_basic_auth_user":     sys.argv[2],
+    "promtail_basic_auth_password": sys.argv[3],
+}
+sys.stdout.write(yaml.safe_dump(data, default_flow_style=False))
+PYEOF
 }
 
 # Run the playbook
@@ -148,12 +168,22 @@ ansible_run() {
     # _create_vars_file sets PROMTAIL_VARS_FILE in the current shell
     _create_vars_file || return 1
 
-    # Ensure cleanup even on unexpected exit
-    # shellcheck disable=SC2064
-    trap "rm -f '${PROMTAIL_VARS_FILE}'" EXIT
+    # Save the existing EXIT trap (e.g., on_exit) so we can restore it afterward.
+    local existing_exit_trap
+    existing_exit_trap="$(trap -p EXIT)"
 
-    local extra_args=()
-    [[ -n "${check_mode}" ]] && extra_args+=("--check")
+    # Install a cleanup function that removes the vars file then re-invokes
+    # whatever EXIT handler was previously registered.
+    _vars_cleanup() {
+        rm -f "${PROMTAIL_VARS_FILE}"
+        # Restore the saved trap: eval re-registers it (or clears it if empty).
+        if [[ -n "${existing_exit_trap}" ]]; then
+            eval "${existing_exit_trap}"
+        else
+            trap - EXIT
+        fi
+    }
+    trap '_vars_cleanup' EXIT
 
     # Password is passed via @file — never on the command line
     log_info "Inventory : inventory.yml"
@@ -165,14 +195,18 @@ ansible_run() {
         -i inventory.yml \
         playbook.yml \
         -e "@${PROMTAIL_VARS_FILE}" \
-        "${extra_args[@]}" \
+        ${check_mode:+--check} \
         2>&1 | tee -a "${LOG_FILE}"
     local rc=${PIPESTATUS[0]}
     set -e
 
     rm -f "${PROMTAIL_VARS_FILE}"
-    # Reset trap
-    trap - EXIT
+    # Restore the original EXIT trap now that cleanup is done.
+    if [[ -n "${existing_exit_trap}" ]]; then
+        eval "${existing_exit_trap}"
+    else
+        trap - EXIT
+    fi
 
     if [[ ${rc} -eq 0 ]]; then
         log_success "Playbook completed successfully"
@@ -244,9 +278,21 @@ interactive_menu() {
         echo ""
 
         case "${choice}" in
-            1) workflow_run;    read -r -p "Press Enter to continue..." ;;
-            2) workflow_check;  read -r -p "Press Enter to continue..." ;;
-            3) workflow_status; read -r -p "Press Enter to continue..." ;;
+            1)
+                workflow_run;    rc=$?
+                [[ $rc -ne 0 ]] && log_error "Run failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
+            2)
+                workflow_check;  rc=$?
+                [[ $rc -ne 0 ]] && log_error "Dry-run failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
+            3)
+                workflow_status; rc=$?
+                [[ $rc -ne 0 ]] && log_error "Status check failed (exit code: ${rc})"
+                read -r -p "Press Enter to continue..."
+                ;;
             0) exit 0 ;;
             *) log_error "Invalid option '${choice}'"; sleep 1 ;;
         esac
@@ -316,8 +362,6 @@ main() {
             *) log_error "Unknown command: $1"; echo ""; show_help; exit 1 ;;
         esac
     fi
-
-    log_info "Completed at $(date)"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

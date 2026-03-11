@@ -8,11 +8,17 @@
 # rejects SHA1. Override the policy until OpenResty publishes a new key.
 # Upstream issue: https://github.com/openresty/openresty/issues/1072
 # TODO: Remove this workaround once OpenResty updates their GPG key to SHA256+.
+- name: Check if Sequoia PGP default config exists
+  ansible.builtin.stat:
+    path: /usr/share/apt/default-sequoia.config
+  register: sequoia_stat
+
 - name: Create Sequoia PGP policy override directory
   ansible.builtin.file:
     path: /etc/crypto-policies/back-ends
     state: directory
     mode: "0755"
+  when: sequoia_stat.stat.exists
 
 - name: Override Sequoia PGP SHA1 rejection date (OpenResty GPG workaround)
   ansible.builtin.copy:
@@ -21,12 +27,14 @@
     remote_src: true
     force: false
     mode: "0644"
+  when: sequoia_stat.stat.exists
 
 - name: Extend SHA1 acceptance deadline to 2027-02-01
   ansible.builtin.replace:
     path: /etc/crypto-policies/back-ends/apt-sequoia.config
     regexp: '2026-02-01'
     replace: '2027-02-01'
+  when: sequoia_stat.stat.exists
 
 - name: Download OpenResty GPG key
   ansible.builtin.get_url:

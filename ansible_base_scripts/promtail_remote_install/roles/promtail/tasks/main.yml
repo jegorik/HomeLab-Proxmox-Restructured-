@@ -73,19 +73,36 @@
 
 # --- Download and install binary --------------------------------------------
 
+- name: Ensure unzip is available
+  ansible.builtin.package:
+    name: unzip
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Download SHA256SUMS for Promtail v{{ promtail_version }}
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/SHA256SUMS
+    dest: "/tmp/promtail-SHA256SUMS-{{ promtail_version }}"
+    mode: "0644"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Extract expected SHA256 for promtail-linux-{{ promtail_arch }}.zip
+  ansible.builtin.shell: |
+    grep "promtail-linux-{{ promtail_arch }}.zip" /tmp/promtail-SHA256SUMS-{{ promtail_version }} | awk '{print $1}'
+  register: promtail_expected_checksum
+  changed_when: false
+  failed_when: not ansible_check_mode and (promtail_expected_checksum.stdout | length == 0)
+  ignore_errors: "{{ ansible_check_mode }}"
+
 - name: Download Promtail binary from GitHub Releases
   ansible.builtin.get_url:
     url: >-
       https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/promtail-linux-{{ promtail_arch }}.zip
     dest: "/tmp/promtail-linux-{{ promtail_arch }}.zip"
     mode: "0644"
+    checksum: "sha256:{{ promtail_expected_checksum.stdout }}"
   register: promtail_download
-  ignore_errors: "{{ ansible_check_mode }}"
-
-- name: Ensure unzip is available
-  ansible.builtin.package:
-    name: unzip
-    state: present
   ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Extract Promtail binary
@@ -98,11 +115,12 @@
   notify: Restart Promtail
 
 - name: Rename extracted binary to 'promtail'
-  ansible.builtin.command:
-    cmd: >
-      mv {{ promtail_install_dir }}/promtail-linux-{{ promtail_arch }}
-         {{ promtail_binary }}
-    creates: "{{ promtail_binary }}"
+  ansible.builtin.copy:
+    src: "{{ promtail_install_dir }}/promtail-linux-{{ promtail_arch }}"
+    dest: "{{ promtail_binary }}"
+    remote_src: true
+    mode: "0755"
+    force: false
   when: not ansible_check_mode
   notify: Restart Promtail
 
@@ -159,5 +177,4 @@
     name: promtail
     enabled: true
     state: started
-    daemon_reload: true
   ignore_errors: "{{ ansible_check_mode }}"
