@@ -6,7 +6,7 @@
 # - PG_USER: Database user for Authentik (default: authentik).
 # - AUTHENTIK_SECRET_KEY: Secret key for Authentik (required).
 # - AUTHENTIK_IMAGE: Authentik image to use (default: ghcr.io/goauthentik/server).
-# - AUTHENTIK_TAG: Authentik tag to use (default: 2025.12.1).
+# - AUTHENTIK_TAG: Authentik tag to use (default: 2026.2.1).
 # - COMPOSE_PORT_HTTP: HTTP port for Authentik (default: 9000).
 # - COMPOSE_PORT_HTTPS: HTTPS port for Authentik (default: 9443).
 
@@ -16,7 +16,7 @@
 # PG_USER=authentik
 # AUTHENTIK_SECRET_KEY=your_secret_key
 # AUTHENTIK_IMAGE=ghcr.io/goauthentik/server
-# AUTHENTIK_TAG=2025.12.1
+# AUTHENTIK_TAG=2026.2.1
 # COMPOSE_PORT_HTTP=9000
 # COMPOSE_PORT_HTTPS=9443
 

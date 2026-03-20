@@ -11,6 +11,6 @@
 
 ## Notes
 
-- The default image is `ghcr.io/goauthentik/server` and the default tag is `2025.12.1`.
+- The default image is `ghcr.io/goauthentik/server` and the default tag is `2026.2.1`.
 - The default ports are `9000` for HTTP and `9443` for HTTPS.
 - The default database name is `authentik` and the default database user is `authentik`.
