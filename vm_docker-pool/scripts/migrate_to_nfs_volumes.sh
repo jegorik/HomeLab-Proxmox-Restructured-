@@ -25,7 +25,8 @@
 # Environment variables (optional):
 #   PVE_HOST     — PVE host IP (default: 198.51.100.1)
 #   VM_HOST      — Docker VM IP (default: 198.51.100.200)
-#   SSH_KEY      — SSH private key path (default: ~/.ssh/ansible)
+#   SSH_KEY_PVE  — SSH private key path for PVE host (root access) (default: ~/.ssh/pve_ssh)
+#   SSH_KEY_VM   — SSH private key path for Docker VM (default: ~/.ssh/ansible)
 #   NFS_PATH     — NFS export path on PVE (default: /rpool/datastore/docker-pool/volumes)
 #   NFS_SUBNET   — NFS allowed subnet (default: 198.51.100.0/24)
 #   DRY_RUN      — Set to "true" to only show what would be done
@@ -39,15 +40,16 @@ set -euo pipefail
 # Configuration
 # =============================================================================
 
-PVE_HOST="${PVE_HOST:-198.51.100.1}"
+PVE_HOST="${PVE_HOST:-198.51.100.1)}"
 VM_HOST="${VM_HOST:-198.51.100.200}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/ansible}"
+SSH_KEY_PVE="${SSH_KEY_PVE:-$HOME/.ssh/pve_ssh}"
+SSH_KEY_VM="${SSH_KEY_VM:-$HOME/.ssh/ansible}"
 NFS_PATH="${NFS_PATH:-/rpool/datastore/docker-pool/volumes}"
 NFS_SUBNET="${NFS_SUBNET:-198.51.100.0/24}"
 DRY_RUN="${DRY_RUN:-false}"
 
-SSH_PVE="ssh -i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
-SSH_VM="ssh -i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+SSH_PVE="ssh -i $SSH_KEY_PVE -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+SSH_VM="ssh -i $SSH_KEY_VM   -o StrictHostKeyChecking=no -o ConnectTimeout=10"
 
 # Temporary NFS mount point on VM (used during migration only)
 TMP_NFS_MOUNT="/mnt/docker-volumes-nfs"
@@ -100,10 +102,14 @@ preflight_checks() {
   log_info "Running pre-flight checks..."
 
   # Check SSH key exists
-  if [[ ! -f "$SSH_KEY" ]]; then
-    log_error "SSH key not found: $SSH_KEY"
+  if [[ ! -f "$SSH_KEY_PVE" ]]; then
+    log_error "SSH key not found: $SSH_KEY_PVE"
     exit 1
   fi
+    if [[ ! -f "$SSH_KEY_VM" ]]; then
+        log_error "SSH key not found: $SSH_KEY_VM"
+        exit 1
+    fi
 
   # Check PVE host reachable
   log_info "Testing PVE host connectivity ($PVE_HOST)..."
@@ -167,12 +173,13 @@ phase1_pve_nfs_setup() {
   run_pve "systemctl enable --now nfs-kernel-server"
   log_ok "NFS server ready"
 
-  # Add NFS export (idempotent)
-  local EXPORT_LINE="$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,root_squash)"
+  # Add or update NFS export (idempotent)
+  local EXPORT_LINE="$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,no_root_squash)"
   log_info "Configuring NFS export..."
   local ESCAPED_PATH
   ESCAPED_PATH=$(printf '%s' "$NFS_PATH" | sed 's/[.[\^$*+?(){}|]/\\&/g')
-  run_pve "grep -qE '^${ESCAPED_PATH}[[:space:]]' /etc/exports || echo '$EXPORT_LINE' >> /etc/exports"
+  # Replace existing line for this path, or add new if absent
+  run_pve "if grep -qE '^${ESCAPED_PATH}[[:space:]]' /etc/exports; then sed -i \"s|^${ESCAPED_PATH}[[:space:]].*|${EXPORT_LINE}|\" /etc/exports; else echo '$EXPORT_LINE' >> /etc/exports; fi"
   run_pve "exportfs -ra"
   log_ok "NFS export configured: $EXPORT_LINE"
 
@@ -206,10 +213,18 @@ phase2_vm_nfs_client() {
   log_ok "NFS mounted temporarily"
 
   # Initial rsync (containers still running — this is a pre-copy)
+  # rsync exit code 23 = some files couldn't be transferred (normal for running DBs)
+  # rsync exit code 24 = some files vanished before transfer (normal for active containers)
   log_info "Initial rsync of Docker volumes (containers still running)..."
   log_info "This may take a while depending on volume sizes..."
-  run_vm "rsync -av --info=progress2 /var/lib/docker/volumes/ '$TMP_NFS_MOUNT/'"
-  log_ok "Initial rsync complete"
+  local rc=0
+  run_vm "rsync -av /var/lib/docker/volumes/ '$TMP_NFS_MOUNT/'" || rc=$?
+  if [[ $rc -eq 0 || $rc -eq 23 || $rc -eq 24 ]]; then
+    log_ok "Initial rsync complete (exit code: $rc)"
+  else
+    log_error "rsync failed with exit code $rc"
+    exit 1
+  fi
 
   # Copy Portainer data (from bind mount path)
   if $SSH_VM ansible@"$VM_HOST" "sudo test -d /opt/portainer/data" 2>/dev/null; then
@@ -252,6 +267,7 @@ phase3_mount_switch() {
   # Final Portainer sync
   if $SSH_VM ansible@"$VM_HOST" "sudo test -d /opt/portainer/data" 2>/dev/null; then
     log_info "Final Portainer data sync..."
+    run_vm "mkdir -p '$TMP_NFS_MOUNT/portainer_data/_data'"
     run_vm "rsync -av --delete /opt/portainer/data/ '$TMP_NFS_MOUNT/portainer_data/_data/'"
     log_ok "Portainer data synced"
   fi

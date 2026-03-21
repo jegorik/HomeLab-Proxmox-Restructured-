@@ -302,7 +302,7 @@ resource "terraform_data" "setup_nfs_export" {
       "",
       "NFS_PATH='${var.docker_volumes_nfs_path}'",
       "NFS_SUBNET='${var.docker_volumes_nfs_subnet}'",
-      "EXPORT_LINE=\"$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,root_squash)\"",
+      "EXPORT_LINE=\"$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,no_root_squash)\"",
       "",
       "# Safety check: path must be under /rpool/datastore/",
       "if [[ \"$NFS_PATH\" != /rpool/datastore/* ]]; then",

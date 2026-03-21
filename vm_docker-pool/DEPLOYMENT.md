@@ -273,6 +273,7 @@ DRY_RUN=true ./scripts/migrate_to_nfs_volumes.sh
 ```
 
 The script handles:
+
 1. **Phase 1**: Install NFS server on PVE and configure export (no downtime)
 2. **Phase 2**: Install NFS client on VM and pre-copy volumes (no downtime)
 3. **Phase 3**: Stop Docker, final sync, mount NFS at `/var/lib/docker/volumes` (~2-5 min downtime)
@@ -280,6 +281,7 @@ The script handles:
 5. **Phase 5**: Start services and verify
 
 Environment variables for customization:
+
 - `PVE_HOST` — PVE host IP (default: 198.51.100.1)
 - `VM_HOST` — Docker VM IP (default: 198.51.100.200)
 - `NFS_PATH` — NFS export path (default: /rpool/datastore/docker-pool/volumes)

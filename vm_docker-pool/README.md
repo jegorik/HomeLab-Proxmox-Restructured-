@@ -143,11 +143,13 @@ All Docker named volumes are stored on the Proxmox host via NFS at
 container stacks deployed through Portainer or Docker Compose.
 
 This directory:
+
 - Survives VM destruction and redeployment
 - Lives on ZFS with snapshots and compression
 - Is covered by PBS (Proxmox Backup Server) automatically
 
 **How it works:**
+
 1. Terraform creates the NFS export on the PVE host
 2. Ansible mounts the NFS export at `/var/lib/docker/volumes` in the VM
 3. Docker's systemd unit depends on the NFS mount (won't start without it)
@@ -167,6 +169,7 @@ This directory:
 >
 > **Safer alternative:** Mount NFS at a separate path (e.g., `/mnt/docker-volumes`)
 > and create Docker volumes with explicit bind-mount driver options:
+>
 > ```yaml
 > volumes:
 >   my_data:
@@ -176,6 +179,7 @@ This directory:
 >       o: bind
 >       device: /mnt/docker-volumes/my_data
 > ```
+>
 > This keeps `metadata.db` local at the cost of per-volume configuration.
 
 **Backup (consistent):**
