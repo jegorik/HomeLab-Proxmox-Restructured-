@@ -71,9 +71,9 @@ output "portainer_url" {
   value       = "https://${trimsuffix(var.vm_ip_address, "/24")}:9443"
 }
 
-output "portainer_data_path" {
-  description = "Portainer data persistence path on Proxmox host"
-  value       = var.portainer_bind_mount_source
+output "docker_volumes_nfs_path" {
+  description = "Docker volumes NFS export path on PVE host"
+  value       = var.docker_volumes_nfs_path
 }
 
 # -----------------------------------------------------------------------------

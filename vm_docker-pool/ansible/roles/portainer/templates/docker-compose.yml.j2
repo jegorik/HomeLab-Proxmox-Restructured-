@@ -4,7 +4,8 @@
 # Managed by Ansible - Do not edit manually
 #
 # Portainer provides a web-based GUI for managing Docker containers.
-# Data is persisted via bind mount to survive container redeployment.
+# Data is persisted via a named Docker volume. When NFS is configured,
+# this volume resides on PVE host ZFS storage and survives VM reinstalls.
 #
 # Last Updated: {{ ansible_date_time.date }}
 # =============================================================================
@@ -27,8 +28,8 @@ services:
     volumes:
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Persistent data storage (bind mounted from Proxmox host)
-      - {{ portainer_data_path }}:/data
+      # Persistent data storage (named volume, backed by NFS when configured)
+      - {{ portainer_volume_name }}:/data
     
     # Disable custom healthcheck - Portainer CE image is minimal (no wget/curl)
     # Docker will report container as healthy based on running state
@@ -39,6 +40,11 @@ services:
     labels:
       - "traefik.enable=false"
       - "com.centurylinklabs.watchtower.enable=false"
+
+# Named volumes
+volumes:
+  {{ portainer_volume_name }}:
+    name: {{ portainer_volume_name }}
 
 # Network configuration (use default bridge)
 networks:

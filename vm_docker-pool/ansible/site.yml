@@ -36,6 +36,7 @@
       - jq
       - net-tools
       - qemu-guest-agent
+      - nfs-common
 
     base_timezone: "UTC"
     base_locale: "en_US.UTF-8"
@@ -45,7 +46,6 @@
       - ansible
 
     # Portainer configuration
-    portainer_data_path: "/opt/portainer/data"
     portainer_port: 9443
 
   pre_tasks:

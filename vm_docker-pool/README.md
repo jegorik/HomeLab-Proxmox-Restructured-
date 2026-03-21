@@ -19,7 +19,7 @@ Ubuntu Server 24.04.3 LTS VM with Docker, Docker Compose, and Portainer for cont
 - **Cloud-Init Deployment**: Automated VM provisioning with SSH key injection
 - **Docker CE**: Latest Docker Community Edition with Compose plugin
 - **Portainer CE**: Web-based Docker management on port 9443
-- **Data Persistence**: Portainer data survives redeployment via bind mount
+- **Data Persistence**: All Docker volumes survive redeployment via NFS to PVE host
 - **Security Hardening**: UFW firewall, SSH key-only auth, no root login
 - **NetBox Integration**: Automatic DCIM/IPAM registration
 
@@ -47,28 +47,27 @@ chmod +x deploy.sh
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Proxmox VE Host                          │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │              VM: docker-pool (VMID: 300)               │ │
-│  │  ┌──────────────────────────────────────────────────┐  │ │
-│  │  │             Ubuntu Server 24.04.3 LTS            │  │ │
-│  │  │  ┌─────────────┐  ┌───────────────────────────┐  │  │ │
-│  │  │  │  Docker CE  │  │     Docker Compose        │  │  │ │
-│  │  │  └─────────────┘  └───────────────────────────┘  │  │ │
-│  │  │  ┌────────────────────────────────────────────┐  │  │ │
-│  │  │  │           Portainer CE (:9443)             │  │  │ │
-│  │  │  │  ┌──────────────────────────────────────┐  │  │  │ │
-│  │  │  │  │  /opt/portainer/data (bind mount)    │  │  │  │ │
-│  │  │  │  │         ↓                            │  │  │  │ │
-│  │  │  └──┼──────────────────────────────────────┼──┘  │  │ │
-│  │  │     │                                      │     │  │ │
-│  │  └─────┼──────────────────────────────────────┼─────┘  │ │
-│  │        │                                      │        │ │
-│  └────────┼──────────────────────────────────────┼────────┘ │
-│           │                                      │          │
-│  ┌────────▼──────────────────────────────────────▼─────┐    │
-│  │          /rpool/datastore/portainer                 │    │
-│  │              (Persistent Storage)                   │    │
-│  └─────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │   /rpool/datastore/docker-pool/volumes (ZFS + PBS)  │    │
+│  │              NFS Export ────────────────┐            │    │
+│  └─────────────────────────────────────────┤            │    │
+│                                            │            │    │
+│  ┌────────────────────────────────────────────────────┐ │    │
+│  │              VM: docker-pool (VMID: 300)           │ │    │
+│  │  ┌──────────────────────────────────────────────┐  │ │    │
+│  │  │             Ubuntu Server 24.04.3 LTS        │  │ │    │
+│  │  │  ┌─────────────┐  ┌───────────────────────┐  │  │ │    │
+│  │  │  │  Docker CE  │  │   Docker Compose      │  │  │ │    │
+│  │  │  └─────────────┘  └───────────────────────┘  │  │ │    │
+│  │  │  ┌────────────────────────────────────────┐  │  │ │    │
+│  │  │  │        Portainer CE (:9443)            │  │  │ │    │
+│  │  │  │        + Any deployed stacks           │  │  │ │    │
+│  │  │  └────────────────────────────────────────┘  │  │ │    │
+│  │  │        │                                     │  │ │    │
+│  │  │        ▼ Docker Named Volumes                │  │ │    │
+│  │  │  /var/lib/docker/volumes ◄── NFS mount ──────┘  │ │    │
+│  │  └──────────────────────────────────────────────┘  │ │    │
+│  └────────────────────────────────────────────────────┘ │    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -139,20 +138,80 @@ vm_docker-pool/
 
 ## Data Persistence
 
-Portainer data is stored on the Proxmox host at `/rpool/datastore/portainer`.
-This directory survives VM destruction and redeployment.
+All Docker named volumes are stored on the Proxmox host via NFS at
+`/rpool/datastore/docker-pool/volumes`. This includes Portainer data and any
+container stacks deployed through Portainer or Docker Compose.
 
-**Backup:**
+This directory:
+
+- Survives VM destruction and redeployment
+- Lives on ZFS with snapshots and compression
+- Is covered by PBS (Proxmox Backup Server) automatically
+
+**How it works:**
+
+1. Terraform creates the NFS export on the PVE host
+2. Ansible mounts the NFS export at `/var/lib/docker/volumes` in the VM
+3. Docker's systemd unit depends on the NFS mount (won't start without it)
+4. Every Docker named volume automatically resides on PVE storage
+
+> **NFS Considerations:** Mounting NFS at `/var/lib/docker/volumes` places
+> Docker's internal volume metadata (`metadata.db`, a BoltDB file) on a remote
+> filesystem. This is acceptable with NFSv4 on a reliable LAN (proper file
+> locking, single-daemon access) and is mitigated by the systemd dependency that
+> prevents Docker from starting without the mount. However, NFS interruptions
+> (network loss, PVE reboot) will stall Docker I/O until the mount recovers.
+>
+> **Validate for your environment:** Test NFS failure modes by temporarily
+> stopping NFS on the PVE host (`systemctl stop nfs-kernel-server`), observing
+> Docker behavior, then restarting NFS and confirming containers resume. Verify
+> this against your Docker CE version (tested with Docker 29.x on Ubuntu 24.04).
+>
+> **Safer alternative:** Mount NFS at a separate path (e.g., `/mnt/docker-volumes`)
+> and create Docker volumes with explicit bind-mount driver options:
+>
+> ```yaml
+> volumes:
+>   my_data:
+>     driver: local
+>     driver_opts:
+>       type: none
+>       o: bind
+>       device: /mnt/docker-volumes/my_data
+> ```
+>
+> This keeps `metadata.db` local at the cost of per-volume configuration.
+
+**Backup (consistent):**
 
 ```bash
-# On Proxmox host
-tar -czvf portainer-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/portainer
+# On Docker VM — stop containers for a consistent snapshot
+ssh ansible@<VM_IP> 'sudo systemctl stop docker'
+
+# On Proxmox host — archive with relative path
+tar -czf docker-volumes-backup-$(date +%Y%m%d).tar.gz \
+  -C /rpool/datastore/docker-pool volumes
+
+# On Docker VM — restart Docker
+ssh ansible@<VM_IP> 'sudo systemctl start docker'
 ```
 
 **Restore:**
 
 ```bash
-tar -xzvf portainer-backup-YYYYMMDD.tar.gz -C /
+# On Docker VM — stop Docker before restoring
+ssh ansible@<VM_IP> 'sudo systemctl stop docker'
+
+# On Proxmox host — extract archive into target directory
+tar -xzf docker-volumes-backup-YYYYMMDD.tar.gz \
+  -C /rpool/datastore/docker-pool
+
+# Verify ownership and permissions
+chown -R root:root /rpool/datastore/docker-pool/volumes
+chmod 711 /rpool/datastore/docker-pool/volumes
+
+# On Docker VM — restart and verify
+ssh ansible@<VM_IP> 'sudo systemctl start docker && sudo docker volume ls'
 ```
 
 ## Dependencies

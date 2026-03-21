@@ -52,8 +52,8 @@ resource "netbox_virtual_machine" "docker_pool" {
     - Docker CE with Docker Compose
     - Portainer CE (HTTPS: 9443)
     
-    Bind Mounts:
-    - Portainer data: ${var.portainer_bind_mount_source}
+    Docker Volumes NFS:
+    - PVE export: ${var.docker_volumes_nfs_path}
   EOT
 
   tags = var.vm_tags
