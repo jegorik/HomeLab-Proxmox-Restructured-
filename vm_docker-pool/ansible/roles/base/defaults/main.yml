@@ -18,6 +18,7 @@ base_packages:
   - jq
   - net-tools
   - qemu-guest-agent
+  - nfs-common
 
 # Timezone and locale
 base_timezone: "UTC"
@@ -27,6 +28,15 @@ base_locale: "en_US.UTF-8"
 ssh_permit_root_login: "no"
 ssh_password_authentication: "no"
 ssh_pubkey_authentication: "yes"
+
+# NFS Docker volumes persistence
+# When enabled, mounts PVE host NFS export at /var/lib/docker/volumes
+# so all Docker named volumes persist across VM reinstalls
+docker_volumes_nfs_enabled: true
+docker_volumes_nfs_server: ""
+docker_volumes_nfs_export_path: "/rpool/datastore/docker-pool/volumes"
+docker_volumes_nfs_mount_path: "/var/lib/docker/volumes"
+docker_volumes_nfs_options: "nfs4,defaults,_netdev,noatime"
 
 # UFW firewall allowed ports
 ufw_allowed_ports:

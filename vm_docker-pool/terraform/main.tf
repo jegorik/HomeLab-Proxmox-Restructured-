@@ -11,7 +11,7 @@
 # - TPM 2.0 support for enhanced security
 # - QEMU Guest Agent for VM management and IP reporting
 # - Q35 machine type with VirtIO drivers for optimal performance
-# - Bind mount for Portainer data persistence
+# - NFS-backed Docker volumes for persistence across VM reinstalls
 #
 # Usage:
 #   ./deploy.sh plan    # Dry-run
@@ -20,9 +20,9 @@
 # Security Notes:
 # - SSH key authentication is preferred over password
 # - Passwords are stored in Terraform state - ensure state encryption via Vault Transit
-# - Portainer data persists in /rpool/datastore/portainer for redeployment safety
+# - Docker volumes persist on PVE host via NFS for redeployment safety
 #
-# Last Updated: January 2026
+# Last Updated: March 2026
 # =============================================================================
 
 
@@ -33,6 +33,9 @@
 locals {
   # Extract IP address without CIDR notation for SSH connection
   vm_ip = var.vm_ip_address == "dhcp" ? "" : split("/", var.vm_ip_address)[0]
+
+  # Extract Proxmox host IP from Vault endpoint URL for NFS provisioner
+  proxmox_host = regex("https://([^:]+):", data.vault_generic_secret.proxmox_endpoint.data["url"])[0]
 }
 
 # -----------------------------------------------------------------------------
@@ -265,45 +268,73 @@ resource "terraform_data" "ansible_user_setup" {
 }
 
 # -----------------------------------------------------------------------------
-# Fix Bind Mount Permissions for Portainer
+# NFS Export Setup on Proxmox Host
 # -----------------------------------------------------------------------------
-# For VMs, Portainer runs as UID 1000 (default docker user).
-# This provisioner creates the data directory on Proxmox host with correct ownership.
+# Creates the Docker volumes directory on the PVE host ZFS pool and configures
+# an NFS export so the VM can mount it at /var/lib/docker/volumes.
 #
-# Note: VMs don't use unprivileged UID mapping like LXC containers,
-# so we just need to ensure the directory exists with proper permissions.
+# This ensures ALL Docker named volumes are stored on PVE host storage,
+# surviving VM reinstallation and covered by PBS backup automatically.
+#
+# The provisioner connects to the Proxmox host (not the VM) via SSH.
 
-resource "terraform_data" "fix_bind_mount_permissions" {
-  count = var.portainer_bind_mount_enabled ? 1 : 0
+resource "terraform_data" "setup_nfs_export" {
+  count = var.docker_volumes_nfs_enabled ? 1 : 0
 
   triggers_replace = {
-    vm_id             = var.vm_id
-    bind_mount_source = var.portainer_bind_mount_source
+    vm_id      = var.vm_id
+    nfs_path   = var.docker_volumes_nfs_path
+    nfs_subnet = var.docker_volumes_nfs_subnet
   }
 
   provisioner "remote-exec" {
     connection {
       type        = "ssh"
-      host        = local.vm_ip
+      host        = local.proxmox_host
       user        = split("@", data.vault_generic_secret.proxmox_root.data["username"])[0]
       private_key = ephemeral.vault_kv_secret_v2.root_ssh_private_key.data["key"]
-      timeout     = "5m"
+      timeout     = "2m"
     }
 
     inline = [
       "#!/bin/bash",
       "set -e",
-      "# Create Portainer data directory if it doesn't exist",
-      "PORTAINER_DIR='${var.portainer_bind_mount_source}'",
-      "if [[ ! -d \"$PORTAINER_DIR\" ]]; then",
-      "  echo \"Creating Portainer data directory: $PORTAINER_DIR\"",
-      "  mkdir -p \"$PORTAINER_DIR\"",
-      "  chmod 755 \"$PORTAINER_DIR\"",
-      "  echo \"Directory created successfully\"",
-      "else",
-      "  echo \"Portainer data directory already exists: $PORTAINER_DIR\"",
+      "",
+      "NFS_PATH='${var.docker_volumes_nfs_path}'",
+      "NFS_SUBNET='${var.docker_volumes_nfs_subnet}'",
+      "EXPORT_LINE=\"$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,no_root_squash)\"",
+      "",
+      "# Safety check: path must be under /rpool/datastore/",
+      "if [[ \"$NFS_PATH\" != /rpool/datastore/* ]]; then",
+      "  echo 'ERROR: NFS path must be under /rpool/datastore/ for safety'",
+      "  exit 1",
       "fi",
-      "echo \"Portainer bind mount setup complete\""
+      "",
+      "# Create directory if it doesn't exist",
+      "if [[ ! -d \"$NFS_PATH\" ]]; then",
+      "  echo \"Creating NFS export directory: $NFS_PATH\"",
+      "  mkdir -p \"$NFS_PATH\"",
+      "  chmod 755 \"$NFS_PATH\"",
+      "fi",
+      "",
+      "# Ensure NFS server is installed and running",
+      "if ! dpkg -l | grep -q nfs-kernel-server; then",
+      "  echo 'Installing NFS server...'",
+      "  apt-get update -qq && apt-get install -y -qq nfs-kernel-server",
+      "fi",
+      "systemctl enable --now nfs-kernel-server",
+      "",
+      "# Add export line idempotently",
+      "if grep -qF \"$NFS_PATH\" /etc/exports; then",
+      "  echo \"NFS export for $NFS_PATH already exists in /etc/exports\"",
+      "else",
+      "  echo \"$EXPORT_LINE\" >> /etc/exports",
+      "  echo \"Added NFS export: $EXPORT_LINE\"",
+      "fi",
+      "",
+      "# Apply NFS exports",
+      "exportfs -ra",
+      "echo 'NFS export setup complete'"
     ]
   }
 
@@ -342,6 +373,6 @@ resource "terraform_data" "wait_for_vm" {
 
   depends_on = [
     proxmox_virtual_environment_vm.docker_pool,
-    terraform_data.fix_bind_mount_permissions
+    terraform_data.setup_nfs_export
   ]
 }

@@ -146,13 +146,14 @@ vm_cloud_image_filename  = "ubuntu-24.04-server-cloudimg-amd64.qcow2"
 vm_cloud_image_datastore = "local"
 
 # -----------------------------------------------------------------------------
-# Portainer Bind Mount
+# Docker Volumes NFS Persistence
 # -----------------------------------------------------------------------------
-# Persistent storage for Portainer data
+# NFS export from PVE host for Docker volume persistence across VM reinstalls
+# The PVE host path is NFS-exported and mounted at /var/lib/docker/volumes in the VM
 
-portainer_bind_mount_enabled = true
-portainer_bind_mount_source  = "/rpool/datastore/portainer"
-portainer_bind_mount_target  = "/opt/portainer/data"
+docker_volumes_nfs_enabled = true
+docker_volumes_nfs_path    = "/rpool/datastore/docker-pool/volumes"
+docker_volumes_nfs_subnet  = "198.51.100.0/24"
 
 # -----------------------------------------------------------------------------
 # NetBox Registration

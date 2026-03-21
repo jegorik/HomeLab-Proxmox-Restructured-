@@ -5,7 +5,7 @@
 # Step-by-step guide to deploy Ubuntu Server 24.04.3 LTS VM with Docker
 # and Portainer for container management.
 #
-# Last Updated: January 2026
+# Last Updated: March 2026
 # =============================================================================
 
 ## Prerequisites
@@ -49,10 +49,14 @@ vault kv put secret/netbox/api_token token="your-netbox-token"
 vault kv put secret/aws/s3 bucket="your-terraform-state-bucket"
 ```
 
-### 4. Portainer Data Directory
+### 4. Docker Volumes NFS Directory
 
-The deployment script will create `/rpool/datastore/portainer` on the Proxmox
-host. Ensure this path exists and is writable, or modify `portainer_bind_mount_source`
+The deployment creates an NFS export at `/rpool/datastore/docker-pool/volumes` on
+the Proxmox host. This directory is mounted at `/var/lib/docker/volumes` inside
+the VM, so ALL Docker named volumes are automatically persisted on PVE ZFS storage.
+
+The Terraform provisioner handles NFS server installation and export setup
+automatically. If you want to change the export path, modify `docker_volumes_nfs_path`
 in terraform.tfvars.
 
 ---
@@ -85,6 +89,8 @@ Key variables to configure:
 | `vm_cpu_cores` | CPU cores | `2` |
 | `vm_memory` | Memory in MB | `4096` |
 | `vm_disk_size` | Disk size in GB | `32` |
+| `docker_volumes_nfs_path` | PVE export path | `/rpool/datastore/docker-pool/volumes` |
+| `docker_volumes_nfs_subnet` | Allowed NFS subnet | `198.51.100.0/24` |
 
 ### Step 2: Deploy Infrastructure
 
@@ -158,16 +164,17 @@ To add additional ports (e.g., for Docker services):
 sudo ufw allow 8080/tcp comment "My Service"
 ```
 
-### Backup Portainer Data
+### Backup Docker Volumes
 
-Portainer data is stored in `/rpool/datastore/portainer` on the Proxmox host.
-This persists across VM redeployments.
+All Docker named volumes (Portainer, any deployed stacks) are stored on the PVE
+host at `/rpool/datastore/docker-pool/volumes`. This ZFS dataset is covered by
+PBS backup automatically.
 
-To backup:
+To manual backup:
 
 ```bash
 # On Proxmox host
-tar -czvf portainer-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/portainer
+tar -czvf docker-volumes-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/docker-pool/volumes
 ```
 
 ---
@@ -199,6 +206,14 @@ tar -czvf portainer-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/portainer
 3. Check container logs: `docker logs portainer`
 4. Verify UFW allows port 9443: `sudo ufw status`
 
+### NFS Mount Issues
+
+1. Verify NFS export on PVE host: `showmount -e localhost`
+2. Check mount status on VM: `mount | grep docker-pool`
+3. Verify NFS client installed: `dpkg -l | grep nfs-common`
+4. Check systemd mount: `systemctl status var-lib-docker-volumes.mount`
+5. Verify Docker depends on NFS: `systemctl cat docker.service.d/nfs-volumes.conf`
+
 ### Docker Permission Denied
 
 1. Verify user is in docker group: `groups ansible`
@@ -229,11 +244,45 @@ sudo apt upgrade docker-ce docker-ce-cli containerd.io
 ### Recreate VM (Preserving Data)
 
 ```bash
-# Destroy VM (data in /rpool/datastore/portainer preserved)
+# Destroy VM (Docker volumes on PVE NFS are preserved)
 ./deploy.sh destroy
 
 # Redeploy
 ./deploy.sh deploy
 ```
 
-Data will be automatically restored from the bind mount on next deployment.
+All Docker named volumes survive VM reinstall because they live on the PVE host
+at `/rpool/datastore/docker-pool/volumes`. New VM auto-mounts via NFS.
+
+---
+
+## Migrating an Existing Server (Plan B)
+
+If you already have a running `vm_docker-pool` server using local Docker volumes
+(not NFS), use the migration script to move volumes to NFS without data loss:
+
+```bash
+cd vm_docker-pool
+
+# Dry run first (shows what will happen, no changes)
+DRY_RUN=true ./scripts/migrate_to_nfs_volumes.sh
+
+# Run actual migration (interactive, asks for confirmations)
+./scripts/migrate_to_nfs_volumes.sh
+```
+
+The script handles:
+1. **Phase 1**: Install NFS server on PVE and configure export (no downtime)
+2. **Phase 2**: Install NFS client on VM and pre-copy volumes (no downtime)
+3. **Phase 3**: Stop Docker, final sync, mount NFS at `/var/lib/docker/volumes` (~2-5 min downtime)
+4. **Phase 4**: Update Portainer to named volume
+5. **Phase 5**: Start services and verify
+
+Environment variables for customization:
+- `PVE_HOST` — PVE host IP (default: 198.51.100.1)
+- `VM_HOST` — Docker VM IP (default: 198.51.100.200)
+- `NFS_PATH` — NFS export path (default: /rpool/datastore/docker-pool/volumes)
+- `NFS_SUBNET` — Allowed subnet (default: 198.51.100.0/24)
+
+After migration, old volumes are preserved at `/var/lib/docker/volumes.old`.
+Remove after confirming stability: `ssh ansible@<VM_IP> 'sudo rm -rf /var/lib/docker/volumes.old'`

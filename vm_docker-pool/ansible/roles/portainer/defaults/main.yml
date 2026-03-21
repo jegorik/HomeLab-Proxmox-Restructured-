@@ -9,9 +9,6 @@ portainer_image: "portainer/portainer-ce:latest"
 # Force pull image on each run
 portainer_force_pull: false
 
-# Portainer data storage path (bind mounted from Proxmox host)
-portainer_data_path: "/opt/portainer/data"
-
 # Docker Compose file location
 portainer_compose_path: "/opt/portainer"
 
@@ -23,3 +20,7 @@ portainer_restart_policy: "always"
 
 # Container name
 portainer_container_name: "portainer"
+
+# Docker named volume for Portainer data
+# When NFS is enabled, this volume resides on PVE host storage automatically
+portainer_volume_name: "portainer_data"

@@ -51,6 +51,12 @@ all:
     
     # Portainer role variables
     portainer_image: "portainer/portainer-ce:latest"
-    portainer_data_path: "/opt/portainer/data"
+    portainer_volume_name: "portainer_data"
     portainer_port: 9443
     portainer_restart_policy: "always"
+
+    # NFS Docker volumes persistence
+    # Set docker_volumes_nfs_server to your PVE host IP
+    docker_volumes_nfs_enabled: true
+    docker_volumes_nfs_server: "198.51.100.1"   # Replace with your PVE host IP
+    docker_volumes_nfs_export_path: "/rpool/datastore/docker-pool/volumes"

@@ -476,30 +476,39 @@ variable "image_download_content_type" {
 }
 
 # -----------------------------------------------------------------------------
-# Portainer Bind Mount Variables
+# Docker Volumes NFS Persistence Variables
 # -----------------------------------------------------------------------------
+# NFS export from PVE host allows Docker named volumes to persist across VM
+# reinstallations. The PVE host directory is mounted at /var/lib/docker/volumes
+# inside the VM, so ALL named volumes are automatically stored on PVE ZFS storage
+# and covered by PBS backup.
 
-variable "portainer_bind_mount_enabled" {
-  description = "Enable bind mount for Portainer data persistence"
+variable "docker_volumes_nfs_enabled" {
+  description = "Enable NFS-based Docker volume persistence on PVE host"
   type        = bool
   default     = true
 }
 
-variable "portainer_bind_mount_source" {
-  description = "Source path on Proxmox host for Portainer data"
+variable "docker_volumes_nfs_path" {
+  description = "Path on PVE host for Docker volumes NFS export (must be under /rpool/datastore/)"
   type        = string
-  default     = "/rpool/datastore/portainer"
+  default     = "/rpool/datastore/docker-pool/volumes"
 
   validation {
-    condition     = can(regex("^/rpool/", var.portainer_bind_mount_source))
-    error_message = "Bind mount must be under /rpool/ for safety."
+    condition     = can(regex("^/rpool/datastore/", var.docker_volumes_nfs_path))
+    error_message = "NFS export path must be under /rpool/datastore/ for safety and PBS backup coverage."
   }
 }
 
-variable "portainer_bind_mount_target" {
-  description = "Target path inside VM for Portainer data"
+variable "docker_volumes_nfs_subnet" {
+  description = "Subnet allowed to mount the NFS export (CIDR notation)"
   type        = string
-  default     = "/opt/portainer/data"
+  default     = "198.51.100.0/24"
+
+  validation {
+    condition     = can(regex("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$", var.docker_volumes_nfs_subnet))
+    error_message = "Subnet must be in CIDR format (e.g., 198.51.100.0/24)."
+  }
 }
 
 # -----------------------------------------------------------------------------
