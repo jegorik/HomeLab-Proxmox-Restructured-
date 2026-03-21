@@ -80,7 +80,7 @@ run_vm() {
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "[DRY-RUN] VM: $*"
   else
-    $SSH_VM ansible@"$VM_HOST" "sudo bash -c '$*'"
+    printf '%s\n' "$*" | $SSH_VM ansible@"$VM_HOST" "sudo bash -s"
   fi
 }
 
@@ -168,9 +168,11 @@ phase1_pve_nfs_setup() {
   log_ok "NFS server ready"
 
   # Add NFS export (idempotent)
-  local EXPORT_LINE="$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,no_root_squash)"
+  local EXPORT_LINE="$NFS_PATH $NFS_SUBNET(rw,sync,no_subtree_check,root_squash)"
   log_info "Configuring NFS export..."
-  run_pve "grep -qF '$NFS_PATH' /etc/exports || echo '$EXPORT_LINE' >> /etc/exports"
+  local ESCAPED_PATH
+  ESCAPED_PATH=$(printf '%s' "$NFS_PATH" | sed 's/[.[\^$*+?(){}|]/\\&/g')
+  run_pve "grep -qE '^${ESCAPED_PATH}[[:space:]]' /etc/exports || echo '$EXPORT_LINE' >> /etc/exports"
   run_pve "exportfs -ra"
   log_ok "NFS export configured: $EXPORT_LINE"
 
@@ -282,8 +284,8 @@ phase3_mount_switch() {
   run_vm "cat > /etc/systemd/system/docker.service.d/nfs-volumes.conf << 'OVERRIDE'
 # Managed by migration script - ensure Docker starts after NFS volumes mount
 [Unit]
-Requires=var-lib-docker-volumes.mount
-After=var-lib-docker-volumes.mount
+Requires=remote-fs.target
+After=remote-fs.target network-online.target
 OVERRIDE"
   run_vm "systemctl daemon-reload"
   log_ok "Docker systemd override created"

@@ -170,11 +170,12 @@ All Docker named volumes (Portainer, any deployed stacks) are stored on the PVE
 host at `/rpool/datastore/docker-pool/volumes`. This ZFS dataset is covered by
 PBS backup automatically.
 
-To manual backup:
+Manual backup:
 
 ```bash
 # On Proxmox host
-tar -czvf docker-volumes-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/docker-pool/volumes
+tar -czf docker-volumes-backup-$(date +%Y%m%d).tar.gz \
+  -C /rpool/datastore/docker-pool volumes
 ```
 
 ---
@@ -209,7 +210,7 @@ tar -czvf docker-volumes-backup-$(date +%Y%m%d).tar.gz /rpool/datastore/docker-p
 ### NFS Mount Issues
 
 1. Verify NFS export on PVE host: `showmount -e localhost`
-2. Check mount status on VM: `mount | grep docker-pool`
+2. Check mount status on VM: `mountpoint -q /var/lib/docker/volumes && echo mounted || echo not-mounted`
 3. Verify NFS client installed: `dpkg -l | grep nfs-common`
 4. Check systemd mount: `systemctl status var-lib-docker-volumes.mount`
 5. Verify Docker depends on NFS: `systemctl cat docker.service.d/nfs-volumes.conf`

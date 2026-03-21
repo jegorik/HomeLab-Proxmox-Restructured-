@@ -187,7 +187,9 @@
     owner: root
     group: root
     mode: '0711'
-  when: docker_volumes_nfs_enabled | bool
+  when:
+    - docker_volumes_nfs_enabled | bool
+    - docker_volumes_nfs_server | length > 0
   tags: [base, nfs, docker-persistence]
 
 - name: Mount NFS Docker volumes from PVE host
@@ -219,8 +221,8 @@
     content: |
       # Managed by Ansible - ensure Docker starts after NFS volumes mount
       [Unit]
-      Requires=var-lib-docker-volumes.mount
-      After=var-lib-docker-volumes.mount
+      Requires={{ (docker_volumes_nfs_mount_path | regex_replace('^/', '') | regex_replace('/', '-')) }}.mount
+      After={{ (docker_volumes_nfs_mount_path | regex_replace('^/', '') | regex_replace('/', '-')) }}.mount
     dest: /etc/systemd/system/docker.service.d/nfs-volumes.conf
     owner: root
     group: root
